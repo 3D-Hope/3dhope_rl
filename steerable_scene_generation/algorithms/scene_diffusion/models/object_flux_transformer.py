@@ -554,6 +554,7 @@ class ObjectFluxTransformer(nn.Module):
 
         if object_feature_dim_out is None:
             object_feature_dim_out = object_feature_dim
+        print(f"[Ashok] object_feature_dim_out: {object_feature_dim_out}")
         self.final_layer = LastLayer(hidden_dim, object_feature_dim_out)
 
     def get_timestep_feature(

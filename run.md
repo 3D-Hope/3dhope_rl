@@ -1,0 +1,62 @@
+PYTHONPATH=. python scripts/sample_and_render.py load=data/checkpoints/restaurant_low_clutter.ckpt \
+dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
+dataset.model_path_vec_len=28 \
+dataset.max_num_objects_per_scene=107 \
++num_scenes=1
+
+
+PYTHONPATH=. python scripts/sample_and_render.py load=data/checkpoints/restaurant_low_clutter.ckpt \
+dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
+dataset.model_path_vec_len=28 \
+dataset.max_num_objects_per_scene=107 \
++num_scenes=5 \
+algorithm.classifier_free_guidance.weight=0.5 \
+algorithm.classifier_free_guidance.sampling.labels="a scene with 6 chairs and 1 table."
+
+PYTHONPATH=. python scripts/sample_and_render.py load=data/checkpoints/restaurant_low_clutter.ckpt \
+dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
+dataset.model_path_vec_len=28 \
+dataset.max_num_objects_per_scene=107 \
+algorithm.postprocessing.apply_forward_simulation=True \
+algorithm.postprocessing.apply_non_penetration_projection=True \
++num_scenes=5
+
+PYTHONPATH=. python scripts/sample_and_render.py load=data/checkpoints/restaurant_low_clutter.ckpt \
+dataset.model_path_vec_len=28 \
+dataset.max_num_objects_per_scene=107
+
+---
+# train diffuscene
+python main.py +name=first algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True
+
+<!-- dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
+dataset.max_num_objects_per_scene=30 \
+algorithm.classifier_free_guidance.max_length=30 \
+dataset.model_path_vec_len=19 \ -->
+
+## rl diffuscene
+python main.py +name=first \
+load=data/checkpoints/restaurant_low_clutter.ckpt \
+dataset.processed_scene_data_path=nepfaff/steerable-scene-generation-restaurant-low-clutter \
+dataset.model_path_vec_len=28 \
+dataset.max_num_objects_per_scene=107 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.classifier_free_guidance.use=False \
+algorithm.ema.use=False \
+algorithm.trainer=rl_score \
+algorithm.ddpo.use_object_number_reward=True \
++algorithm.model.scene_vec_len=256 \
+algorithm.noise_schedule.scheduler=ddim \
+algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+experiment.training.max_steps=230001 \
+experiment.validation.limit_batch=1 \
+experiment.validation.val_every_n_step=50 \
+algorithm.ddpo.ddpm_reg_weight=200.0 \
+experiment.reset_lr_scheduler=True \
+experiment.training.lr=1e-6 \
+experiment.lr_scheduler.num_warmup_steps=250 \
+algorithm.ddpo.batch_size=32 \
+experiment.training.checkpointing.every_n_train_steps=500 \
+algorithm.num_additional_tokens_for_sampling=20 \
+algorithm.ddpo.n_timesteps_to_sample=100 \
+experiment.find_unused_parameters=True

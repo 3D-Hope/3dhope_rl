@@ -276,7 +276,7 @@ def get_render(
         renderer_class=(
             RenderEngineGltfClientParams(base_url=blender_server_url)
             if use_blender_server
-            else RenderEngineVtkParams(backend="GLX")
+            else RenderEngineVtkParams()
         ),
     )
     ApplyCameraConfig(
@@ -538,7 +538,7 @@ def get_label_image_render(
         height=camera_height,
         rgb=False,
         label=True,
-        renderer_class=RenderEngineVtkParams(backend="GLX"),
+        renderer_class=RenderEngineVtkParams(),
     )
     ApplyCameraConfig(
         config=camera_config,

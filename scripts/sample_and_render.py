@@ -46,6 +46,8 @@ filter_drake_vtk_warning()
 
 # Disable tokenizer parallelism.
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ['HF_HOME'] = '/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface'
+os.environ['HF_DATASETS_CACHE'] = '/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets'
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
