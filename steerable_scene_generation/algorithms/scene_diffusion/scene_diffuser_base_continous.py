@@ -75,7 +75,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             (
                 num_samples,
                 num_objects_per_scene,
-                self.scene_vec_desc.get_object_vec_len(),
+                self.config.custom.obj_vec_len if hasattr(self.cfg, 'custom') and self.cfg.custom.loss else self.scene_vec_desc.get_object_vec_len(),
             )
         )  # Shape (B, N, V)
 

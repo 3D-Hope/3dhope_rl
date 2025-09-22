@@ -167,3 +167,8 @@ predict:
   sample_scenes_with_k_closest_training_examples:
     num_k: 3
     batch_size: 50000
+
+custom:
+  loss: false
+  obj_vec_len: 62
+  obj_diff_vec_len: 62

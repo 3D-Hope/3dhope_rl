@@ -60,3 +60,35 @@ experiment.training.checkpointing.every_n_train_steps=500 \
 algorithm.num_additional_tokens_for_sampling=20 \
 algorithm.ddpo.n_timesteps_to_sample=100 \
 experiment.find_unused_parameters=True
+
+
+
+---
+# custom dataset
+
+
+## training
+
+
+python main.py +name=first algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0
+
+
+
+PYTHONPATH=. python main.py +name=second \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.custom.loss=true
+
+
+
+dataset.model_path_vec_len=62 \
+# model_path_vec_len = dim of ohe of class labels in steering code base

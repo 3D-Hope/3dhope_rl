@@ -36,7 +36,7 @@ class SceneDataset(BaseDataset):
             ckpt_path: The optional checkpoint path.
         """
         self.cfg = cfg
-
+        print(f"[Ashok] hf path is {cfg.processed_scene_data_path}")
         # Check if the path is a Hugging Face Hub dataset ID.
         is_hub_dataset = "/" in cfg.processed_scene_data_path and not os.path.exists(
             cfg.processed_scene_data_path

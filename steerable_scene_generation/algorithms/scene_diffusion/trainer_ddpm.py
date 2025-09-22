@@ -120,12 +120,85 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         """
         super().__init__(cfg, dataset=dataset)
 
+    def custom_loss_function(self, predicted_noise: torch.Tensor, noise: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]:
+        """
+        Custom loss function for your specific scene representation.
+        
+        Args:
+            predicted_noise: Model predictions (B, N, D)
+            noise: Ground truth noise (B, N, D)
+            
+        Returns:
+            total_loss: Combined loss
+            loss_components: Dictionary of individual loss components
+        """
+        # Define indices for your representation components
+        class_indices = list(range(0,22))#TODO: Adjust based on actual class OHE size
+        pos_indices = list(range(len(class_indices), len(class_indices) + 3))  # Next 3 dimensions for position
+        size_indices = list(range(len(class_indices) + len(pos_indices), len(class_indices) + len(pos_indices) + 3))  # Next 3 dimensions for size
+        rot_indices = list(range(len(class_indices) + len(pos_indices) + len(size_indices), len(class_indices) + len(pos_indices) + len(size_indices) + 2))  # Next 2 dimensions for rotation
+
+        objfeat_indices = list(range(len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices), len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices)+32))  # All dimensions for object features
+        
+        # Extract components from your representation using your custom indices
+        pred_pos = predicted_noise[..., pos_indices]
+        pred_size = predicted_noise[..., size_indices]
+        pred_rot = predicted_noise[..., rot_indices]
+        pred_class = predicted_noise[..., class_indices]
+        pred_objfeat = predicted_noise[..., objfeat_indices]
+        
+        target_pos = noise[..., pos_indices]
+        target_size = noise[..., size_indices]
+        target_rot = noise[..., rot_indices]
+        target_class = noise[..., class_indices]
+        target_objfeat = noise[..., objfeat_indices]
+        
+        # Calculate your custom losses
+        pos_loss = F.mse_loss(pred_pos, target_pos)
+        size_loss = F.mse_loss(pred_size, target_size)
+        rot_loss = F.mse_loss(pred_rot, target_rot)
+        class_loss = F.mse_loss(pred_class, target_class)
+        objfeat_loss = F.mse_loss(pred_objfeat, target_objfeat)
+        # Weight the losses as needed (you can make these configurable)
+        pos_weight = 1.0
+        size_weight = 1.0
+        rot_weight = 1.0
+        class_weight = 1.0
+        objfeat_weight = 1.0
+        
+        total_loss = (pos_weight * pos_loss + 
+                     size_weight * size_loss + 
+                     rot_weight * rot_loss + 
+                     class_weight * class_loss + 
+                     objfeat_weight * objfeat_loss)
+        
+        return total_loss, {
+            'pos_loss': pos_loss.item(),
+            'size_loss': size_loss.item(),
+            'rot_loss': rot_loss.item(),
+            'class_loss': class_loss.item(),
+            'objfeat_loss': objfeat_loss.item(),
+        }
+
     def loss_function(
         self, predicted_noise: torch.Tensor, noise: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute the loss function for the DDPM model.
         """
+        # Check if we're using a custom dataset and should use custom loss
+        import numpy as np
+        if hasattr(self.cfg, 'custom') and self.cfg.custom.loss:
+            # print(f"[Ashok] using custom loss")
+            total_loss, loss_components = self.custom_loss_function(predicted_noise, noise)
+            
+            # Log component losses
+            for loss_name, loss_value in loss_components.items():
+                self.log(f"train/{loss_name}", loss_value, prog_bar=True)
+                
+            return total_loss
+        
+        # Original loss calculation
         return compute_ddpm_loss(
             predicted_noise=predicted_noise,
             noise=noise,
@@ -236,6 +309,16 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             noise *= mask
 
         # Compute loss.
-        loss = self.loss_function(predicted_noise, noise)
+        # Check if we're using a custom dataset and should use custom loss
+        if hasattr(self.cfg, 'dataset_name') and self.cfg.dataset_name == 'custom_scene':
+            # Custom loss calculation for your representation
+            loss, loss_components = self.custom_loss_function(predicted_noise, noise)
+            
+            # Log component losses
+            for loss_name, loss_value in loss_components.items():
+                self.log(f"train/{loss_name}", loss_value, prog_bar=True)
+        else:
+            # Original loss calculation
+            loss = self.loss_function(predicted_noise, noise)
 
         return loss

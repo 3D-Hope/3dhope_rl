@@ -54,6 +54,7 @@ class TestSceneDataset(unittest.TestCase):
     def test_getitem_without_permutation(self):
         # Test item retrieval without permutation augmentation.
         item = self.dataset[0]
+        print("[Ashok] ", item)
         self.assertIn("scenes", item)
         self.assertIsInstance(item["scenes"], torch.Tensor)
 

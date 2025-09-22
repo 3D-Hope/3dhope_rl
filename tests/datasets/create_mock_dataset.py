@@ -102,6 +102,7 @@ def main():
         {"scenes": scenes, "language_annotation": language_annotations},
     )
 
+    print(f"[Ashok] scenes {scenes}, {scenes_tensor.shape}")
     # Normalize the scenes.
     hf_dataset = normalize_all_scenes(normalizer, hf_dataset)
 

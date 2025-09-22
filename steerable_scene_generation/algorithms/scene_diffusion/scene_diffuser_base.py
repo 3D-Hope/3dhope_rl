@@ -195,6 +195,10 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
         Return:
             A loss tensor or loss dictionary.
         """
+        # print(f"[Ashok] training_step batch: {batch}")
+        # print(f"[Ashok] training_step batch scenes: {batch['scenes'].shape}")
+        # import numpy as np
+        # np.savetxt("scenes.txt", batch['scenes'].cpu().numpy().reshape(-1, batch['scenes'].shape[-1]), fmt="%.6f", delimiter=",")
         # Prevent logging ambiguitiy.
         batch_size = batch["scenes"].shape[0]
 

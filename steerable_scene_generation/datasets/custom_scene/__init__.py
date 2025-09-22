@@ -1,2 +1,1 @@
-from .scene import SceneDataset
 from .custom_scene import CustomSceneDataset
