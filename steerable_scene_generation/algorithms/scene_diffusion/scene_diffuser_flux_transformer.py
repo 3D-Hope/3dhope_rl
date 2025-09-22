@@ -49,7 +49,7 @@ def create_scene_diffuser_flux_transformer(
             super()._build_model()
 
             obj_vec_len = self.scene_vec_desc.get_object_vec_len()
-            
+
             obj_diff_vec_len = self.scene_vec_desc.get_diff_vec_len()
 
             if self.cfg.custom.loss:

@@ -36,14 +36,15 @@
 
 #     return exp_registry[cfg.experiment._name](cfg, logger, ckpt_path)
 import pathlib
+
 from typing import Optional, Union
 
 from lightning.pytorch.loggers.wandb import WandbLogger
 from omegaconf import DictConfig
 
+from .custom_scene_diffusion import CustomSceneDiffusionExperiment
 from .exp_base import BaseExperiment
 from .scene_diffusion import SceneDiffusionExperiment
-from .custom_scene_diffusion import CustomSceneDiffusionExperiment
 
 # each key has to be a yaml file under '[project_root]/configurations/experiment'
 # without .yaml suffix
@@ -69,7 +70,7 @@ def build_experiment(
     if cfg.dataset._name == "custom_scene":
         # Use the custom experiment when the dataset is custom_scene
         return CustomSceneDiffusionExperiment(cfg, logger, ckpt_path)
-    
+
     # Otherwise, use the standard registry lookup
     if cfg.experiment._name not in exp_registry:
         raise ValueError(

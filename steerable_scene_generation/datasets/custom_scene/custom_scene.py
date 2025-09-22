@@ -1,18 +1,21 @@
-import os
 import json
-import torch
+import os
+
 import numpy as np
-from torch.utils.data import Dataset as TorchDataset
+import torch
+
 from omegaconf import DictConfig
+from torch.utils.data import Dataset as TorchDataset
 
 from steerable_scene_generation.datasets.common import BaseDataset
 from steerable_scene_generation.utils.min_max_scaler import MinMaxScaler
+
 
 class CustomSceneDataset(BaseDataset):
     def __init__(self, cfg: DictConfig, split: str, ckpt_path: str | None = None):
         """
         Custom dataset that loads sample data from numpy files.
-        
+
         Args:
             cfg: Configuration object
             split: One of "training", "validation", "test"
@@ -20,7 +23,7 @@ class CustomSceneDataset(BaseDataset):
         """
         self.cfg = cfg
         self.split = split
-        
+
         # Create dummy metadata that includes required fields
         self.metadata = {
             "rotation_parametrization": "procrustes",
@@ -28,18 +31,18 @@ class CustomSceneDataset(BaseDataset):
             "model_path_vec_len": cfg.model_path_vec_len,  # e.g., 19
             "max_num_objects_per_scene": cfg.max_num_objects_per_scene,  # e.g., 12
             "model_paths": ["model_" + str(i) for i in range(cfg.model_path_vec_len)],
-            "welded_object_model_paths": []
+            "welded_object_model_paths": [],
         }
-        
+
         # Create a normalizer (required by the diffusion model)
         self.normalizer = self._setup_normalizer(ckpt_path)
-        
+
         # Create the torch dataset - using your sample data
         self.dataset = NumpySampleDataset(
             data_dir="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/ashok/sample_data",
             num_objects=cfg.max_num_objects_per_scene,
         )
-        
+
         # Set up data loaders
         self._setup_data_loaders()
 
@@ -49,22 +52,22 @@ class CustomSceneDataset(BaseDataset):
 
     def __getitem__(self, idx):
         """Get a sample from the dataset.
-        
+
         Args:
             idx: Index into the dataset
-            
+
         Returns:
             Dictionary containing the scene data
         """
         # Map idx to the corresponding index in the subset
         actual_idx = self.subset_indices[idx]
-        
+
         # Get the item from the underlying dataset
         item = self.dataset[actual_idx]
-        
+
         # Apply normalization if needed
         # item["scenes"] = self.normalize_scenes(item["scenes"])
-        
+
         return item
 
     def normalize_scenes(self, scenes):
@@ -84,13 +87,13 @@ class CustomSceneDataset(BaseDataset):
         self.train_dataset_len = len(self.dataset)
         self.val_dataset_len = len(self.dataset)
         self.test_dataset_len = len(self.dataset)
-        
+
         # All indices point to the same sample
         all_indices = list(range(len(self.dataset)))
-        
+
         # Use all samples for all splits
         self.subset_indices = all_indices
-        
+
         # For compatibility with parent class
         self.hf_dataset = None
 
@@ -100,10 +103,10 @@ class CustomSceneDataset(BaseDataset):
         Required by the base class for training.
         """
         from torch.utils.data import DataLoader, Subset
-        
+
         # Create a subset based on the current split
         subset = Subset(self.dataset, self.subset_indices)
-        
+
         # Return a DataLoader using the subset
         return DataLoader(
             subset,
@@ -120,7 +123,7 @@ class CustomSceneDataset(BaseDataset):
         """
         scenes = torch.stack([item["scenes"] for item in batch])
         indices = [item["idx"] for item in batch]
-        
+
         return {
             "scenes": scenes,
             "idx": indices,
@@ -129,7 +132,7 @@ class CustomSceneDataset(BaseDataset):
     def _setup_normalizer(self, ckpt_path):
         """Set up a normalizer for scene vectors."""
         normalizer = MinMaxScaler(output_min=-1.0, output_max=1.0, clip=True)
-        
+
         # If checkpoint provided, try to load normalizer from it
         if ckpt_path is not None:
             try:
@@ -139,39 +142,43 @@ class CustomSceneDataset(BaseDataset):
                     return normalizer
             except Exception as e:
                 print(f"Could not load normalizer from checkpoint: {e}")
-        
+
         # Otherwise, fit a new normalizer on some dummy data with correct feature dimension (62)
         # Breakdown: 22 (class) + 3 (translation) + 3 (size) + 2 (angles) + 32 (objfeats)
-        dummy_data = torch.ones(100, 62)  
+        dummy_data = torch.ones(100, 62)
         normalizer.fit(dummy_data)
-        
+
         return normalizer
-    
+
     def _get_item_from_index(self, idx):
         """Get an item from the dataset by index."""
         item = self.dataset[idx]
         return item
-    
+
     def get_scene_vec_description(self):
         """Return a dummy scene vector description for compatibility."""
         # This would typically come from the metadata, but we'll create it on-the-fly
         from steerable_scene_generation.algorithms.common.dataclasses import (
-            RotationParametrization, SceneVecDescription
+            RotationParametrization,
+            SceneVecDescription,
         )
-        
+
         # Try to import PyDrake, but handle the case when it's not available
         try:
             from pydrake.all import PackageMap
+
             package_map = PackageMap()
         except ImportError:
             # If PyDrake is not available, create a dummy PackageMap
             class DummyPackageMap:
                 def __init__(self):
                     pass
+
                 def AddMap(self, *args):
                     pass
+
             package_map = DummyPackageMap()
-        
+
         return SceneVecDescription(
             drake_package_map=package_map,
             static_directive=None,
@@ -179,13 +186,13 @@ class CustomSceneDataset(BaseDataset):
             rotation_parametrization=RotationParametrization.PROCRUSTES,
             model_paths=self.metadata["model_paths"],
             model_path_vec_len=self.metadata["model_path_vec_len"],
-            welded_object_model_paths=[]
+            welded_object_model_paths=[],
         )
 
 
 class NumpySampleDataset(TorchDataset):
     """A dataset that loads a single sample from numpy files and repeats it."""
-    
+
     def __init__(self, data_dir, num_objects=12):
         """
         Args:
@@ -194,15 +201,21 @@ class NumpySampleDataset(TorchDataset):
         """
         self.data_dir = data_dir
         self.num_objects = num_objects
-        
+
         # Load numpy files
         print(f"Loading sample data from {data_dir}")
-        self.class_labels = np.load(os.path.join(data_dir, "class_labels.npy"))  # (1, 12, 22)
-        self.translations = np.load(os.path.join(data_dir, "translations.npy"))  # (1, 12, 3)
-        self.sizes = np.load(os.path.join(data_dir, "sizes.npy"))               # (1, 12, 3)
-        self.angles = np.load(os.path.join(data_dir, "angles.npy"))             # (1, 12, 2)
-        self.objfeats = np.load(os.path.join(data_dir, "objfeats_32.npy"))      # (1, 12, 32)
-        
+        self.class_labels = np.load(
+            os.path.join(data_dir, "class_labels.npy")
+        )  # (1, 12, 22)
+        self.translations = np.load(
+            os.path.join(data_dir, "translations.npy")
+        )  # (1, 12, 3)
+        self.sizes = np.load(os.path.join(data_dir, "sizes.npy"))  # (1, 12, 3)
+        self.angles = np.load(os.path.join(data_dir, "angles.npy"))  # (1, 12, 2)
+        self.objfeats = np.load(
+            os.path.join(data_dir, "objfeats_32.npy")
+        )  # (1, 12, 32)
+
         # Print shapes for debugging
         print(f"Loaded data shapes:")
         print(f"  class_labels: {self.class_labels.shape}")
@@ -210,66 +223,72 @@ class NumpySampleDataset(TorchDataset):
         print(f"  sizes: {self.sizes.shape}")
         print(f"  angles: {self.angles.shape}")
         print(f"  objfeats: {self.objfeats.shape}")
-        
+
         # Prepare the scene representation by concatenating all features
         self.scene = self._prepare_scene()
-        
+
         # Calculate total feature dimension
         self.total_feature_dim = (
-            self.class_labels.shape[2] +   # class labels dimension (22)
-            self.translations.shape[2] +   # translations dimension (3)
-            self.sizes.shape[2] +          # sizes dimension (3)
-            self.angles.shape[2] +         # angles dimension (2)
-            self.objfeats.shape[2]         # objfeats dimension (32)
+            self.class_labels.shape[2]
+            + self.translations.shape[2]  # class labels dimension (22)
+            + self.sizes.shape[2]  # translations dimension (3)
+            + self.angles.shape[2]  # sizes dimension (3)
+            + self.objfeats.shape[2]  # angles dimension (2)  # objfeats dimension (32)
         )
         print(f"Total feature dimension: {self.total_feature_dim}")  # Should be 62
-        
+
         # We'll create 512 virtual samples by repeating the same scene
         # This helps with batch creation during training
         self.num_samples = 512
-    
+
     def _prepare_scene(self):
         """Prepare the scene by concatenating all features."""
         # Since all arrays are already (1, 12, X), we just need to concatenate along the last dimension
         # First, extract the single sample (removing the batch dimension)
         class_labels = self.class_labels[0]  # (12, 22)
         translations = self.translations[0]  # (12, 3)
-        sizes = self.sizes[0]               # (12, 3)
-        angles = self.angles[0]             # (12, 2)
-        objfeats = self.objfeats[0]         # (12, 32)
-        
+        sizes = self.sizes[0]  # (12, 3)
+        angles = self.angles[0]  # (12, 2)
+        objfeats = self.objfeats[0]  # (12, 32)
+
         # Now we need to concatenate for each object
-        scene = np.zeros((self.num_objects, 
-                          class_labels.shape[1] + 
-                          translations.shape[1] + 
-                          sizes.shape[1] + 
-                          angles.shape[1] + 
-                          objfeats.shape[1]))  # (12, 62)
-        
+        scene = np.zeros(
+            (
+                self.num_objects,
+                class_labels.shape[1]
+                + translations.shape[1]
+                + sizes.shape[1]
+                + angles.shape[1]
+                + objfeats.shape[1],
+            )
+        )  # (12, 62)
+
         # For each object, create the concatenated feature vector
         for i in range(self.num_objects):
             # Concatenate in order: class_labels, translations, sizes, angles, objfeats
-            scene[i] = np.concatenate([
-                class_labels[i],    # (22,)
-                translations[i],    # (3,)
-                sizes[i],           # (3,)
-                angles[i],          # (2,)
-                objfeats[i]         # (32,)
-            ])
-        
+            scene[i] = np.concatenate(
+                [
+                    class_labels[i],  # (22,)
+                    translations[i],  # (3,)
+                    sizes[i],  # (3,)
+                    angles[i],  # (2,)
+                    objfeats[i],  # (32,)
+                ]
+            )
+
         # Convert to tensor with shape [num_objects, feature_dim]
         scene_tensor = torch.tensor(scene, dtype=torch.float32)
         print(f"Created scene tensor with shape {scene_tensor.shape}")
-        
+
         return scene_tensor
-    
+
     def __len__(self):
         return self.num_samples
-    
+
     def __getitem__(self, idx):
         """
         Return the same scene for any index.
-        
+
         Returns:
             Dictionary containing the scene data
         """
