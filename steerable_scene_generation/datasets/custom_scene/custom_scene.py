@@ -9,6 +9,7 @@ from torch.utils.data import Dataset as TorchDataset
 
 from steerable_scene_generation.datasets.common import BaseDataset
 from steerable_scene_generation.utils.min_max_scaler import MinMaxScaler
+from typing import Any, Union
 
 
 class CustomSceneDataset(BaseDataset):
@@ -67,16 +68,18 @@ class CustomSceneDataset(BaseDataset):
 
         # Apply normalization if needed
         # item["scenes"] = self.normalize_scenes(item["scenes"])
-
-        return item
+        # print(f"[Ashok] input scene: {item['scenes']}")
+        return item # {"scenes": scene, "idx": idx} this is actually what is fet to the model NOTE
 
     def normalize_scenes(self, scenes):
         """Normalize scene data using the fitted normalizer."""
-        return self.normalizer.transform(scenes)
+        # return self.normalizer.transform(scenes)
+        return scenes
 
     def inverse_normalize_scenes(self, scenes):
         """Inverse normalize scene data using the fitted normalizer."""
-        return self.normalizer.inverse_transform(scenes)
+        # return self.normalizer.inverse_transform(scenes)
+        return scenes
 
     def _setup_data_loaders(self):
         """
@@ -189,6 +192,35 @@ class CustomSceneDataset(BaseDataset):
             welded_object_model_paths=[],
         )
 
+    def replace_cond_data(
+        self, data: dict[str, Any], txt_labels: str | list[str]
+    ) -> dict[str, Any]:
+        """
+        Replaces the conditioning data in the input data with the provided text labels.
+
+        Args:
+            data (dict[str, Any]): The input data.
+            txt_labels (str | list[str]): The text labels to use for conditioning.
+
+        Returns:
+            dict[str, Any]: The data with replaced conditioning data.
+        """
+        if isinstance(txt_labels, str):
+            txt_labels = [txt_labels] * len(data["scenes"])
+
+        if len(txt_labels) != len(data["scenes"]):
+            raise ValueError(
+                "The number of text labels does not match the number of scenes."
+            )
+
+        if "text_cond" in data and self.tokenizer is not None:
+            data["text_cond"] = self.tokenizer(txt_labels)
+
+        if "text_cond_coarse" in data and self.tokenizer_coarse is not None:
+            data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
+
+        return data
+
 
 class NumpySampleDataset(TorchDataset):
     """A dataset that loads a single sample from numpy files and repeats it."""
@@ -233,13 +265,13 @@ class NumpySampleDataset(TorchDataset):
             + self.translations.shape[2]  # class labels dimension (22)
             + self.sizes.shape[2]  # translations dimension (3)
             + self.angles.shape[2]  # sizes dimension (3)
-            + self.objfeats.shape[2]  # angles dimension (2)  # objfeats dimension (32)
+            # + self.objfeats.shape[2]  # angles dimension (2)  # objfeats dimension (32)
         )
         print(f"Total feature dimension: {self.total_feature_dim}")  # Should be 62
 
         # We'll create 512 virtual samples by repeating the same scene
         # This helps with batch creation during training
-        self.num_samples = 512
+        self.num_samples = 1##TODO: Change to 512 for overfit training
 
     def _prepare_scene(self):
         """Prepare the scene by concatenating all features."""
@@ -259,7 +291,7 @@ class NumpySampleDataset(TorchDataset):
                 + translations.shape[1]
                 + sizes.shape[1]
                 + angles.shape[1]
-                + objfeats.shape[1],
+                # + objfeats.shape[1],
             )
         )  # (12, 62)
 
@@ -272,7 +304,7 @@ class NumpySampleDataset(TorchDataset):
                     translations[i],  # (3,)
                     sizes[i],  # (3,)
                     angles[i],  # (2,)
-                    objfeats[i],  # (32,)
+                    # objfeats[i],  # (32,)
                 ]
             )
 
@@ -293,7 +325,7 @@ class NumpySampleDataset(TorchDataset):
             Dictionary containing the scene data
         """
         return {
-            "scenes": self.scene,
+            "scenes": self.scene, # B, 12, 30
             "idx": idx,
         }
 

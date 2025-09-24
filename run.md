@@ -92,3 +92,27 @@ algorithm.custom.loss=true
 
 dataset.model_path_vec_len=62 \
 # model_path_vec_len = dim of ohe of class labels in steering code base
+
+
+## RAN for overfit
+PYTHONPATH=. python main.py +name=overfit_dumb dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+
+PYTHONPATH=. python scripts/sample_and_render.py \
+load=1hpthcp8 \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=1 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+
+
+/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/latest-run/checkpoints/I=4999-step=10000.ckpt
+
+---
+
+in /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/configurations/algorithm/scene_diffuser_base.yaml change this to use our loss (because their scene repr does not have size, objfeat)
+
+custom:
+  loss: true # if false default loss
+  obj_vec_len: 62 # with objfeat32
+  obj_diff_vec_len: 62

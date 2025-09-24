@@ -154,52 +154,52 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             )
         )  # Next 2 dimensions for rotation
 
-        objfeat_indices = list(
-            range(
-                len(class_indices)
-                + len(pos_indices)
-                + len(size_indices)
-                + len(rot_indices),
-                len(class_indices)
-                + len(pos_indices)
-                + len(size_indices)
-                + len(rot_indices)
-                + 32,
-            )
-        )  # All dimensions for object features
+        # objfeat_indices = list(
+        #     range(
+        #         len(class_indices)
+        #         + len(pos_indices)
+        #         + len(size_indices)
+        #         + len(rot_indices),
+        #         len(class_indices)
+        #         + len(pos_indices)
+        #         + len(size_indices)
+        #         + len(rot_indices)
+        #         + 32,
+        #     )
+        # )  # All dimensions for object features
 
         # Extract components from your representation using your custom indices
         pred_pos = predicted_noise[..., pos_indices]
         pred_size = predicted_noise[..., size_indices]
         pred_rot = predicted_noise[..., rot_indices]
         pred_class = predicted_noise[..., class_indices]
-        pred_objfeat = predicted_noise[..., objfeat_indices]
+        # pred_objfeat = predicted_noise[..., objfeat_indices]
 
         target_pos = noise[..., pos_indices]
         target_size = noise[..., size_indices]
         target_rot = noise[..., rot_indices]
         target_class = noise[..., class_indices]
-        target_objfeat = noise[..., objfeat_indices]
+        # target_objfeat = noise[..., objfeat_indices]
 
         # Calculate your custom losses
         pos_loss = F.mse_loss(pred_pos, target_pos)
         size_loss = F.mse_loss(pred_size, target_size)
         rot_loss = F.mse_loss(pred_rot, target_rot)
         class_loss = F.mse_loss(pred_class, target_class)
-        objfeat_loss = F.mse_loss(pred_objfeat, target_objfeat)
+        # objfeat_loss = F.mse_loss(pred_objfeat, target_objfeat)
         # Weight the losses as needed (you can make these configurable)
         pos_weight = 1.0
         size_weight = 1.0
         rot_weight = 1.0
         class_weight = 1.0
-        objfeat_weight = 1.0
+        # objfeat_weight = 1.0
 
         total_loss = (
             pos_weight * pos_loss
             + size_weight * size_loss
             + rot_weight * rot_loss
             + class_weight * class_loss
-            + objfeat_weight * objfeat_loss
+            # + objfeat_weight * objfeat_loss
         )
 
         return total_loss, {
@@ -207,7 +207,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             "size_loss": size_loss.item(),
             "rot_loss": rot_loss.item(),
             "class_loss": class_loss.item(),
-            "objfeat_loss": objfeat_loss.item(),
+            # "objfeat_loss": objfeat_loss.item(),
         }
 
     def loss_function(

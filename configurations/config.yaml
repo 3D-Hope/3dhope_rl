@@ -8,7 +8,7 @@ defaults:
 debug: false # global debug flag will be passed into configuration of experiment, dataset and algorithm
 
 wandb:
-  entity: 078bct021-ashok-d-org # wandb account name / organization name [fixme]
+  entity: 078bct021-ashok-d # wandb account name / organization name [fixme]
   project: 3dhope_rl # wandb project name; if not provided, defaults to root folder name [fixme]
   mode: online # set wandb logging to online, offline, disabled or dryrun
 

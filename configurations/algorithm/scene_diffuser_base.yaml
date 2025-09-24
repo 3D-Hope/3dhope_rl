@@ -121,14 +121,16 @@ visualization:
 
 test:
   use_ema: True # Whether to use the EMA model for sampling. This requires `ema.use=True`.
-  num_samples_to_render: 50 # RGBA image
+  # num_samples_to_render: 50 # RGBA image
+  num_samples_to_render: 0 # RGBA image
   num_samples_to_render_as_label: 0 # Semantic images
   num_samples_to_visualize: 0 # Interactive meshcat HTML
   num_directives_to_generate: 0 # Drake directives for simulation
   num_samples_to_save_as_pickle: 0
   sample_batch_size: Null # Set to a number to sample in batches
 validation:
-  num_samples_to_render: 1 # RGBA image
+  # num_samples_to_render: 1 # RGBA image
+  num_samples_to_render: 0 # RGBA image
   num_samples_to_visualize: 0 # Interactive meshcat HTML
   num_directives_to_generate: 0 # Drake directives for simulation
   num_samples_to_compute_physical_feasibility_metrics_for: 100
@@ -170,5 +172,6 @@ predict:
 
 custom:
   loss: false
-  obj_vec_len: 62
-  obj_diff_vec_len: 62
+  obj_vec_len: 30
+  obj_diff_vec_len: 30
+  save_pickle: true
