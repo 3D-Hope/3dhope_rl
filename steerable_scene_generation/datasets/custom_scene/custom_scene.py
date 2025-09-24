@@ -16,6 +16,15 @@ try:
     from threed_front_encoding import get_encoded_dataset
 except ImportError:
     from .threed_front_encoding import get_encoded_dataset
+from omegaconf import ListConfig
+
+def update_data_file_paths(config_data, config):
+        config_data["dataset_directory"] = \
+            os.path.join(config["data"]["path_to_processed_data"], config_data["dataset_directory"])
+        config_data["annotation_file"] = \
+            os.path.join(config["data"]["path_to_dataset_files"], config_data["annotation_file"])
+        return config_data
+
 
 @hydra.main(version_base=None, config_path="../../../configurations", config_name="config")
 def main(cfg: DictConfig):
@@ -28,38 +37,69 @@ def main(cfg: DictConfig):
     # print(f"[DEBUG] config: {config}")
     print(config["data"])
     # import sys; sys.exit()
-    def update_data_file_paths(config_data):
-        config_data["dataset_directory"] = \
-            os.path.join(PATH_TO_PROCESSED_DATA, config_data["dataset_directory"])
-        config_data["annotation_file"] = \
-            os.path.join(PATH_TO_DATASET_FILES, config_data["annotation_file"])
-        return config_data
+    
     
     print(config["training"].get("splits", ["train", "val"]))
 
 
-    train_dataset = get_encoded_dataset(
-        update_data_file_paths(config["data"]),
-        path_to_bounds=None,
-        augmentations=config["data"].get("augmentations", None),
-        split=config["training"].get("splits", ["train", "val"]),
-        # split=["test"],
-        max_length=config["network"]["sample_num_points"],
-        include_room_mask=(config["network"]["room_mask_condition"] and \
-                            config["feature_extractor"]["name"]=="resnet18")
-    )
-    print(len(train_dataset))
+    # train_dataset = get_encoded_dataset(
+    #     update_data_file_paths(config["data"]),
+    #     path_to_bounds=None,
+    #     augmentations=config["data"].get("augmentations", None),
+    #     split=config["training"].get("splits", ["train", "val"]),
+    #     # split=["test"],
+    #     max_length=config["network"]["sample_num_points"],
+    #     include_room_mask=(config["network"]["room_mask_condition"] and \
+    #                         config["feature_extractor"]["name"]=="resnet18")
+    # )
+    # print(len(train_dataset))
 
     
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=config["training"].get("batch_size", 128),
-        num_workers=config["training"].get("n_processes", 1),
-        collate_fn=train_dataset.collate_fn,
-        shuffle=True
+    # train_loader = DataLoader(
+    #     train_dataset,
+    #     batch_size=config["training"].get("batch_size", 128),
+    #     num_workers=config["training"].get("n_processes", 1),
+    #     collate_fn=train_dataset.collate_fn,
+    #     shuffle=True
+    # )
+    # print("train loader")
+    # print(len(train_loader))
+    # item = next(iter(train_loader))
+    # print(item)
+    # print(item.keys())
+    # print(item["class_labels"].shape)
+    # print(item["translations"].shape)
+    # print(item["sizes"].shape)
+    # print(item["angles"].shape)
+    # print(item["fpbpn"].shape)
+    # print(item["length"])
+    
+    
+    # train_dataset_custom = CustomSceneDataset(
+    #     cfg=config,
+    #     split=config["training"].get("splits", ["train", "val"]),
+    #     ckpt_path=None
+    # )
+    # print("test dataset")
+    # print(len(train_dataset_custom))
+    # item2 = train_dataset_custom[0]
+    # print(item2)
+    # print(item2.keys())
+    # print(item2["scenes"].shape)
+    # print(item2["idx"])
+    
+    custom_dataset = CustomDataset(
+        cfg=config,
+        split=config["training"].get("splits", ["train", "val"]),
+        ckpt_path=None
     )
-    print(len(train_loader))
-    print(next(iter(train_loader)))
+    print("custom dataset")
+    print(len(custom_dataset))
+    item3 = custom_dataset[0]
+    print(item3)
+    print(item3.keys())
+    print(item3["scenes"].shape)
+    print(item3["idx"])
     
     # Compute the bounds for this experiment, save them to a file in the
     # experiment directory and pass them to the validation dataset
@@ -81,6 +121,245 @@ def main(cfg: DictConfig):
     #     include_room_mask=(config["network"]["room_mask_condition"] and \
     #                         config["feature_extractor"]["name"]=="resnet18")
     # )
+    
+# Actual dataset class code using ThreedFront
+class CustomDatasetOld(BaseDataset):
+    """
+    CustomDataset that uses get_dataset_raw_and_encoded from threedfront to load and encode the dataset.
+    """
+
+    def __init__(self, cfg: DictConfig, split: str | list, ckpt_path: str | None = None):
+        """
+        Args:
+            cfg: Configuration object
+            split: One of "training", "validation", "test"
+            ckpt_path: Optional checkpoint path (not used here)
+        """
+        self.cfg = cfg
+        self.split = split
+
+        # Import get_dataset_raw_and_encoded from threedfront_encoding
+        try:
+            from threed_front_encoding import get_dataset_raw_and_encoded
+        except ImportError:
+            from .threed_front_encoding import get_dataset_raw_and_encoded
+
+        # Prepare arguments for get_dataset_raw_and_encoded
+        data_cfg = cfg["data"] if "data" in cfg else cfg.data
+        network_cfg = cfg["network"] if "network" in cfg else cfg.network
+        
+        print(f"split: {split}")
+        # print(f"type(split): {type(split)}")
+        
+
+        # Use the split argument, or fallback to config
+        if split == "training":
+            split_names = cfg["training"].get("splits", ["train", "val"])
+        elif split == "validation":
+            split_names = cfg["validation"].get("splits", ["test"])
+        elif type(split) == ListConfig or type(split) == list:
+            print(f"split: {split}")
+            split_names = split
+            print(f"split_names: {split_names}")
+        else:
+            split_names = [split]
+
+        # Call get_dataset_raw_and_encoded to get raw and encoded datasets
+        raw_dataset, encoded_dataset = get_dataset_raw_and_encoded(
+            update_data_file_paths(data_cfg, cfg),
+            # data_cfg,
+            split=split_names,
+            max_length=network_cfg["sample_num_points"],
+            include_room_mask=network_cfg.get("room_mask_condition", True),
+        )
+
+        self.raw_dataset = raw_dataset
+        self.encoded_dataset = encoded_dataset
+
+        # For compatibility with BaseDataset
+        self.hf_dataset = None
+        self.normalizer = None  # You may want to set up a normalizer if needed
+
+        # Set up indices for the split
+        self.subset_indices = list(range(len(self.encoded_dataset)))
+        print(f"[Ashok] found scenes: {len(self.subset_indices)}")
+        
+        self.normalizer = self._setup_normalizer(ckpt_path)
+
+        # Create dummy metadata that includes required fields
+        self.metadata = {
+            "rotation_parametrization": "procrustes",
+            "translation_vec_len": 3,
+            "model_path_vec_len": cfg.model_path_vec_len,  # e.g., 19
+            "max_num_objects_per_scene": cfg.max_num_objects_per_scene,  # e.g., 12
+            "model_paths": ["model_" + str(i) for i in range(cfg.model_path_vec_len)],
+            "welded_object_model_paths": [],
+        }
+
+        # Set up data loaders
+        self._setup_data_loaders()
+
+    def __len__(self):
+        return len(self.subset_indices)
+
+    def __getitem__(self, idx):
+        # Map idx to the corresponding index in the subset
+        actual_idx = self.subset_indices[idx]
+        item = self.encoded_dataset[actual_idx]
+        
+        # Convert to scenes format (class_labels, translations, sizes, angles, fpbpn)
+        scenes = np.concatenate([item["class_labels"], item["translations"], item["sizes"], item["angles"]], axis=1)
+        scenes = torch.from_numpy(scenes).float()
+        
+        # Optionally, you can add "idx" to the returned dict for compatibility
+        if isinstance(scenes, dict):
+            item = dict(scenes)
+            item["idx"] = idx
+        else:
+            item = {"scenes": scenes, "idx": idx}
+        return item
+
+    def get_dataloader(self, batch_size, shuffle=True, num_workers=0, pin_memory=False):
+        from torch.utils.data import DataLoader, Subset
+
+        subset = Subset(self.encoded_dataset, self.subset_indices)
+        return DataLoader(
+            subset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            collate_fn=getattr(self.encoded_dataset, "collate_fn", None),
+        )
+        
+    def normalize_scenes(self, scenes):
+        """Normalize scene data using the fitted normalizer."""
+        # return self.normalizer.transform(scenes)
+        return scenes
+
+    def inverse_normalize_scenes(self, scenes):
+        """Inverse normalize scene data using the fitted normalizer."""
+        # return self.normalizer.inverse_transform(scenes)
+        return scenes
+        
+    def _collate_fn(self, batch):
+        """
+        Custom collate function to handle the batch formatting.
+        """
+        scenes = torch.stack([item["scenes"] for item in batch])
+        indices = [item["idx"] for item in batch]
+        return {
+            "scenes": scenes,
+            "idx": indices,
+        }
+        
+    def _setup_normalizer(self, ckpt_path):
+        """Set up a normalizer for scene vectors."""
+        normalizer = MinMaxScaler(output_min=-1.0, output_max=1.0, clip=True)
+
+        # If checkpoint provided, try to load normalizer from it
+        if ckpt_path is not None:
+            try:
+                ckpt = torch.load(ckpt_path, map_location="cpu")
+                if "normalizer_state" in ckpt:
+                    normalizer.load_state(ckpt["normalizer_state"])
+                    return normalizer
+            except Exception as e:
+                print(f"Could not load normalizer from checkpoint: {e}")
+
+        # Otherwise, fit a new normalizer on some dummy data with correct feature dimension (62)
+        # Breakdown: 22 (class) + 3 (translation) + 3 (size) + 2 (angles) + 32 (objfeats)
+        dummy_data = torch.ones(100, 62)
+        normalizer.fit(dummy_data)
+
+        return normalizer
+
+    def _get_item_from_index(self, idx):
+        """Get an item from the dataset by index."""
+        item = self.encoded_dataset[idx]
+        return item
+
+    def get_scene_vec_description(self):
+        """Return a dummy scene vector description for compatibility."""
+        # This would typically come from the metadata, but we'll create it on-the-fly
+        from steerable_scene_generation.algorithms.common.dataclasses import (
+            RotationParametrization,
+            SceneVecDescription,
+        )
+
+        # Try to import PyDrake, but handle the case when it's not available
+        try:
+            from pydrake.all import PackageMap
+
+            package_map = PackageMap()
+        except ImportError:
+            # If PyDrake is not available, create a dummy PackageMap
+            class DummyPackageMap:
+                def __init__(self):
+                    pass
+
+                def AddMap(self, *args):
+                    pass
+
+            package_map = DummyPackageMap()
+
+        return SceneVecDescription(
+            drake_package_map=package_map,
+            static_directive=None,
+            translation_vec_len=3,
+            rotation_parametrization=RotationParametrization.PROCRUSTES,
+            model_paths=self.metadata["model_paths"],
+            model_path_vec_len=self.metadata["model_path_vec_len"],
+            welded_object_model_paths=[],
+        )
+
+    def replace_cond_data(
+        self, data: dict[str, Any], txt_labels: str | list[str]
+    ) -> dict[str, Any]:
+        """
+        Replaces the conditioning data in the input data with the provided text labels.
+
+        Args:
+            data (dict[str, Any]): The input data.
+            txt_labels (str | list[str]): The text labels to use for conditioning.
+
+        Returns:
+            dict[str, Any]: The data with replaced conditioning data.
+        """
+        if isinstance(txt_labels, str):
+            txt_labels = [txt_labels] * len(data["scenes"])
+
+        if len(txt_labels) != len(data["scenes"]):
+            raise ValueError(
+                "The number of text labels does not match the number of scenes."
+            )
+
+        if "text_cond" in data and self.tokenizer is not None:
+            data["text_cond"] = self.tokenizer(txt_labels)
+
+        if "text_cond_coarse" in data and self.tokenizer_coarse is not None:
+            data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
+
+        return data
+    
+    def _setup_data_loaders(self):
+        """
+        Set up the data loaders for training, validation, and testing.
+        This method is required by BaseDataset.
+        """
+        # For a single sample dataset, we'll use the same sample for all splits
+        self.train_dataset_len = len(self.encoded_dataset)
+        self.val_dataset_len = len(self.encoded_dataset)
+        self.test_dataset_len = len(self.encoded_dataset)
+
+        # All indices point to the same sample
+        all_indices = list(range(len(self.encoded_dataset)))
+
+        # Use all samples for all splits
+        self.subset_indices = all_indices
+
+        # For compatibility with parent class
+        self.hf_dataset = None
 
 class CustomSceneDataset(BaseDataset):
     def __init__(self, cfg: DictConfig, split: str, ckpt_path: str | None = None):

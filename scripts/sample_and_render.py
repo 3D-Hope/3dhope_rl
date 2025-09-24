@@ -249,9 +249,8 @@ from steerable_scene_generation.utils.distributed_utils import is_rank_zero
 from steerable_scene_generation.utils.logging import filter_drake_vtk_warning
 from steerable_scene_generation.utils.omegaconf import register_resolvers
 
-from steerable_scene_generation.datasets.custom_scene.custom_scene import (
-    CustomSceneDataset,
-    NumpySampleDataset
+from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
+    CustomDataset
 )
 
 # Add logging filters.

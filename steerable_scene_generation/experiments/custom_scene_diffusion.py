@@ -7,7 +7,7 @@ from steerable_scene_generation.algorithms.scene_diffusion import (
     create_scene_diffuser_diffuscene,
     create_scene_diffuser_flux_transformer,
 )
-from steerable_scene_generation.datasets.custom_scene import CustomSceneDataset
+from steerable_scene_generation.datasets.custom_scene import CustomDataset
 from steerable_scene_generation.experiments.scene_diffusion import (
     SceneDiffusionExperiment,
 )
@@ -19,7 +19,11 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
     # Inherit all the algorithm factories and trainers from SceneDiffusionExperiment
 
     # Override the compatible_datasets to include our custom dataset
+    # compatible_datasets = dict(
+    #     scene=CustomSceneDataset,  # The original key "scene" still points to our custom dataset
+    #     custom_scene=CustomSceneDataset,  # Add a direct "custom_scene" key
+    # )
     compatible_datasets = dict(
-        scene=CustomSceneDataset,  # The original key "scene" still points to our custom dataset
-        custom_scene=CustomSceneDataset,  # Add a direct "custom_scene" key
+        scene=CustomDataset,  # The original key "scene" still points to our custom dataset
+        custom_scene=CustomDataset,  # Add a direct "custom_scene" key
     )

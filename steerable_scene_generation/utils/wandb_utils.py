@@ -166,7 +166,7 @@ class SpaceEfficientWandbLogger(WandbLogger):
                         "save_last",
                         "save_top_k",
                         "save_weights_only",
-                        "_every_n_train_steps",
+                        "every_n_train_steps",
                     ]
                     # ensure it does not break if `ModelCheckpoint` args change
                     if hasattr(checkpoint_callback, k)

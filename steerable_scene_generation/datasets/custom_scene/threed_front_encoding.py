@@ -107,7 +107,7 @@ def get_encoded_dataset(
     path_to_bounds=None,
     augmentations=None,
     split=["train", "val"],
-    max_length=None,
+    max_length=None ,
     include_room_mask=True
 ):
     _, encoding = get_dataset_raw_and_encoded(

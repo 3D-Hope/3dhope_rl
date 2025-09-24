@@ -107,17 +107,50 @@ dataset.model_path_vec_len=62 \
 
 
 ## RAN for overfit
-PYTHONPATH=. python main.py +name=overfit_dumb dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+PYTHONPATH=. python main.py +name=genz dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
 
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
-load=1hpthcp8 \
+load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
-+num_scenes=1 \
++num_scenes=256 \
 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
 
 
+# num_scenes = batch size during inference, it predicts for each scene in test set
+
+
+
+
+PYTHONPATH=. python main.py +name=first \
+load=bgdrozky \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.classifier_free_guidance.use=False \
+algorithm.ema.use=False \
+algorithm.trainer=rl_score \
+algorithm.ddpo.use_object_number_reward=True \
+algorithm.noise_schedule.scheduler=ddim \
+algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+experiment.training.max_steps=230001 \
+experiment.validation.limit_batch=1 \
+experiment.validation.val_every_n_step=50 \
+algorithm.ddpo.ddpm_reg_weight=200.0 \
+experiment.reset_lr_scheduler=True \
+experiment.training.lr=1e-6 \
+experiment.lr_scheduler.num_warmup_steps=250 \
+algorithm.ddpo.batch_size=32 \
+experiment.training.checkpointing.every_n_train_steps=500 \
+algorithm.num_additional_tokens_for_sampling=20 \
+algorithm.ddpo.n_timesteps_to_sample=100 \
+experiment.find_unused_parameters=True \
+algorithm.custom.loss=true
+
+
+---
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/latest-run/checkpoints/I=4999-step=10000.ckpt
 
 ---
@@ -130,4 +163,8 @@ custom:
   obj_diff_vec_len: 62
 
 
-/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-24/11-30-51/sampled_scenes_results.pkl
+<!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-24/11-30-51/sampled_scenes_results.pkl -->
+
+<!--  Render Results -->
+python ../ThreedFront/scripts/render_results.py outputs/2025-09-24/20-26-49/sampled_scenes_results.pkl --no_texture --without_floor
+

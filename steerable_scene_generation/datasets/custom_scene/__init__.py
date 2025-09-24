@@ -1,2 +1,2 @@
-from .custom_scene import CustomSceneDataset
 from .threed_front_encoding import get_dataset_raw_and_encoded
+from .custom_scene_final import CustomDataset

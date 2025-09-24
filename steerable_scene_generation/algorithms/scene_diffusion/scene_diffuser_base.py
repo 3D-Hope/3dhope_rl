@@ -114,6 +114,8 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
 
     def on_save_checkpoint(self, checkpoint):
         # Save the normalizer state. Loading will happen in the dataset constructor.
+        print(f"[Ashok] saving normalizer state")
+        print(f"[Ashok] normalizer: {self.dataset.normalizer}")
         checkpoint["normalizer_state"] = self.dataset.normalizer.get_state()
 
     def configure_optimizers(
