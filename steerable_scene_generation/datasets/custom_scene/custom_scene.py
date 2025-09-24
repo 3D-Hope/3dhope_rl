@@ -1,16 +1,86 @@
 import json
 import os
 
+import hydra
 import numpy as np
 import torch
 
 from omegaconf import DictConfig
-from torch.utils.data import Dataset as TorchDataset
-
+from torch.utils.data import Dataset as TorchDataset, DataLoader
+from omegaconf import OmegaConf
+from steerable_scene_generation.utils.omegaconf import register_resolvers
 from steerable_scene_generation.datasets.common import BaseDataset
 from steerable_scene_generation.utils.min_max_scaler import MinMaxScaler
 from typing import Any, Union
+try:
+    from threed_front_encoding import get_encoded_dataset
+except ImportError:
+    from .threed_front_encoding import get_encoded_dataset
 
+@hydra.main(version_base=None, config_path="../../../configurations", config_name="config")
+def main(cfg: DictConfig):
+    # Resolve the config.
+    register_resolvers()
+    OmegaConf.resolve(cfg)
+    config = cfg.dataset
+    PATH_TO_PROCESSED_DATA = config["data"]["path_to_processed_data"]
+    PATH_TO_DATASET_FILES = config["data"]["path_to_dataset_files"]
+    # print(f"[DEBUG] config: {config}")
+    print(config["data"])
+    # import sys; sys.exit()
+    def update_data_file_paths(config_data):
+        config_data["dataset_directory"] = \
+            os.path.join(PATH_TO_PROCESSED_DATA, config_data["dataset_directory"])
+        config_data["annotation_file"] = \
+            os.path.join(PATH_TO_DATASET_FILES, config_data["annotation_file"])
+        return config_data
+    
+    print(config["training"].get("splits", ["train", "val"]))
+
+
+    train_dataset = get_encoded_dataset(
+        update_data_file_paths(config["data"]),
+        path_to_bounds=None,
+        augmentations=config["data"].get("augmentations", None),
+        split=config["training"].get("splits", ["train", "val"]),
+        # split=["test"],
+        max_length=config["network"]["sample_num_points"],
+        include_room_mask=(config["network"]["room_mask_condition"] and \
+                            config["feature_extractor"]["name"]=="resnet18")
+    )
+    print(len(train_dataset))
+
+    
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config["training"].get("batch_size", 128),
+        num_workers=config["training"].get("n_processes", 1),
+        collate_fn=train_dataset.collate_fn,
+        shuffle=True
+    )
+    print(len(train_loader))
+    print(next(iter(train_loader)))
+    
+    # Compute the bounds for this experiment, save them to a file in the
+    # experiment directory and pass them to the validation dataset
+    # np.savez(
+    #     path_to_bounds,
+    #     sizes=train_dataset.bounds["sizes"],
+    #     translations=train_dataset.bounds["translations"],
+    #     angles=train_dataset.bounds["angles"],
+    #     #add objfeats
+    #     objfeats=train_dataset.bounds["objfeats"],
+    # )
+
+    # validation_dataset = get_encoded_dataset(
+    #     update_data_file_paths(config["data"]),
+    #     path_to_bounds=path_to_bounds,
+    #     augmentations=None,
+    #     split=config["validation"].get("splits", ["test"]),
+    #     max_length=config["network"]["sample_num_points"],
+    #     include_room_mask=(config["network"]["room_mask_condition"] and \
+    #                         config["feature_extractor"]["name"]=="resnet18")
+    # )
 
 class CustomSceneDataset(BaseDataset):
     def __init__(self, cfg: DictConfig, split: str, ckpt_path: str | None = None):
@@ -329,73 +399,5 @@ class NumpySampleDataset(TorchDataset):
             "idx": idx,
         }
 
-
-# Original DummyTorchDataset implementation (commented out)
-"""
-class DummyTorchDataset(TorchDataset):
-    A dummy PyTorch dataset that generates random scene data.
-    
-    def __init__(self, num_samples, num_objects, feature_dim):
-        Args:
-            num_samples: Number of samples in the dataset
-            num_objects: Number of objects per scene
-            feature_dim: Dimension of each object feature vector
-        
-        print(f"[Ashok] custom dumby dataset initialized with {num_samples} samples, ")
-        self.num_samples = num_samples
-        self.num_objects = num_objects
-        self.feature_dim = feature_dim
-        
-        # Generate random seed for reproducibility
-        self.seed = 42
-        np.random.seed(self.seed)
-    
-    def __len__(self):
-        return self.num_samples
-    
-    def __getitem__(self, idx):
-        Generate a random scene with objects.
-        
-        Structure of each object vector:
-        - First 3 elements: Translation (x, y, z)
-        - Next 9 elements: Rotation (Procrustes format)
-        - Remaining elements: One-hot encoding of object type
-        
-        # Generate random seed based on index for deterministic behavior
-        np.random.seed(self.seed + idx)
-        
-        # Create random scene data
-        scene = np.random.randn(self.num_objects, self.feature_dim)
-        
-        # Create a one-hot encoding part for the last part of each vector
-        # Assuming 18 dimensions are used for translation and rotation
-        # and the rest are for object type
-        model_path_vec_len = self.feature_dim - 12  # Subtract 3 for translation and 9 for rotation
-        
-        for i in range(self.num_objects):
-            # Normalize translation to reasonable range (-2 to 2)
-            scene[i, :3] = scene[i, :3] * 2
-            
-            # Normalize rotation part (this is a simplification)
-            # In a real scenario, rotation should be a valid rotation representation
-            rot_part = scene[i, 3:12]
-            # Simple normalization for quaternion-like structure
-            rot_norm = np.linalg.norm(rot_part)
-            if rot_norm > 0:
-                scene[i, 3:12] = rot_part / rot_norm
-            
-            # Create one-hot encoding for object type
-            one_hot_start = 12
-            one_hot_idx = np.random.randint(0, model_path_vec_len)
-            scene[i, one_hot_start:] = 0
-            scene[i, one_hot_start + one_hot_idx] = 1
-        
-        # Convert to tensor
-        scene_tensor = torch.tensor(scene, dtype=torch.float32)
-        
-        # Return in the format expected by the model
-        return {
-            "scenes": scene_tensor,
-            "idx": idx,
-        }
-"""
+if __name__ == "__main__":
+    main()

@@ -88,6 +88,18 @@ algorithm.classifier_free_guidance.use=False \
 algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true
 
+PYTHONPATH=. python /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/steerable_scene_generation/datasets/custom_scene/custom_scene.py \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.custom.loss=true
+
 
 
 dataset.model_path_vec_len=62 \
@@ -97,7 +109,7 @@ dataset.model_path_vec_len=62 \
 ## RAN for overfit
 PYTHONPATH=. python main.py +name=overfit_dumb dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
 
-PYTHONPATH=. python scripts/sample_and_render.py \
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=1hpthcp8 \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -116,3 +128,6 @@ custom:
   loss: true # if false default loss
   obj_vec_len: 62 # with objfeat32
   obj_diff_vec_len: 62
+
+
+/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-24/11-30-51/sampled_scenes_results.pkl

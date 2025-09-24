@@ -391,7 +391,6 @@ def main(cfg: DictConfig) -> None:
         scene_dict = {
             "scenes": sampled_scenes_np,
         }
-
         # Log to wandb and save locally
         pickle_path = output_dir / "sampled_scenes.pkl"
         with open(pickle_path, "wb") as f:
