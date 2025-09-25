@@ -23,6 +23,7 @@ from steerable_scene_generation.datasets.common.shuffled_streaming_dataset impor
 )
 from steerable_scene_generation.utils.hf_dataset import load_hf_dataset_with_metadata
 from steerable_scene_generation.utils.min_max_scaler import MinMaxScaler
+
 try:
     from .threed_front_encoding import get_dataset_raw_and_encoded
 except Exception:
@@ -31,18 +32,27 @@ except Exception:
         get_dataset_raw_and_encoded,
     )
 
+
 def update_data_file_paths(config_data, config):
-        config_data["dataset_directory"] = \
-            os.path.join(config["data"]["path_to_processed_data"], config_data["dataset_directory"])
-        config_data["annotation_file"] = \
-            os.path.join(config["data"]["path_to_dataset_files"], config_data["annotation_file"])
-        return config_data
+    config_data["dataset_directory"] = os.path.join(
+        config["data"]["path_to_processed_data"], config_data["dataset_directory"]
+    )
+    config_data["annotation_file"] = os.path.join(
+        config["data"]["path_to_dataset_files"], config_data["annotation_file"]
+    )
+    return config_data
+
 
 console_logger = logging.getLogger(__name__)
 
 
 class CustomDataset(BaseDataset):
-    def __init__(self, cfg: DictConfig, split: str | list | ListConfig, ckpt_path: str | None = None):
+    def __init__(
+        self,
+        cfg: DictConfig,
+        split: str | list | ListConfig,
+        ckpt_path: str | None = None,
+    ):
         """
         Args:
             cfg: a DictConfig object defined by `configurations/dataset/scene.yaml`.
@@ -57,9 +67,17 @@ class CustomDataset(BaseDataset):
 
         # Resolve split names for ThreedFront
         if split == "training":
-            split_names = cfg["training"].get("splits", ["train", "val"]) if "training" in cfg else ["train", "val"]
+            split_names = (
+                cfg["training"].get("splits", ["train", "val"])
+                if "training" in cfg
+                else ["train", "val"]
+            )
         elif split == "validation":
-            split_names = cfg["validation"].get("splits", ["test"]) if "validation" in cfg else ["test"]
+            split_names = (
+                cfg["validation"].get("splits", ["test"])
+                if "validation" in cfg
+                else ["test"]
+            )
         elif type(split) == list or type(split) == ListConfig:
             split_names = split
         else:
@@ -164,9 +182,7 @@ class CustomDataset(BaseDataset):
             else:
                 raise ValueError(f"Invalid split: {split}")
 
-    def _setup_normalizer_threedfront(
-        self, ckpt_path: str | None
-    ) -> MinMaxScaler:
+    def _setup_normalizer_threedfront(self, ckpt_path: str | None) -> MinMaxScaler:
         """
         Sets up a normalizer for ThreedFront-encoded samples by inferring the
         feature dimension and fitting a placeholder scaler. ThreedFront inputs are
@@ -329,21 +345,28 @@ class CustomDataset(BaseDataset):
         #     item["scenes"] = scene_tensor[perm]
 
         # Optional text handling only if configured with static prompts
-        if (self.tokenizer is not None or self.tokenizer_coarse is not None) and getattr(
-            self.cfg, "static_subdataset_prompts", None
-        ) and self.cfg.static_subdataset_prompts.use and hasattr(self, "_tokenized_prompts_cache"):
+        if (
+            (self.tokenizer is not None or self.tokenizer_coarse is not None)
+            and getattr(self.cfg, "static_subdataset_prompts", None)
+            and self.cfg.static_subdataset_prompts.use
+            and hasattr(self, "_tokenized_prompts_cache")
+        ):
             # Fall back to a single prompt if provided; otherwise skip
             prompts = list(self.cfg.static_subdataset_prompts.name_to_prompt.values())
             if len(prompts) > 0:
                 prompt = prompts[0]
                 if self.tokenizer is not None:
                     if random.random() >= self.masking_prop:
-                        item["text_cond"] = self._tokenized_prompts_cache[prompt]["regular"]
+                        item["text_cond"] = self._tokenized_prompts_cache[prompt][
+                            "regular"
+                        ]
                     else:
                         item["text_cond"] = self._empty_encoding
                 if self.tokenizer_coarse is not None:
                     if random.random() >= self.masking_prop_coarse:
-                        item["text_cond_coarse"] = self._tokenized_prompts_cache[prompt]["coarse"]
+                        item["text_cond_coarse"] = self._tokenized_prompts_cache[
+                            prompt
+                        ]["coarse"]
                     else:
                         item["text_cond_coarse"] = self._empty_encoding_coarse
 
@@ -370,6 +393,7 @@ class CustomDataset(BaseDataset):
             concat = torch.cat(components, dim=1)
         else:
             import numpy as np
+
             concat = torch.from_numpy(np.concatenate(components, axis=1)).float()
         return concat
 

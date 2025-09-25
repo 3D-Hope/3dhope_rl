@@ -226,6 +226,7 @@ import logging
 import os
 import pickle
 import sys
+
 from pathlib import Path
 
 import hydra
@@ -239,6 +240,9 @@ from omegaconf.omegaconf import open_dict
 from steerable_scene_generation.algorithms.scene_diffusion.scene_diffuser_base import (
     SceneDiffuserBase,
 )
+from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
+    CustomDataset,
+)
 from steerable_scene_generation.experiments import build_experiment
 from steerable_scene_generation.utils.ckpt_utils import (
     download_latest_or_best_checkpoint,
@@ -249,17 +253,17 @@ from steerable_scene_generation.utils.distributed_utils import is_rank_zero
 from steerable_scene_generation.utils.logging import filter_drake_vtk_warning
 from steerable_scene_generation.utils.omegaconf import register_resolvers
 
-from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
-    CustomDataset
-)
-
 # Add logging filters.
 filter_drake_vtk_warning()
 
 # Disable tokenizer parallelism.
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["HF_HOME"] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface"
-os.environ["HF_DATASETS_CACHE"] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
+os.environ[
+    "HF_HOME"
+] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface"
+os.environ[
+    "HF_DATASETS_CACHE"
+] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
@@ -310,7 +314,7 @@ def main(cfg: DictConfig) -> None:
     # Set up the output directory.
     output_dir = Path(hydra_cfg.runtime.output_dir)
     logging.info(f"Outputs will be saved to: {output_dir}")
-    
+
     # Initialize wandb.
     if cfg.wandb.project is None:
         cfg.wandb.project = str(Path(__file__).parent.parent.name)
@@ -336,7 +340,9 @@ def main(cfg: DictConfig) -> None:
             )
         else:
             checkpoint_path = download_latest_or_best_checkpoint(
-                run_path=run_path, download_dir=download_dir, use_best=cfg.get("use_best", False)
+                run_path=run_path,
+                download_dir=download_dir,
+                use_best=cfg.get("use_best", False),
             )
     else:
         # Use local path.
@@ -346,22 +352,22 @@ def main(cfg: DictConfig) -> None:
     custom_dataset = CustomSceneDataset(
         cfg=cfg.dataset,
         split="test",  # Use test split for inference
-        ckpt_path=str(checkpoint_path)
+        ckpt_path=str(checkpoint_path),
     )
 
     # Save a ground truth sample from the dataset for comparison
     gt_sample_idx = 0  # Get the first sample
     gt_sample = custom_dataset[gt_sample_idx]
-    
+
     gt_sample_np = gt_sample["scenes"].detach().cpu().numpy()
     gt_text_path = output_dir / "ground_truth_scene.txt"
     with open(gt_text_path, "w") as f:
         f.write(f"Ground truth scene shape: {gt_sample_np.shape}\n\n")
         f.write(f"Sample index: {gt_sample_idx}\n\n")
         f.write(np.array2string(gt_sample_np, threshold=np.inf, precision=6))
-    
+
     logging.info(f"Saved ground truth scene to {gt_text_path}")
-    
+
     # Create a dataloader for the custom dataset
     dataloader = torch.utils.data.DataLoader(
         custom_dataset,
@@ -371,20 +377,20 @@ def main(cfg: DictConfig) -> None:
         persistent_workers=False,
         pin_memory=cfg.experiment.test.pin_memory,
     )
-    
+
     print(f"[DEBUG] Created custom dataset with size: {len(custom_dataset)}")
-    
+
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
-    
+
     try:
         print("[DEBUG] Starting to sample scenes...")
         # Sample scenes from the model
         sampled_scene_batches = experiment.exec_task("predict", dataloader=dataloader)
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
-        
+
         print(f"[DEBUG] Sampled scenes shape: {sampled_scenes.shape}")
-        
+
         # Save the sampled scenes as a pickle file and numpy text file
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
         scene_dict = {
@@ -394,34 +400,40 @@ def main(cfg: DictConfig) -> None:
         pickle_path = output_dir / "sampled_scenes.pkl"
         with open(pickle_path, "wb") as f:
             pickle.dump(scene_dict, f)
-        
+
         # Also save as text file for easy inspection
         text_path = output_dir / "sampled_scenes.txt"
         with open(text_path, "w") as f:
             f.write(f"Sampled scenes shape: {sampled_scenes_np.shape}\n\n")
             f.write(np.array2string(sampled_scenes_np, threshold=np.inf, precision=6))
-        
+
         logging.info(f"Saved sampled scenes to {pickle_path} and {text_path}")
-        
+
         # Log to wandb
         wandb.save(str(pickle_path))
         wandb.save(str(text_path))
-        
+
     except Exception as e:
         logging.error(f"Error during sampling: {str(e)}")
         # Still try to save any partial results
         try:
-            if 'sampled_scenes' in locals():
+            if "sampled_scenes" in locals():
                 sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
                 text_path = output_dir / "partial_sampled_scenes.txt"
                 with open(text_path, "w") as f:
-                    f.write(f"Partial sampled scenes shape: {sampled_scenes_np.shape}\n\n")
-                    f.write(np.array2string(sampled_scenes_np, threshold=np.inf, precision=6))
+                    f.write(
+                        f"Partial sampled scenes shape: {sampled_scenes_np.shape}\n\n"
+                    )
+                    f.write(
+                        np.array2string(
+                            sampled_scenes_np, threshold=np.inf, precision=6
+                        )
+                    )
                 logging.info(f"Saved partial sampled scenes to {text_path}")
                 wandb.save(str(text_path))
         except:
             pass
-        
+
         raise e
 
     logging.info("Done!")

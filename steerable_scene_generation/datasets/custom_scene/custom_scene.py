@@ -1,32 +1,40 @@
 import json
 import os
 
+from typing import Any, Union
+
 import hydra
 import numpy as np
 import torch
 
-from omegaconf import DictConfig
-from torch.utils.data import Dataset as TorchDataset, DataLoader
-from omegaconf import OmegaConf
-from steerable_scene_generation.utils.omegaconf import register_resolvers
+from omegaconf import DictConfig, OmegaConf
+from torch.utils.data import DataLoader, Dataset as TorchDataset
+
 from steerable_scene_generation.datasets.common import BaseDataset
 from steerable_scene_generation.utils.min_max_scaler import MinMaxScaler
-from typing import Any, Union
+from steerable_scene_generation.utils.omegaconf import register_resolvers
+
 try:
     from threed_front_encoding import get_encoded_dataset
 except ImportError:
     from .threed_front_encoding import get_encoded_dataset
+
 from omegaconf import ListConfig
 
+
 def update_data_file_paths(config_data, config):
-        config_data["dataset_directory"] = \
-            os.path.join(config["data"]["path_to_processed_data"], config_data["dataset_directory"])
-        config_data["annotation_file"] = \
-            os.path.join(config["data"]["path_to_dataset_files"], config_data["annotation_file"])
-        return config_data
+    config_data["dataset_directory"] = os.path.join(
+        config["data"]["path_to_processed_data"], config_data["dataset_directory"]
+    )
+    config_data["annotation_file"] = os.path.join(
+        config["data"]["path_to_dataset_files"], config_data["annotation_file"]
+    )
+    return config_data
 
 
-@hydra.main(version_base=None, config_path="../../../configurations", config_name="config")
+@hydra.main(
+    version_base=None, config_path="../../../configurations", config_name="config"
+)
 def main(cfg: DictConfig):
     # Resolve the config.
     register_resolvers()
@@ -37,10 +45,8 @@ def main(cfg: DictConfig):
     # print(f"[DEBUG] config: {config}")
     print(config["data"])
     # import sys; sys.exit()
-    
-    
-    print(config["training"].get("splits", ["train", "val"]))
 
+    print(config["training"].get("splits", ["train", "val"]))
 
     # train_dataset = get_encoded_dataset(
     #     update_data_file_paths(config["data"]),
@@ -54,7 +60,6 @@ def main(cfg: DictConfig):
     # )
     # print(len(train_dataset))
 
-    
     # train_loader = DataLoader(
     #     train_dataset,
     #     batch_size=config["training"].get("batch_size", 128),
@@ -73,8 +78,7 @@ def main(cfg: DictConfig):
     # print(item["angles"].shape)
     # print(item["fpbpn"].shape)
     # print(item["length"])
-    
-    
+
     # train_dataset_custom = CustomSceneDataset(
     #     cfg=config,
     #     split=config["training"].get("splits", ["train", "val"]),
@@ -87,11 +91,11 @@ def main(cfg: DictConfig):
     # print(item2.keys())
     # print(item2["scenes"].shape)
     # print(item2["idx"])
-    
+
     custom_dataset = CustomDataset(
         cfg=config,
         split=config["training"].get("splits", ["train", "val"]),
-        ckpt_path=None
+        ckpt_path=None,
     )
     print("custom dataset")
     print(len(custom_dataset))
@@ -100,7 +104,7 @@ def main(cfg: DictConfig):
     print(item3.keys())
     print(item3["scenes"].shape)
     print(item3["idx"])
-    
+
     # Compute the bounds for this experiment, save them to a file in the
     # experiment directory and pass them to the validation dataset
     # np.savez(
@@ -121,14 +125,17 @@ def main(cfg: DictConfig):
     #     include_room_mask=(config["network"]["room_mask_condition"] and \
     #                         config["feature_extractor"]["name"]=="resnet18")
     # )
-    
+
+
 # Actual dataset class code using ThreedFront
 class CustomDatasetOld(BaseDataset):
     """
     CustomDataset that uses get_dataset_raw_and_encoded from threedfront to load and encode the dataset.
     """
 
-    def __init__(self, cfg: DictConfig, split: str | list, ckpt_path: str | None = None):
+    def __init__(
+        self, cfg: DictConfig, split: str | list, ckpt_path: str | None = None
+    ):
         """
         Args:
             cfg: Configuration object
@@ -147,10 +154,9 @@ class CustomDatasetOld(BaseDataset):
         # Prepare arguments for get_dataset_raw_and_encoded
         data_cfg = cfg["data"] if "data" in cfg else cfg.data
         network_cfg = cfg["network"] if "network" in cfg else cfg.network
-        
+
         print(f"split: {split}")
         # print(f"type(split): {type(split)}")
-        
 
         # Use the split argument, or fallback to config
         if split == "training":
@@ -183,7 +189,7 @@ class CustomDatasetOld(BaseDataset):
         # Set up indices for the split
         self.subset_indices = list(range(len(self.encoded_dataset)))
         print(f"[Ashok] found scenes: {len(self.subset_indices)}")
-        
+
         self.normalizer = self._setup_normalizer(ckpt_path)
 
         # Create dummy metadata that includes required fields
@@ -206,11 +212,14 @@ class CustomDatasetOld(BaseDataset):
         # Map idx to the corresponding index in the subset
         actual_idx = self.subset_indices[idx]
         item = self.encoded_dataset[actual_idx]
-        
+
         # Convert to scenes format (class_labels, translations, sizes, angles, fpbpn)
-        scenes = np.concatenate([item["class_labels"], item["translations"], item["sizes"], item["angles"]], axis=1)
+        scenes = np.concatenate(
+            [item["class_labels"], item["translations"], item["sizes"], item["angles"]],
+            axis=1,
+        )
         scenes = torch.from_numpy(scenes).float()
-        
+
         # Optionally, you can add "idx" to the returned dict for compatibility
         if isinstance(scenes, dict):
             item = dict(scenes)
@@ -231,7 +240,7 @@ class CustomDatasetOld(BaseDataset):
             pin_memory=pin_memory,
             collate_fn=getattr(self.encoded_dataset, "collate_fn", None),
         )
-        
+
     def normalize_scenes(self, scenes):
         """Normalize scene data using the fitted normalizer."""
         # return self.normalizer.transform(scenes)
@@ -241,7 +250,7 @@ class CustomDatasetOld(BaseDataset):
         """Inverse normalize scene data using the fitted normalizer."""
         # return self.normalizer.inverse_transform(scenes)
         return scenes
-        
+
     def _collate_fn(self, batch):
         """
         Custom collate function to handle the batch formatting.
@@ -252,7 +261,7 @@ class CustomDatasetOld(BaseDataset):
             "scenes": scenes,
             "idx": indices,
         }
-        
+
     def _setup_normalizer(self, ckpt_path):
         """Set up a normalizer for scene vectors."""
         normalizer = MinMaxScaler(output_min=-1.0, output_max=1.0, clip=True)
@@ -341,7 +350,7 @@ class CustomDatasetOld(BaseDataset):
             data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
 
         return data
-    
+
     def _setup_data_loaders(self):
         """
         Set up the data loaders for training, validation, and testing.
@@ -360,6 +369,7 @@ class CustomDatasetOld(BaseDataset):
 
         # For compatibility with parent class
         self.hf_dataset = None
+
 
 class CustomSceneDataset(BaseDataset):
     def __init__(self, cfg: DictConfig, split: str, ckpt_path: str | None = None):
@@ -418,7 +428,7 @@ class CustomSceneDataset(BaseDataset):
         # Apply normalization if needed
         # item["scenes"] = self.normalize_scenes(item["scenes"])
         # print(f"[Ashok] input scene: {item['scenes']}")
-        return item # {"scenes": scene, "idx": idx} this is actually what is fet to the model NOTE
+        return item  # {"scenes": scene, "idx": idx} this is actually what is fet to the model NOTE
 
     def normalize_scenes(self, scenes):
         """Normalize scene data using the fitted normalizer."""
@@ -620,7 +630,7 @@ class NumpySampleDataset(TorchDataset):
 
         # We'll create 512 virtual samples by repeating the same scene
         # This helps with batch creation during training
-        self.num_samples = 1##TODO: Change to 512 for overfit training
+        self.num_samples = 1  ##TODO: Change to 512 for overfit training
 
     def _prepare_scene(self):
         """Prepare the scene by concatenating all features."""
@@ -674,9 +684,10 @@ class NumpySampleDataset(TorchDataset):
             Dictionary containing the scene data
         """
         return {
-            "scenes": self.scene, # B, 12, 30
+            "scenes": self.scene,  # B, 12, 30
             "idx": idx,
         }
+
 
 if __name__ == "__main__":
     main()

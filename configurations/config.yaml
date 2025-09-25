@@ -12,7 +12,7 @@ wandb:
   project: 3dhope_rl # wandb project name; if not provided, defaults to root folder name [fixme]
   mode: online # set wandb logging to online, offline, disabled or dryrun
 
-resume: null # wandb run id to resume logging and loading checkpoint from
+resume: bgdrozky # wandb run id to resume logging and loading checkpoint from
 # wandb run id containing checkpoint or a path to a checkpoint file. Note that all task
 # will load from that checkpoint; i.e. a test stage following a train stage will use
 # these weights rather than using the new weights from the train stage.

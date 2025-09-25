@@ -163,8 +163,8 @@ custom:
   obj_diff_vec_len: 62
 
 
-<!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-24/11-30-51/sampled_scenes_results.pkl -->
+<!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py outputs/2025-09-24/20-26-49/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl --no_texture --without_floor
 
