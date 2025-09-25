@@ -150,7 +150,9 @@ def main(cfg: DictConfig) -> None:
         max_length=config["network"]["sample_num_points"],
         include_room_mask=config["network"].get("room_mask_condition", True),
     )
-    print(f"[Ashok] bounds sizes {encoded_dataset.bounds['sizes']}, translations {encoded_dataset.bounds['translations']}")
+    print(
+        f"[Ashok] bounds sizes {encoded_dataset.bounds['sizes']}, translations {encoded_dataset.bounds['translations']}"
+    )
 
     print(f"[Ashok] type of dataset {type(encoded_dataset)}")
     # Create a CustomSceneDataset
@@ -207,7 +209,7 @@ def main(cfg: DictConfig) -> None:
             for j in range(sampled_scenes_np.shape[1]):
                 class_label_idx = np.argmax(sampled_scenes_np[i, j, :n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
-                    ohe = np.zeros(n_classes-1)
+                    ohe = np.zeros(n_classes - 1)
                     ohe[class_label_idx] = 1
                     class_labels.append(ohe)
                     translations.append(
