@@ -121,7 +121,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         super().__init__(cfg, dataset=dataset)
 
     def custom_loss_function(
-        self, predicted_noise: torch.Tensor, noise: torch.Tensor
+        self, predicted_noise: torch.Tensor, noise: torch.Tensor, timesteps=None
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """
         Custom loss function for your specific scene representation.
@@ -129,15 +129,15 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         Args:
             predicted_noise: Model predictions (B, N, D)
             noise: Ground truth noise (B, N, D)
+            timesteps: Optional diffusion timesteps for IoU regularization
 
         Returns:
             total_loss: Combined loss
             loss_components: Dictionary of individual loss components
         """
         # Define indices for your representation components
-        class_indices = list(
-            range(0, 22)
-        )  # TODO: Adjust based on actual class OHE size
+        num_classes = self.cfg.custom.num_classes 
+        class_indices = list(range(0, num_classes))
         pos_indices = list(
             range(len(class_indices), len(class_indices) + 3)
         )  # Next 3 dimensions for position
@@ -154,67 +154,284 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             )
         )  # Next 2 dimensions for rotation
 
-        # objfeat_indices = list(
-        #     range(
-        #         len(class_indices)
-        #         + len(pos_indices)
-        #         + len(size_indices)
-        #         + len(rot_indices),
-        #         len(class_indices)
-        #         + len(pos_indices)
-        #         + len(size_indices)
-        #         + len(rot_indices)
-        #         + 32,
-        #     )
-        # )  # All dimensions for object features
-
         # Extract components from your representation using your custom indices
         pred_pos = predicted_noise[..., pos_indices]
         pred_size = predicted_noise[..., size_indices]
         pred_rot = predicted_noise[..., rot_indices]
         pred_class = predicted_noise[..., class_indices]
-        # pred_objfeat = predicted_noise[..., objfeat_indices]
 
         target_pos = noise[..., pos_indices]
         target_size = noise[..., size_indices]
         target_rot = noise[..., rot_indices]
         target_class = noise[..., class_indices]
-        # target_objfeat = noise[..., objfeat_indices]
 
         # Calculate your custom losses
         pos_loss = F.mse_loss(pred_pos, target_pos)
         size_loss = F.mse_loss(pred_size, target_size)
         rot_loss = F.mse_loss(pred_rot, target_rot)
         class_loss = F.mse_loss(pred_class, target_class)
-        # objfeat_loss = F.mse_loss(pred_objfeat, target_objfeat)
+        
         # Weight the losses as needed (you can make these configurable)
         pos_weight = 1.0
         size_weight = 1.0
         rot_weight = 1.0
         class_weight = 1.0
-        # objfeat_weight = 1.0
-
+        
+        # Initialize losses dictionary
+        losses_dict = {
+            "pos_loss": pos_loss.item(),
+            "size_loss": size_loss.item(),
+            "rot_loss": rot_loss.item(),
+            "class_loss": class_loss.item(),
+        }
+        
+        # Calculate base loss
         total_loss = (
             pos_weight * pos_loss
             + size_weight * size_loss
             + rot_weight * rot_loss
             + class_weight * class_loss
-            # + objfeat_weight * objfeat_loss
         )
+        
+        # Apply IoU regularization if enabled
+        if hasattr(self.cfg, "loss") and getattr(self.cfg.loss, "use_iou_regularization", False):
+            # If timesteps not provided, use a dummy value (middle of diffusion process)
+            if timesteps is None:
+                # device = predicted_noise.device
+                # timesteps = torch.ones(predicted_noise.shape[0], dtype=torch.long, device=device) * (self.noise_scheduler.config.num_train_timesteps // 2)
+                raise ValueError("Timesteps must be provided for IoU regularization.")
+            # Get the reconstructed data (denoise predicted_noise)
+            # In actual implementation, you'll need to denoise or use the appropriate 
+            # representation for bbox calculation
+            recon_data = predicted_noise  # For simplicity, using predicted noise directly
+            
+            # Calculate IoU regularization loss
+            iou_loss = self.bbox_iou_regularizer(
+                recon=recon_data,
+                t=timesteps,
+                num_classes=num_classes,
+                iou_weight=getattr(self.cfg.loss, "iou_weight", 0.1)
+            )
+            
+            # Add IoU loss to total loss
+            total_loss = total_loss + iou_loss
+            losses_dict["iou_loss"] = iou_loss.item()
+        
+        return total_loss, losses_dict
 
-        return total_loss, {
-            "pos_loss": pos_loss.item(),
-            "size_loss": size_loss.item(),
-            "rot_loss": rot_loss.item(),
-            "class_loss": class_loss.item(),
-            # "objfeat_loss": objfeat_loss.item(),
-        }
+    def _extract(self, a, t, x_shape):
+        """
+        Extract some coefficients at specified timesteps,
+        then reshape to [batch_size, 1, 1, 1, 1, ...] for broadcasting purposes.
+        """
+        bs, = t.shape
+        assert x_shape[0] == bs
+        out = torch.gather(a, 0, t)
+        assert out.shape == torch.Size([bs])
+        return torch.reshape(out, [bs] + ((len(x_shape) - 1) * [1]))
+        
+    def descale_to_origin(self, x, minimum, maximum):
+        '''
+            x shape : BxNx3
+            minimum, maximum shape: 3
+        '''
+        x = (x + 1) / 2
+        x = x * (maximum - minimum)[None, None, :] + minimum[None, None, :]
+        return x
+    
+    
+    def bbox_iou_regularizer(self, recon, t, num_classes, iou_weight=0.1):
+        """
+        Calculate IoU-based regularization loss to penalize mesh/bbox collisions.
+        
+        Args:
+            recon: Reconstructed scene tensor of shape (B, N, D)
+                  where D includes class labels, positions, sizes, etc.
+            t: Timesteps for the diffusion process, shape (B,)
+            num_classes: Number of object classes
+            iou_weight: Weight for the IoU loss component
+            
+        Returns:
+            loss_iou: IoU-based regularization loss
+        """
+        batch_size = recon.shape[0]
+        num_objects = recon.shape[1]
+        device = recon.device
+        
+        # Define indices for your representation components
+        class_indices = list(range(0, num_classes))
+        pos_indices = list(range(len(class_indices), len(class_indices) + 3))  # Next 3 dimensions for position
+        size_indices = list(range(len(class_indices) + len(pos_indices), len(class_indices) + len(pos_indices) + 3))  # Next 3 dimensions for size
+        
+        # Extract positions and sizes
+        positions = recon[:, :, pos_indices]  # Shape: [B, N, 3]
+        sizes = recon[:, :, size_indices]  # Shape: [B, N, 3]
+        classes = recon[:, :, class_indices]  # Shape: [B, N, num_classes]
+        
+        descale_trans = self.descale_to_origin(positions, torch.tensor([-2.7625005,  0.045    , -2.75275  ], device=device), torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device))
+        descale_sizes = self.descale_to_origin(sizes, torch.tensor([0.03998289, 0.02000002, 0.012772  ], device=device), torch.tensor([2.8682  , 1.770065, 1.698315], device=device))
+        positions, sizes = descale_trans, descale_sizes
+        # Determine if an object is empty (where last class has highest probability)
+        # The last class (index num_classes-1) represents empty/no object
+        empty_class_idx = num_classes - 1
+        class_predictions = classes.argmax(dim=-1)  # Shape: [B, N]
+        is_empty = (class_predictions == empty_class_idx)  # Shape: [B, N]
+        valid_mask = (~is_empty).float()  # Shape: [B, N], 1 for valid objects, 0 for empty
+        
+        # Create mask for valid object pairs (only compare valid objects with each other)
+        bbox_iou_mask = valid_mask[:, :, None] * valid_mask[:, None, :]  # Shape: [B, N, N]
+        
+        # Convert positions and sizes to axis-aligned bounding box format [x1, y1, z1, x2, y2, z2]
+        # where (x1, y1, z1) is the minimum corner and (x2, y2, z2) is the maximum corner
+        mins = positions - sizes  # Shape: [B, N, 3]
+        maxs = positions + sizes  # Shape: [B, N, 3]
+        
+        # Concatenate to form [x1, y1, z1, x2, y2, z2]
+        axis_aligned_bbox_corners = torch.cat([mins, maxs], dim=-1)  # Shape: [B, N, 6]
+        assert axis_aligned_bbox_corners.shape[-1] == 6, f"Expected 6 dimensions for bounding box corners, got {axis_aligned_bbox_corners.shape[-1]}"
+        
+        # Calculate IoU between all pairs of bounding boxes
+        bbox_iou = self.axis_aligned_bbox_overlaps_3d(
+            axis_aligned_bbox_corners, 
+            axis_aligned_bbox_corners,
+            mode='iou'
+        )  # Shape: [B, N, N]
+        
+        # Zero out the diagonal (self-IoU is always 1)
+        # diag_mask = 1.0 - torch.eye(num_objects, device=device)[None, :, :]  # Shape: [1, N, N]
+        # bbox_iou = bbox_iou * diag_mask
+        
+        # Only consider IoU between valid objects
+        bbox_iou_valid = bbox_iou * bbox_iou_mask  # Shape: [B, N, N]
+        
+        # Calculate average IoU for valid objects
+        # bbox_iou_valid_avg = bbox_iou_valid.sum(dim=list(range(1, len(bbox_iou_valid.shape)))) / (bbox_iou_mask.sum(dim=list(range(1, len(bbox_iou_valid.shape)))) + 1e-6)
+        
+        # Get the diffusion timestep-dependent weight
+        w_iou = self._extract(self.noise_scheduler.alphas_cumprod.to(device), t, bbox_iou.shape)
+        
+        # Calculate final IoU loss with time-dependent weighting
+        loss_iou = (w_iou * iou_weight * bbox_iou_valid).sum(dim=list(range(1, len(bbox_iou_valid.shape)))) / (bbox_iou_mask.sum(dim=list(range(1, len(bbox_iou_valid.shape)))) + 1e-6)
+        
+        # Return the average IoU loss across the batch
+        return loss_iou.mean()
+
+
+
+    def axis_aligned_bbox_overlaps_3d(self, bboxes1,
+                                    bboxes2,
+                                    mode='iou',
+                                    is_aligned=False,
+                                    eps=1e-6):
+        '''
+        https://github.com/open-mmlab/mmdetection3d/blob/master/mmdet3d/core/bbox/iou_calculators/iou3d_calculator.py
+        '''
+        """Calculate overlap between two set of axis aligned 3D bboxes. If
+            ``is_aligned`` is ``False``, then calculate the overlaps between each bbox
+            of bboxes1 and bboxes2, otherwise the overlaps between each aligned pair of
+            bboxes1 and bboxes2.
+            Args:
+                bboxes1 (Tensor): shape (B, m, 6) in <x1, y1, z1, x2, y2, z2>
+                    format or empty.
+                bboxes2 (Tensor): shape (B, n, 6) in <x1, y1, z1, x2, y2, z2>
+                    format or empty.
+                    B indicates the batch dim, in shape (B1, B2, ..., Bn).
+                    If ``is_aligned`` is ``True``, then m and n must be equal.
+                mode (str): "iou" (intersection over union) or "giou" (generalized
+                    intersection over union).
+                is_aligned (bool, optional): If True, then m and n must be equal.
+                    Defaults to False.
+                eps (float, optional): A value added to the denominator for numerical
+                    stability. Defaults to 1e-6.
+            Returns:
+                Tensor: shape (m, n) if ``is_aligned`` is False else shape (m,)
+        """
+
+        assert mode in ['iou', 'giou'], f'Unsupported mode {mode}'
+        # Either the boxes are empty or the length of boxes's last dimension is 6
+        assert (bboxes1.size(-1) == 6 or bboxes1.size(0) == 0)
+        assert (bboxes2.size(-1) == 6 or bboxes2.size(0) == 0)
+
+        # Batch dim must be the same
+        # Batch dim: (B1, B2, ... Bn)
+        assert bboxes1.shape[:-2] == bboxes2.shape[:-2]
+        batch_shape = bboxes1.shape[:-2]
+
+        rows = bboxes1.size(-2)
+        cols = bboxes2.size(-2)
+        if is_aligned:
+            assert rows == cols
+
+        if rows * cols == 0:
+            if is_aligned:
+                return bboxes1.new(batch_shape + (rows, ))
+            else:
+                return bboxes1.new(batch_shape + (rows, cols))
+
+        area1 = (bboxes1[..., 3] -
+                bboxes1[..., 0]) * (bboxes1[..., 4] - bboxes1[..., 1]) * (
+                    bboxes1[..., 5] - bboxes1[..., 2])
+        area2 = (bboxes2[..., 3] -
+                bboxes2[..., 0]) * (bboxes2[..., 4] - bboxes2[..., 1]) * (
+                    bboxes2[..., 5] - bboxes2[..., 2])
+
+        if is_aligned:
+            lt = torch.max(bboxes1[..., :3], bboxes2[..., :3])  # [B, rows, 3]
+            rb = torch.min(bboxes1[..., 3:], bboxes2[..., 3:])  # [B, rows, 3]
+
+            wh = (rb - lt).clamp(min=0)  # [B, rows, 2]
+            overlap = wh[..., 0] * wh[..., 1] * wh[..., 2]
+
+            if mode in ['iou', 'giou']:
+                union = area1 + area2 - overlap
+            else:
+                union = area1
+            if mode == 'giou':
+                enclosed_lt = torch.min(bboxes1[..., :3], bboxes2[..., :3])
+                enclosed_rb = torch.max(bboxes1[..., 3:], bboxes2[..., 3:])
+        else:
+            lt = torch.max(bboxes1[..., :, None, :3],
+                        bboxes2[..., None, :, :3])  # [B, rows, cols, 3]
+            rb = torch.min(bboxes1[..., :, None, 3:],
+                        bboxes2[..., None, :, 3:])  # [B, rows, cols, 3]
+
+            wh = (rb - lt).clamp(min=0)  # [B, rows, cols, 3]
+            overlap = wh[..., 0] * wh[..., 1] * wh[..., 2]
+
+            if mode in ['iou', 'giou']:
+                union = area1[..., None] + area2[..., None, :] - overlap
+            if mode == 'giou':
+                enclosed_lt = torch.min(bboxes1[..., :, None, :3],
+                                        bboxes2[..., None, :, :3])
+                enclosed_rb = torch.max(bboxes1[..., :, None, 3:],
+                                        bboxes2[..., None, :, 3:])
+
+        eps = union.new_tensor([eps])
+        union = torch.max(union, eps)
+        ious = overlap / union
+        if mode in ['iou']:
+            return ious
+        # calculate gious
+        enclose_wh = (enclosed_rb - enclosed_lt).clamp(min=0)
+        enclose_area = enclose_wh[..., 0] * enclose_wh[..., 1] * enclose_wh[..., 2]
+        enclose_area = torch.max(enclose_area, eps)
+        gious = ious - (enclose_area - union) / enclose_area
+        return gious
+
 
     def loss_function(
-        self, predicted_noise: torch.Tensor, noise: torch.Tensor
+        self, predicted_noise: torch.Tensor, noise: torch.Tensor, timesteps=None
     ) -> torch.Tensor:
         """
         Compute the loss function for the DDPM model.
+        
+        Args:
+            predicted_noise: The predicted noise tensor.
+            noise: The target noise tensor.
+            timesteps: Optional diffusion timesteps for time-dependent loss weighting.
+        
+        Returns:
+            The computed loss value.
         """
         # Check if we're using a custom dataset and should use custom loss
         import numpy as np
@@ -222,7 +439,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         if hasattr(self.cfg, "custom") and self.cfg.custom.loss:
             # print(f"[Ashok] using custom loss")
             total_loss, loss_components = self.custom_loss_function(
-                predicted_noise, noise
+                predicted_noise, noise, timesteps
             )
 
             # Log component losses
@@ -348,13 +565,13 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             and self.cfg.dataset_name == "custom_scene"
         ):
             # Custom loss calculation for your representation
-            loss, loss_components = self.custom_loss_function(predicted_noise, noise)
+            loss, loss_components = self.custom_loss_function(predicted_noise, noise, timesteps)
 
             # Log component losses
             for loss_name, loss_value in loss_components.items():
                 self.log(f"train/{loss_name}", loss_value, prog_bar=True)
         else:
             # Original loss calculation
-            loss = self.loss_function(predicted_noise, noise)
+            loss = self.loss_function(predicted_noise, noise, timesteps)
 
         return loss

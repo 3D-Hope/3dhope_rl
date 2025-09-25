@@ -150,7 +150,9 @@ def main(cfg: DictConfig) -> None:
         max_length=config["network"]["sample_num_points"],
         include_room_mask=config["network"].get("room_mask_condition", True),
     )
+    print(f"[Ashok] bounds sizes {encoded_dataset.bounds['sizes']}, translations {encoded_dataset.bounds['translations']}")
 
+    print(f"[Ashok] type of dataset {type(encoded_dataset)}")
     # Create a CustomSceneDataset
     custom_dataset = CustomDataset(
         cfg=cfg.dataset,
@@ -224,7 +226,7 @@ def main(cfg: DictConfig) -> None:
                 }
             )
         # print("bbox param list", bbox_params_list)
-
+        print(f"[Ashok] type of dataset {type(encoded_dataset)}")
         layout_list = []
         for bbox_params_dict in bbox_params_list:
             boxes = encoded_dataset.post_process(bbox_params_dict)

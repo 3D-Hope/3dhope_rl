@@ -24,6 +24,10 @@ loss:
   object_translation_attribute_weight: 1.0
   object_rotation_attribute_weight: 1.0
   object_model_attribute_weight: 1.0
+  # IoU regularization settings
+  use_iou_regularization: False  # Set to true to enable IoU regularization
+  iou_weight: 0.1  # Weight for the IoU loss component
+
 
 # Continuous noise scheduler.
 noise_schedule:
@@ -171,7 +175,8 @@ predict:
     batch_size: 50000
 
 custom:
-  loss: false
+  loss: true
   obj_vec_len: 30
   obj_diff_vec_len: 30
   save_pickle: true
+  num_classes: 22

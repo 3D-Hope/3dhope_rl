@@ -107,7 +107,10 @@ dataset.model_path_vec_len=62 \
 
 
 ## RAN for overfit
-PYTHONPATH=. python main.py +name=genz dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+PYTHONPATH=. python main.py +name=test dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true resume=bgdrozky
+
+
+PYTHONPATH=. python main.py +name=train_with_iou_loss dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.loss.use_iou_regularization=True
 
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=bgdrozky \
@@ -163,8 +166,10 @@ custom:
   obj_diff_vec_len: 62
 
 
+
+[Ashok] bounds sizes (array([0.03998289, 0.02000002, 0.012772  ], dtype=float32), array([2.8682  , 1.770065, 1.698315], dtype=float32)), translations (array([-2.7625005,  0.045    , -2.75275  ], dtype=float32), array([2.7784417, 3.6248395, 2.8185427], dtype=float32))
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/11-37-55/sampled_scenes_results.pkl --no_texture --without_floor
 
