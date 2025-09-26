@@ -41,3 +41,9 @@ ddpo:
 continuous_discrete_only:
   continuous_only: False
   discrete_only: False
+
+
+custom:
+  use: true
+  num_classes: 22
+  

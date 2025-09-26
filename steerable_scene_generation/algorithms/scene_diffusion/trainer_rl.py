@@ -212,9 +212,20 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 return_updated_cache=True,
             )
         elif self.cfg.ddpo.use_object_number_reward:
-            rewards = object_number_reward(
-                scenes=x0, scene_vec_desc=self.scene_vec_desc
-            )
+            if self.cfg.custom.use:
+                # Custom dataset with 30-dimensional object vectors and first 22 are
+                # class labels.
+                assert (
+                    x0.shape[-1] == self.cfg.custom.num_classes + 3 + 3 + 2
+                ), f"Expected object vectors to have {self.cfg.custom.num_classes + 3 + 3 + 2} dimensions at x[-1], got {x0.shape}."
+                rewards = object_number_reward(
+                    scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg
+                )
+            else:
+                rewards = object_number_reward(
+                    scenes=x0, scene_vec_desc=self.scene_vec_desc
+                )
+            
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]
             rewards = prompt_following_reward(

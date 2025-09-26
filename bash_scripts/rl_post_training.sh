@@ -22,6 +22,6 @@ experiment.training.checkpointing.every_n_train_steps=500 \
 algorithm.num_additional_tokens_for_sampling=2 \
 algorithm.ddpo.n_timesteps_to_sample=100 \
 experiment.find_unused_parameters=True \
-algorithm.custom.loss=true
-
+algorithm.custom.loss=true \
+debug=True
 #reduced from 32 algorithm.ddpo.batch_size=4 \

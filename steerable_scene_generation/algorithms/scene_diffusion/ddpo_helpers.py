@@ -446,7 +446,7 @@ def non_penetration_reward(
 
 
 def object_number_reward(
-    scenes: torch.Tensor, scene_vec_desc: SceneVecDescription
+    scenes: torch.Tensor, scene_vec_desc: SceneVecDescription, cfg=None
 ) -> torch.Tensor:
     """
     Compute the object number reward for a scene. The reward is the number of objects
@@ -463,9 +463,13 @@ def object_number_reward(
     rewards = torch.zeros(scenes.shape[0], device=scenes.device)  # Shape (B,)
     for i, scene in enumerate(scenes):
         # Count non-empty objects.
-        num_objects = sum(
-            scene_vec_desc.get_model_path(obj) is not None for obj in scene
-        )
+        if cfg is None or not cfg.custom.use:
+            num_objects = sum(
+                scene_vec_desc.get_model_path(obj) is not None for obj in scene
+            )
+        else:
+            # Custom format with 30 dimensions and first 22 are class labels
+            num_objects = (scene[:, :cfg.custom.num_classes].argmax(dim=-1) != 21).sum().item()
         rewards[i] = num_objects
 
     return rewards
