@@ -471,8 +471,43 @@ def object_number_reward(
             # Custom format with 30 dimensions and first 22 are class labels
             num_objects = (scene[:, :cfg.custom.num_classes].argmax(dim=-1) != 21).sum().item()
         rewards[i] = num_objects
-
+    # print("[Ashok] rewards:", rewards.shape)
     return rewards
+
+
+def iou_reward(
+    scenes: torch.Tensor, scene_diffuser, cfg
+) -> torch.Tensor:
+    """
+    Compute the IoU reward for scenes. The reward is the negative of the average IoU 
+    between valid objects in each scene. This encourages scenes with less object overlap.
+
+    Args:
+        scenes (torch.Tensor): The unormalized scenes to score of shape (B, N, V).
+        scene_diffuser: The scene diffuser model with IoU calculation function.
+        cfg: Optional configuration object.
+
+    Returns:
+        The IoU reward for the scenes of shape (B,).
+    """
+    if scene_diffuser is None:
+        raise ValueError("scene_diffuser must be provided for IoU reward calculation")
+        
+    # Convert list of scenes to batch tensor if needed
+    if isinstance(scenes, list):
+        scene_batch = torch.stack(scenes, dim=0)
+    else:
+        scene_batch = scenes
+        
+    # Calculate raw IoU values (negative because we want to minimize overlap)
+    # Higher values (less negative) mean less overlap
+    iou_values = -scene_diffuser.bbox_iou_regularizer(recon=scene_batch, num_classes=cfg.custom.num_classes, using_as_reward=True)
+    
+    # Convert to list for compatibility if needed
+    if isinstance(scenes, list):
+        return iou_values.detach().cpu().tolist()
+    # print("[Ashok] IoU values:", iou_values.shape)
+    return iou_values #unnormalized raw iou values
 
 
 def prompt_following_reward(
