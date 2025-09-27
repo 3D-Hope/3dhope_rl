@@ -4,7 +4,7 @@
 #SBATCH --gpus=a6000:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=4:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -21,8 +21,8 @@ df -h
 echo "copying data "
 
 # Once you get the interactive shell, run:
-rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch>
-rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch>
+rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
+rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
 
 
 # Then unzip
