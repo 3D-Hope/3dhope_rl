@@ -54,15 +54,15 @@ source "$CONDA_DIR/etc/profile.d/conda.sh"
 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
 
 # 🐍 Create and setup environment
-if ! conda env list | grep -q "midiffusion"; then
-    echo "Creating conda environment: midiffusion"
-    conda create -n midiffusion python=3.10 -y
+if ! conda env list | grep -q "3dhope_rl"; then
+    echo "Creating conda environment: 3dhope_rl"
+    conda create -n 3dhope_rl python=3.10 -y
 
-    echo "Activating conda environment: midiffusion"
-    conda activate midiffusion
+    echo "Activating conda environment: 3dhope_rl"
+    conda activate 3dhope_rl
     
     echo "Installing conda packages..."
-    conda install -c conda-forge numpy scipy pyyaml tqdm matplotlib scikit-learn seaborn pillow opencv wxpython -y
+    # conda install -c conda-forge numpy scipy pyyaml tqdm matplotlib scikit-learn seaborn pillow opencv wxpython -y
 
     echo "Installing PyTorch with CUDA 12.1..."
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
@@ -72,8 +72,8 @@ if ! conda env list | grep -q "midiffusion"; then
 
     echo "✅ Environment setup complete!"
 else
-    echo "✅ Environment 'midiffusion' already exists"
-    conda activate midiffusion
+    echo "✅ Environment '3dhope_rl' already exists"
+    conda activate 3dhope_rl
 fi
 
 # Verify setup
@@ -82,8 +82,8 @@ echo "Python path: $(which python)"
 echo "Python version: $(python --version)"
 
 # Test PyTorch installation
-echo "Testing PyTorch installation..."
-python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}'); print(f'> device: {torch.cuda.get_device_name(0)}')"
+# echo "Testing PyTorch installation..."
+# python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}'); print(f'> device: {torch.cuda.get_device_name(0)}')"
 
 # Check GPU
 echo "GPU information:"
