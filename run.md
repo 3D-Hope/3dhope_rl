@@ -117,7 +117,7 @@ no iou
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-26/06-11-54/sampled_scenes_results.pkl
 
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
-load=bgdrozky \
+load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
@@ -139,10 +139,12 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find
 # num_scenes = batch size during inference, it predicts for each scene in test set
 
 
+python scripts/download_checkpoint.py --run_id bgdrozky --entity 078bct021-ashok-d --project 3dhope_rl
+
 
 
 PYTHONPATH=. python main.py +name=first_rl \
-load=bgdrozky \
+load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
