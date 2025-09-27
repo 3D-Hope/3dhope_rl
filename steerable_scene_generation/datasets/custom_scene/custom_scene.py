@@ -40,25 +40,35 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     config = cfg.dataset
-    PATH_TO_PROCESSED_DATA = config["data"]["path_to_processed_data"]
-    PATH_TO_DATASET_FILES = config["data"]["path_to_dataset_files"]
+    
     # print(f"[DEBUG] config: {config}")
     print(config["data"])
     # import sys; sys.exit()
+    
+    PATH_TO_PROCESSED_DATA = config["data"]["path_to_processed_data"]
+    PATH_TO_DATASET_FILES = config["data"]["path_to_dataset_files"]
 
     print(config["training"].get("splits", ["train", "val"]))
 
-    # train_dataset = get_encoded_dataset(
-    #     update_data_file_paths(config["data"]),
-    #     path_to_bounds=None,
-    #     augmentations=config["data"].get("augmentations", None),
-    #     split=config["training"].get("splits", ["train", "val"]),
-    #     # split=["test"],
-    #     max_length=config["network"]["sample_num_points"],
-    #     include_room_mask=(config["network"]["room_mask_condition"] and \
-    #                         config["feature_extractor"]["name"]=="resnet18")
-    # )
-    # print(len(train_dataset))
+    train_dataset = get_encoded_dataset(
+        update_data_file_paths(config["data"], config),
+        path_to_bounds=None,
+        augmentations=config["data"].get("augmentations", None),
+        split=config["training"].get("splits", ["train", "val"]),
+        # split=["test"],
+        max_length=config["network"]["sample_num_points"],
+        include_room_mask=(config["network"]["room_mask_condition"] and \
+                            config["feature_extractor"]["name"]=="resnet18")
+    )
+    print(len(train_dataset))
+    print(train_dataset[0])
+    print(train_dataset[0].keys())
+    print(train_dataset[0]["class_labels"].shape)
+    print(train_dataset[0]["translations"].shape)
+    print(train_dataset[0]["sizes"].shape)
+    print(train_dataset[0]["angles"].shape)
+    print(train_dataset[0]["fpbpn"].shape)
+    print(train_dataset[0]["length"])
 
     # train_loader = DataLoader(
     #     train_dataset,
@@ -92,18 +102,18 @@ def main(cfg: DictConfig):
     # print(item2["scenes"].shape)
     # print(item2["idx"])
 
-    custom_dataset = CustomDataset(
-        cfg=config,
-        split=config["training"].get("splits", ["train", "val"]),
-        ckpt_path=None,
-    )
-    print("custom dataset")
-    print(len(custom_dataset))
-    item3 = custom_dataset[0]
-    print(item3)
-    print(item3.keys())
-    print(item3["scenes"].shape)
-    print(item3["idx"])
+    # custom_dataset = CustomDataset(
+    #     cfg=config,
+    #     split=config["training"].get("splits", ["train", "val"]),
+    #     ckpt_path=None,
+    # )
+    # print("custom dataset")
+    # print(len(custom_dataset))
+    # item3 = custom_dataset[0]
+    # print(item3)
+    # print(item3.keys())
+    # print(item3["scenes"].shape)
+    # print(item3["idx"])
 
     # Compute the bounds for this experiment, save them to a file in the
     # experiment directory and pass them to the validation dataset
@@ -691,3 +701,5 @@ class NumpySampleDataset(TorchDataset):
 
 if __name__ == "__main__":
     main()
+    
+# PYTHONPATH=. python steerable_scene_generation/datasets/custom_scene/custom_scene.py dataset=custom_scene

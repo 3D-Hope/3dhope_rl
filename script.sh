@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=rl_training
-#SBATCH --partition=debug
+#SBATCH --partition=compute
 #SBATCH --gpus=a6000:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -21,13 +21,18 @@ df -h
 echo "copying data "
 
 # Copy required data to scratch
-rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
 rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
 
-# Unzip dataset
-cd /scratch/pramish_paudel/
-unzip bedroom.zip
-rm bedroom.zip
+if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
+    rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
+
+    # Unzip dataset
+    cd /scratch/pramish_paudel/
+    unzip bedroom.zip
+    rm bedroom.zip
+else
+    echo "✅ Bedroom dataset already exists in scratch."
+fi
 
 # 🔧 Setup Miniconda
 CONDA_DIR="/scratch/pramish_paudel/tools/miniforge"
@@ -60,7 +65,7 @@ if ! conda env list | grep -q "3dhope_rl"; then
 
     echo "Activating conda environment: 3dhope_rl"
     conda activate 3dhope_rl
-    
+
     echo "Installing conda packages..."
     # conda install -c conda-forge numpy scipy pyyaml tqdm matplotlib scikit-learn seaborn pillow opencv wxpython -y
 
@@ -98,23 +103,26 @@ echo "Contents of current directory:"
 ls -la
 
 # Install project dependencies
-pip install -e ../ThreedFront
+# pip install -e ../ThreedFront
 curl -sSL https://install.python-poetry.org | python3 -
 poetry config virtualenvs.in-project true
 poetry install
 source .venv/bin/activate
 wandb login
 pip install -e ../ThreedFront
+export PYTHONUNBUFFERED=1
+export DISPLAY=:0
+
 
 # 🚀 Run training
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
 PYTHONPATH=. python -u main.py +name=first_rl \
-    load=/home/pramish_paudel/3dhope_data/model.ckpt \
+    load=u9cm33ty \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-    dataset.path_to_processed_data=/scratch/pramish_paudel/bedroom/ \
-    dataset.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
+    dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
+    dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_flux_transformer \
     algorithm.classifier_free_guidance.use=False \
@@ -136,7 +144,15 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.num_additional_tokens_for_sampling=2 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
-    algorithm.custom.loss=true
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+
 
 # Check exit status
 if [ $? -eq 0 ]; then
