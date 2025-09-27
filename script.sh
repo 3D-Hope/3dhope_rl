@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=rl_training
-#SBATCH --partition=compute
-#SBATCH --gpus=a6000:1
+#SBATCH --partition=batch
+#SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
 #SBATCH --time=12:00:00
@@ -18,12 +18,22 @@ echo "Working directory: $(pwd)"
 echo "Scratch contents: $(ls /scratch/pramish_paudel)"
 free -h
 df -h
-echo "copying data "
-
+set -x
+# Start GPU monitoring in background
+(
+  while true; do
+    echo "======== $(date) ========"
+    nvidia-smi
+    echo ""
+    sleep 60
+  done
+) > logs/gpu_monitor_$SLURM_JOB_ID.log &
+MONITOR_PID=$!
 # Copy required data to scratch
 rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
-
+echo "model checkpoint copied"
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
+    echo "copying data "
     rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
 
     # Unzip dataset
@@ -118,7 +128,7 @@ export DISPLAY=:0
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
 PYTHONPATH=. python -u main.py +name=first_rl \
-    load=u9cm33ty \
+    load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -139,7 +149,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=32 \
+    algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=2 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
