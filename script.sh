@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=midiff_a100
 #SBATCH --partition=batch
-#SBATCH --gpus=a100-40g:1
+#SBATCH --gpus=a6000:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
 #SBATCH --time=7-00:00:00
