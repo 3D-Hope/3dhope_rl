@@ -40,11 +40,11 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     config = cfg.dataset
-    
+
     # print(f"[DEBUG] config: {config}")
     print(config["data"])
     # import sys; sys.exit()
-    
+
     PATH_TO_PROCESSED_DATA = config["data"]["path_to_processed_data"]
     PATH_TO_DATASET_FILES = config["data"]["path_to_dataset_files"]
 
@@ -57,8 +57,10 @@ def main(cfg: DictConfig):
         split=config["training"].get("splits", ["train", "val"]),
         # split=["test"],
         max_length=config["network"]["sample_num_points"],
-        include_room_mask=(config["network"]["room_mask_condition"] and \
-                            config["feature_extractor"]["name"]=="resnet18")
+        include_room_mask=(
+            config["network"]["room_mask_condition"]
+            and config["feature_extractor"]["name"] == "resnet18"
+        ),
     )
     print(len(train_dataset))
     print(train_dataset[0])
@@ -701,5 +703,5 @@ class NumpySampleDataset(TorchDataset):
 
 if __name__ == "__main__":
     main()
-    
+
 # PYTHONPATH=. python steerable_scene_generation/datasets/custom_scene/custom_scene.py dataset=custom_scene

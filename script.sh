@@ -29,9 +29,13 @@ set -x
   done
 ) > logs/gpu_monitor_$SLURM_JOB_ID.log &
 MONITOR_PID=$!
+if [! -d "/scratch/pramish_paudel/model.ckpt"]; then
+    echo "Copying model checkpoint"
+    rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
+else
+    echo "✅ Model checkpoint already exists in scratch."
+fi
 # Copy required data to scratch
-rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
-echo "model checkpoint copied"
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
     echo "copying data "
     rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
@@ -76,14 +80,6 @@ if ! conda env list | grep -q "3dhope_rl"; then
     echo "Activating conda environment: 3dhope_rl"
     conda activate 3dhope_rl
 
-    echo "Installing conda packages..."
-    # conda install -c conda-forge numpy scipy pyyaml tqdm matplotlib scikit-learn seaborn pillow opencv wxpython -y
-
-    echo "Installing PyTorch with CUDA 12.1..."
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-    echo "Installing remaining packages..."
-    pip install clean-fid pyrr shapely simple-3dviz trimesh einops wandb
 
     echo "✅ Environment setup complete!"
 else
@@ -96,9 +92,6 @@ echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python path: $(which python)"
 echo "Python version: $(python --version)"
 
-# Test PyTorch installation
-# echo "Testing PyTorch installation..."
-# python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}'); print(f'> device: {torch.cuda.get_device_name(0)}')"
 
 # Check GPU
 echo "GPU information:"

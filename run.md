@@ -107,7 +107,8 @@ dataset.model_path_vec_len=62 \
 
 
 ## RAN for overfit
-PYTHONPATH=. python main.py +name=test dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true resume=bgdrozky
+PYTHONPATH=. python main.py +name=genz dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true resume=bgdrozky \
+experiment.training.max_steps=2e6
 
 
 PYTHONPATH=. python main.py +name=train_with_iou_loss dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.loss.use_iou_regularization=True resume=t2kp99eo
@@ -117,7 +118,7 @@ no iou
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-26/06-11-54/sampled_scenes_results.pkl
 
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
-load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt \
+load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
@@ -133,8 +134,17 @@ dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true resume=t2kp99eo
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.loss.use_iou_regularization=True resume=t2kp99eo
 
+
+rl
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+load=ykwgctpr \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=256 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False
 
 # num_scenes = batch size during inference, it predicts for each scene in test set
 

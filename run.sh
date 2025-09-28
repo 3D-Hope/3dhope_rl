@@ -1,6 +1,6 @@
 #!/bin/bash
-apt update
-apt install python3.10
+# apt update
+# apt install python3.10
 
 curl -sSL https://install.python-poetry.org | python3 -
 
@@ -11,6 +11,8 @@ poetry install
 source .venv/bin/activate
 
 wandb login
+
+pip install -e ../ThreedFront
 
 
 
