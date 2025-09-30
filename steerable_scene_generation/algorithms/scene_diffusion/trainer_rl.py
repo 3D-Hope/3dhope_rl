@@ -212,6 +212,13 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 cache=self.reward_cache,
                 return_updated_cache=True,
             )
+        elif self.cfg.ddpo.use_custom_non_penetration_reward:
+            rewards, self.reward_cache = non_penetration_reward(
+                scenes=x0,
+                num_classes=self.cfg.custom.num_classes,
+                num_workers=self.cfg.ddpo.num_reward_workers,
+            )
+
         elif self.cfg.ddpo.use_object_number_reward:
             if self.cfg.custom.use:
                 # Custom dataset with 30-dimensional object vectors and first 22 are
@@ -226,14 +233,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 rewards = object_number_reward(
                     scenes=x0, scene_vec_desc=self.scene_vec_desc
                 )
-            
+
         elif self.cfg.ddpo.use_iou_reward:
             print("Using IoU reward")
             # Use IoU as reward - less overlap between objects is better
-            rewards = iou_reward(
-                scenes=x0, scene_diffuser=self, cfg=self.cfg
-            )
-            
+            rewards = iou_reward(scenes=x0, scene_diffuser=self, cfg=self.cfg)
+
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]
             rewards = prompt_following_reward(

@@ -8,6 +8,7 @@ ddpo:
   use_prompt_following_reward: False
   use_physical_feasible_objects_reward: False
   use_iou_reward: False
+  use_custom_non_penetration_reward: False
   # The RL batch size, independent of the one specified in the experiment config.
   batch_size: 32
   # Only compute policy gradients on the last n timesteps. Set to 0 to use all timesteps.

@@ -131,7 +131,8 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=False \
     algorithm.trainer=rl_score \
-    algorithm.ddpo.use_iou_reward=True \
+    algorithm.ddpo.use_iou_reward=False \
+    algorithm.ddim.use_custom_non_penetration_reward=True \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \

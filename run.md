@@ -198,9 +198,12 @@ custom:
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/11-37-55/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-29/10-11-40/sampled_scenes_results.pkl --no_texture --without_floor
 
 
 
 
 srun --partition=debug --gres=gpu:a6000:1 --time=04:00:00 --pty bash
+
+
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt insait:/home/pramish_paudel/3dhope_data/model.ckpt

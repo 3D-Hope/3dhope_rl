@@ -64,6 +64,8 @@ def main(cfg: DictConfig) -> None:
     seed = 42
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    import numpy as np
+
     np.random.seed(seed)
 
     # Resolve the config.
@@ -244,9 +246,213 @@ def main(cfg: DictConfig) -> None:
         pickle.dump(threed_front_results, open(path_to_results, "wb"))
         print("Saved result to:", path_to_results)
 
-        # TODO: fixme
         kl_divergence = threed_front_results.kl_divergence()
         print("object category kl divergence:", kl_divergence)
+
+        # Calculate and save object statistics for both generated and ground truth scenes
+        import json
+
+        from collections import Counter, defaultdict
+
+        import numpy as np
+
+        # Get object category mapping from model paths to readable names
+        def extract_object_name_from_path(path):
+            """Extract a readable object name from the model path"""
+            if path is None:
+                return "empty"
+            # Extract the last part of the path (after the last '/')
+            parts = path.split("/")
+            # Get the filename without extension
+            obj_name = (
+                parts[-2]
+                if parts[-1] == "model.sdf" or parts[-1] == "model_simplified.sdf"
+                else parts[-1].split(".")[0]
+            )
+            # Clean up the name to make it readable
+            obj_name = obj_name.replace("_", " ").lower()
+            return obj_name
+
+        # Collect statistics for generated scenes
+        gen_stats = defaultdict(list)
+        gen_category_counts = Counter()
+
+        for i, scene_params in enumerate(layout_list):
+            class_labels = scene_params["class_labels"]
+            object_count = len(class_labels)
+            gen_stats["object_counts"].append(object_count)
+
+            # Get object category indices safely
+            try:
+                for obj_idx in range(len(class_labels)):
+                    try:
+                        # Handle both numpy arrays and lists
+                        if isinstance(class_labels[obj_idx], (np.ndarray, list)):
+                            cat_idx = np.argmax(class_labels[obj_idx])
+                        else:
+                            # Might already be a category index
+                            cat_idx = class_labels[obj_idx]
+
+                        # Get class label mapping
+                        class_label_map = None
+                        if hasattr(raw_dataset, "class_labels"):
+                            class_label_map = raw_dataset.class_labels
+
+                        if class_label_map is not None and cat_idx < len(
+                            class_label_map
+                        ):
+                            obj_name = extract_object_name_from_path(
+                                class_label_map[cat_idx]
+                            )
+                        else:
+                            # If we can't find the mapping, use a generic name with index
+                            obj_name = f"object_type_{cat_idx}"
+
+                        gen_category_counts[obj_name] += 1
+                    except Exception as e:
+                        print(f"Error processing generated object {obj_idx}: {str(e)}")
+                        continue
+            except Exception as e:
+                print(f"Error processing generated objects: {str(e)}")
+                continue
+
+        # Calculate statistics for generated scenes - convert numpy types to Python standard types
+        gen_stats["total_scenes"] = int(len(layout_list))
+        gen_stats["avg_objects_per_scene"] = float(np.mean(gen_stats["object_counts"]))
+        gen_stats["std_objects_per_scene"] = float(np.std(gen_stats["object_counts"]))
+        gen_stats["min_objects"] = int(np.min(gen_stats["object_counts"]))
+        gen_stats["max_objects"] = int(np.max(gen_stats["object_counts"]))
+        # Convert object counts to regular Python types before JSON serialization
+        gen_stats["object_counts"] = [int(x) for x in gen_stats["object_counts"]]
+        # Convert category counts from numpy to standard Python types
+        gen_category_counts_py = {k: int(v) for k, v in gen_category_counts.items()}
+        gen_stats["category_frequencies"] = {
+            k: float(v / sum(gen_category_counts_py.values()))
+            for k, v in sorted(
+                gen_category_counts_py.items(), key=lambda x: x[1], reverse=True
+            )
+        }
+        gen_stats["category_counts"] = {
+            k: int(v)
+            for k, v in sorted(
+                gen_category_counts_py.items(), key=lambda x: x[1], reverse=True
+            )
+        }
+
+        # Collect statistics for ground truth scenes (from raw_dataset)
+        gt_stats = defaultdict(list)
+        gt_category_counts = Counter()
+
+        # Limit to a reasonable number of GT samples for performance
+        for idx in range(min(100, len(raw_dataset))):
+            try:
+                sample = raw_dataset[idx]
+                # Handle different attribute access patterns
+                if hasattr(sample, "class_labels"):
+                    class_labels = sample.class_labels
+                elif isinstance(sample, dict) and "class_labels" in sample:
+                    class_labels = sample["class_labels"]
+                else:
+                    continue
+                object_count = len(class_labels)
+                gt_stats["object_counts"].append(object_count)
+            except Exception as e:
+                print(f"Error processing GT sample {idx}: {str(e)}")
+                continue
+
+            # Safely get class labels
+            try:
+                for obj_idx in range(len(class_labels)):
+                    try:
+                        # Handle both numpy arrays and lists
+                        if isinstance(class_labels[obj_idx], (np.ndarray, list)):
+                            cat_idx = np.argmax(class_labels[obj_idx])
+                        else:
+                            # Might already be a category index
+                            cat_idx = class_labels[obj_idx]
+
+                        # Get class label mapping
+                        class_label_map = None
+                        if hasattr(raw_dataset, "class_labels"):
+                            class_label_map = raw_dataset.class_labels
+
+                        if class_label_map is not None and cat_idx < len(
+                            class_label_map
+                        ):
+                            obj_name = extract_object_name_from_path(
+                                class_label_map[cat_idx]
+                            )
+                        else:
+                            # If we can't find the mapping, use a generic name with index
+                            obj_name = f"object_type_{cat_idx}"
+
+                        gt_category_counts[obj_name] += 1
+                    except Exception as e:
+                        print(f"Error processing GT object {obj_idx}: {str(e)}")
+                        continue
+            except Exception as e:
+                print(f"Error processing GT objects: {str(e)}")
+                continue
+
+        # Calculate statistics for ground truth scenes - convert numpy types to Python standard types
+        gt_stats["total_scenes"] = int(len(gt_stats["object_counts"]))
+        gt_stats["avg_objects_per_scene"] = float(np.mean(gt_stats["object_counts"]))
+        gt_stats["std_objects_per_scene"] = float(np.std(gt_stats["object_counts"]))
+        gt_stats["min_objects"] = int(np.min(gt_stats["object_counts"]))
+        gt_stats["max_objects"] = int(np.max(gt_stats["object_counts"]))
+        # Convert object counts to regular Python types before JSON serialization
+        gt_stats["object_counts"] = [int(x) for x in gt_stats["object_counts"]]
+        # Convert category counts from numpy to standard Python types
+        gt_category_counts_py = {k: int(v) for k, v in gt_category_counts.items()}
+        gt_stats["category_frequencies"] = {
+            k: float(v / sum(gt_category_counts_py.values()))
+            for k, v in sorted(
+                gt_category_counts_py.items(), key=lambda x: x[1], reverse=True
+            )
+        }
+        gt_stats["category_counts"] = {
+            k: int(v)
+            for k, v in sorted(
+                gt_category_counts_py.items(), key=lambda x: x[1], reverse=True
+            )
+        }
+
+        # Combine both stats
+        all_stats = {"generated": gen_stats, "ground_truth": gt_stats}
+
+        # Save statistics to JSON file
+        stats_path = output_dir / "scene_statistics.json"
+        with open(stats_path, "w") as f:
+            json.dump(all_stats, f, indent=2)
+
+        # Print summary statistics
+        print("\n===== SCENE STATISTICS =====")
+        print(
+            f"Generated scenes: {gen_stats['total_scenes']} scenes, "
+            f"{gen_stats['avg_objects_per_scene']:.2f}±{gen_stats['std_objects_per_scene']:.2f} objects per scene"
+        )
+        print(
+            f"Ground truth: {gt_stats['total_scenes']} scenes, "
+            f"{gt_stats['avg_objects_per_scene']:.2f}±{gt_stats['std_objects_per_scene']:.2f} objects per scene"
+        )
+
+        print("\nTop 5 object categories in generated scenes:")
+        for i, (cat, freq) in enumerate(
+            list(gen_stats["category_frequencies"].items())[:5]
+        ):
+            print(
+                f"  {i+1}. {cat}: {freq:.1%} ({gen_stats['category_counts'][cat]} instances)"
+            )
+
+        print("\nTop 5 object categories in ground truth scenes:")
+        for i, (cat, freq) in enumerate(
+            list(gt_stats["category_frequencies"].items())[:5]
+        ):
+            print(
+                f"  {i+1}. {cat}: {freq:.1%} ({gt_stats['category_counts'][cat]} instances)"
+            )
+
+        print(f"\nStatistics saved to: {stats_path}")
 
     ###---
     # # Log to wandb and save locally
