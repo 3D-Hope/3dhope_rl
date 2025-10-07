@@ -11,6 +11,7 @@ from .ddpo_helpers import (
     ddim_step_with_logprob,
     ddpm_step_with_logprob,
     iou_reward,
+    has_sofa_reward,
     non_penetration_reward,
     number_of_physically_feasible_objects_reward,
     object_number_reward,
@@ -238,6 +239,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             print("Using IoU reward")
             # Use IoU as reward - less overlap between objects is better
             rewards = iou_reward(scenes=x0, scene_diffuser=self, cfg=self.cfg)
+
+        elif self.cfg.ddpo.use_has_sofa_reward:
+            # print("Using IoU reward")
+            # Use IoU as reward - less overlap between objects is better
+            rewards = has_sofa_reward(scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg)
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]

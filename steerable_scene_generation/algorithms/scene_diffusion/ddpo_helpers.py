@@ -442,6 +442,7 @@ def non_penetration_reward(
 
     if return_updated_cache:
         return rewards, cache
+    print("[Ashok] non-penetration rewards:", rewards)
     return rewards
 
 
@@ -473,7 +474,7 @@ def object_number_reward(
                 (scene[:, : cfg.custom.num_classes].argmax(dim=-1) != 21).sum().item()
             )
         rewards[i] = num_objects
-    # print("[Ashok] rewards:", rewards.shape)
+    print("[Ashok] object no rewards:", rewards)
     return rewards
 
 
@@ -499,19 +500,50 @@ def iou_reward(scenes: torch.Tensor, scene_diffuser, cfg) -> torch.Tensor:
     else:
         scene_batch = scenes
 
-    # Calculate raw IoU values (negative because we want to minimize overlap)
-    # Higher values (less negative) mean less overlap
-    iou_values = -scene_diffuser.bbox_iou_regularizer(
+    iou_values = scene_diffuser.bbox_iou_regularizer(
         recon=scene_batch, num_classes=cfg.custom.num_classes, using_as_reward=True
     )
-
+    # TODO: AVOID SELF IOU
     # Convert to list for compatibility if needed
     if isinstance(scenes, list):
         return iou_values.detach().cpu().tolist()
     # print("[Ashok] IoU values:", iou_values.shape)
-    return (
-        -iou_values
-    )  # unnormalized raw iou values(negative as reward because less overlap is better, so bigger reward) #TODO: SCALE REWARD (each pairs iou is between 0 and 1, so max reward is -num_pairs), also make sure self intersection is not counted
+    rewards = iou_values  # unnormalized raw iou values
+    print("[Ashok] IoU rewards:", rewards)
+    return rewards
+
+def two_beds_reward(
+    scenes: torch.Tensor, scene_vec_desc: SceneVecDescription, cfg=None
+) -> torch.Tensor:
+    """
+    Reward = 1 if there are exactly 2 beds in the scene, else 0.
+    """
+    rewards = torch.zeros(scenes.shape[0], device=scenes.device)  # Shape (B,)
+    for i, scene in enumerate(scenes):
+        # Sum probabilities for bed objects
+        beds_idx = [8, 15, 11]
+        print("[Ashok] scene[:, : cfg.custom.num_classes]:", scene[:, : cfg.custom.num_classes])
+        # Sum the probabilities of bed classes across all objects
+        bed_probabilities = scene[:, beds_idx].sum()# TODO: need better reward. this naive approaach will simply lead to higher probs for bed classes not 100% but generally higher.
+        rewards[i] = bed_probabilities.item()
+    print("[Ashok] 2 beds rewards:", rewards)
+    return rewards
+
+
+def has_sofa_reward(
+    scenes: torch.Tensor, scene_vec_desc: SceneVecDescription, cfg=None
+) -> torch.Tensor:
+    """
+    Reward = 1 if there is a sofa in the scene, else 0.
+    """
+    rewards = torch.zeros(scenes.shape[0], device=scenes.device)  # Shape (B,)
+    for i, scene in enumerate(scenes):
+        # Check if sofa class is present
+        sofa_idx = 17
+        has_sofa = (scene[:, sofa_idx] > 0).any().item()
+        rewards[i] = float(has_sofa)
+    print("[Ashok] has sofa rewards:", rewards)
+    return rewards
 
 
 def prompt_following_reward(
