@@ -19,23 +19,13 @@ echo "Scratch contents: $(ls /scratch/pramish_paudel)"
 free -h
 df -h
 set -x
-# Start GPU monitoring in background
-(
-  while true; do
-    echo "======== $(date) ========"
-    nvidia-smi
-    echo ""
-    sleep 60
-  done
-) > logs/gpu_monitor_$SLURM_JOB_ID.log &
-MONITOR_PID=$!
-if [! -d "/scratch/pramish_paudel/model.ckpt"]; then
+
+if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
     echo "Copying model checkpoint"
     rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
 else
     echo "✅ Model checkpoint already exists in scratch."
 fi
-# Copy required data to scratch
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
     echo "copying data "
     rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
@@ -106,8 +96,9 @@ echo "Contents of current directory:"
 ls -la
 
 # Install project dependencies
-# pip install -e ../ThreedFront
-curl -sSL https://install.python-poetry.org | python3 -
+if ! command -v poetry &> /dev/null; then
+    curl -sSL https://install.python-poetry.org | python3 -
+fi
 poetry config virtualenvs.in-project true
 poetry install
 source .venv/bin/activate
