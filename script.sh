@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=12:00:00
+#SBATCH --time=4:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -120,7 +120,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_flux_transformer \
     algorithm.classifier_free_guidance.use=False \
-    algorithm.ema.use=False \
+    algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.ddpo.use_iou_reward=False \
     algorithm.ddpo.use_has_sofa_reward=True \
@@ -134,9 +134,9 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=128 \
+    algorithm.ddpo.batch_size=512 \
     experiment.training.checkpointing.every_n_train_steps=500 \
-    algorithm.num_additional_tokens_for_sampling=2 \
+    algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=true \

@@ -153,31 +153,41 @@ python scripts/download_checkpoint.py --run_id bgdrozky --entity 078bct021-ashok
 
 
 
-PYTHONPATH=. python main.py +name=first_rl \
-load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt \
-dataset=custom_scene \
-dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-dataset.max_num_objects_per_scene=12 \
-algorithm=scene_diffuser_flux_transformer \
-algorithm.classifier_free_guidance.use=False \
-algorithm.ema.use=False \
-algorithm.trainer=rl_score \
-algorithm.ddpo.use_object_number_reward=True \
-algorithm.noise_schedule.scheduler=ddim \
-algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-experiment.training.max_steps=2e6 \
-experiment.validation.limit_batch=1 \
-experiment.validation.val_every_n_step=50 \
-algorithm.ddpo.ddpm_reg_weight=200.0 \
-experiment.reset_lr_scheduler=True \
-experiment.training.lr=1e-6 \
-experiment.lr_scheduler.num_warmup_steps=250 \
-algorithm.ddpo.batch_size=32 \
-experiment.training.checkpointing.every_n_train_steps=500 \
-algorithm.num_additional_tokens_for_sampling=2 \
-algorithm.ddpo.n_timesteps_to_sample=100 \
-experiment.find_unused_parameters=True \
-algorithm.custom.loss=true
+PYTHONPATH=. python -u main.py +name=first_rl \
+    resume=trkemg4h \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_flux_transformer \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=False \
+    algorithm.trainer=rl_score \
+    algorithm.ddpo.use_iou_reward=False \
+    algorithm.ddpo.use_has_sofa_reward=True \
+    algorithm.ddpo.use_object_number_reward=False \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=2e6 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=200.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=2 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=2 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+
 
 
 ---
@@ -198,7 +208,7 @@ custom:
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-29/10-11-40/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-09/16-44-41/sampled_scenes_results.pkl --no_texture --without_floor
 
 
 
@@ -216,22 +226,40 @@ rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/s
 
 beds: double_bed, single_bed, kids_bed = 8, 15, 11
 
-PYTHONPATH=. python scripts/test.py \
-load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt \
-dataset=custom_scene \
-dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-dataset.max_num_objects_per_scene=12 \
-+num_scenes=256 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+before rl bgdrozky
 
 [Ashok] number of scenes with 2 beds 1 out of 162                                                                                                               
 [Ashok] number of scenes with sofa 14 out of 162
 
+after rl finetuning
+[Ashok] number of scenes with sofa 16 out of 162(**just +2 **)
 
-PYTHONPATH=. python scripts/custom_sample_and_render.py \
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
 load=trkemg4h \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=14 \
++num_scenes=256 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False debug=True
+
+
+
+iou reward
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+load=ykwgctpr \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=14 \
++num_scenes=256 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False debug=True
+
+
+
+baseline with ddim
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False debug=True

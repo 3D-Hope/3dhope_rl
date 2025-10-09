@@ -537,7 +537,9 @@ def has_sofa_reward(
     Reward = 1 if there is a sofa in the scene, else 0.
     """
     rewards = torch.zeros(scenes.shape[0], device=scenes.device)  # Shape (B,)
+    print("[Ashok] scenes: ", scenes)
     for i, scene in enumerate(scenes):
+        # print(f"class probs in reward {scene[:, : cfg.custom.num_classes]}")
         # Check if sofa class is present
         sofa_idx = 17
         has_sofa = (scene[:, sofa_idx] > 0).any().item()
