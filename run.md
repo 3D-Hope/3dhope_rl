@@ -226,3 +226,12 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find
 
 [Ashok] number of scenes with 2 beds 1 out of 162                                                                                                               
 [Ashok] number of scenes with sofa 14 out of 162
+
+
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+load=trkemg4h \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=256 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True
