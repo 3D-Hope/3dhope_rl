@@ -265,7 +265,7 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.n
 
 ---
 PYTHONPATH=. python -u main.py +name=first_rl \
-    resume=7m2291fu \
+    load=bgdrozky \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
@@ -274,7 +274,8 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.ddpo.use_iou_reward=False \
-    algorithm.ddpo.use_has_sofa_reward=True \
+    algorithm.ddpo.use_has_sofa_reward=False \
+    algorithm.ddpo.use_composite_reward=True \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
@@ -307,7 +308,7 @@ dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
 algorithm.num_additional_tokens_for_sampling=0 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False 
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
 
 baseline with ddim
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \

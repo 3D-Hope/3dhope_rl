@@ -16,6 +16,7 @@ from .ddpo_helpers import (
     number_of_physically_feasible_objects_reward,
     object_number_reward,
     prompt_following_reward,
+    composite_reward,
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
@@ -192,6 +193,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     self.cfg.ddpo.use_object_number_reward,
                     self.cfg.ddpo.use_prompt_following_reward,
                     self.cfg.ddpo.use_physical_feasible_objects_reward,
+                    self.cfg.ddpo.use_composite_reward,
                 ]
             )
             > 1
@@ -244,6 +246,27 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # print("Using IoU reward")
             # Use IoU as reward - less overlap between objects is better
             rewards = has_sofa_reward(scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg)
+
+        elif self.cfg.ddpo.use_composite_reward:
+            print("Using composite reward (gravity + non-penetration + must-have + object count)")
+            # Get room type from config
+            room_type = 'bedroom'  # default
+            if hasattr(self.cfg.ddpo, 'composite_reward'):
+                room_type = self.cfg.ddpo.composite_reward.get('room_type', 'bedroom')
+            
+            # Compute composite reward with all physics constraints
+            rewards, reward_components = composite_reward(
+                scenes=x0,
+                scene_vec_desc=self.scene_vec_desc,
+                cfg=self.cfg,
+                room_type=room_type,
+            )
+            
+            # Log individual components for analysis
+            if hasattr(self, 'log'):
+                for name, values in reward_components.items():
+                    self.log(f"reward_components/{name}_mean", values.mean(), 
+                            on_step=True, on_epoch=False, prog_bar=False)
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]

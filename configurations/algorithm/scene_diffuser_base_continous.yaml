@@ -10,6 +10,7 @@ ddpo:
   use_iou_reward: False
   use_custom_non_penetration_reward: False
   use_has_sofa_reward: False
+  use_composite_reward: False  # Use composite reward with multiple physics constraints
   # The RL batch size, independent of the one specified in the experiment config.
   batch_size: 32
   # Only compute policy gradients on the last n timesteps. Set to 0 to use all timesteps.
@@ -38,6 +39,21 @@ ddpo:
     sim_translation_threshold: 1.0e-3
     sim_rotation_threshold: 1.0e-2
     static_equilibrium_distance_threshold: 1.0e-3 # 1mm
+  
+  # Used when `use_composite_reward` is True.
+  # Composite reward combines multiple physics-based rewards with importance weighting.
+  composite_reward:
+    # Room type for must-have furniture reward ('bedroom', 'living_room', etc.)
+    room_type: 'bedroom'
+    
+    # Importance weights (1.0 = baseline, >1.0 = more important, <1.0 = less important)
+    # These are applied AFTER normalization to [-1, 0] range.
+    # All rewards are normalized first, then weighted by importance.
+    importance_weights:
+      must_have_furniture: 1.5  # Highest: room must be functional
+      gravity: 1.0              # Critical: no floating furniture
+      non_penetration: 1.0      # Critical: no overlapping objects
+      object_count: 0.7         # Important: realistic clutter level
 
 # Whether to only diffuse over the continuous/ discrete part while taking the other part
 # from the dataset.
