@@ -275,7 +275,8 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.trainer=rl_score \
     algorithm.ddpo.use_iou_reward=False \
     algorithm.ddpo.use_has_sofa_reward=False \
-    algorithm.ddpo.use_composite_reward=True \
+    algorithm.ddpo.use_composite_reward=False \
+    algorithm.ddpo.use_composite_plus_task_reward=True \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \

@@ -558,21 +558,21 @@ def composite_reward(
     scenes: torch.Tensor,
     scene_vec_desc: SceneVecDescription,
     cfg=None,
-    room_type: str = 'bedroom',
+    room_type: str = "bedroom",
     importance_weights: dict = None,
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward using multiple physics-based constraints.
-    
+
     This function uses the get_composite_reward from physical_constraint_rewards.commons
     which handles:
     - Gravity following (objects should rest on ground)
     - Non-penetration (no overlapping objects)
     - Must-have furniture (room-specific requirements)
     - Object count (realistic scene density)
-    
+
     All rewards are normalized to [-1, 0] range, then weighted by importance.
-    
+
     Args:
         scenes (torch.Tensor): The scenes to score of shape (B, N, V).
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
@@ -580,6 +580,60 @@ def composite_reward(
         room_type (str): Type of room for must-have furniture ('bedroom', 'living_room', etc.)
         importance_weights (dict, optional): Importance multipliers for each reward component.
             If None, uses defaults from config or commons.py.
+
+    Returns:
+        tuple: (total_rewards, reward_components)
+            - total_rewards: Tensor of shape (B,) with combined rewards
+            - reward_components: Dict with individual reward values for logging
+    """
+    from physical_constraint_rewards.commons import get_composite_reward
+
+    # Get number of classes from config
+    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
+
+    # Use importance weights from config if not provided
+    if importance_weights is None and cfg and hasattr(cfg, "ddpo"):
+        if hasattr(cfg.ddpo, "composite_reward"):
+            importance_weights = dict(cfg.ddpo.composite_reward.importance_weights)
+
+    # Compute composite reward
+    total_rewards, reward_components = get_composite_reward(
+        scenes=scenes,
+        num_classes=num_classes,
+        importance_weights=importance_weights,
+        room_type=room_type,
+    )
+
+    print(f"[Ashok] Composite reward components:")
+    for name, values in reward_components.items():
+        print(
+            f"  {name}: mean={values.mean().item():.4f}, std={values.std().item():.4f}"
+        )
+    print(
+        f"[Ashok] Total composite rewards: mean={total_rewards.mean().item():.4f}, std={total_rewards.std().item():.4f}"
+    )
+
+    return total_rewards, reward_components
+
+
+def composite_plus_task_reward(
+    scenes: torch.Tensor,
+    scene_vec_desc: SceneVecDescription,
+    cfg=None,
+) -> tuple[torch.Tensor, dict]:
+    """
+    Compute composite reward (general scene quality) plus task-specific reward.
+    
+    This combines:
+    - Composite reward: gravity + non-penetration + must-have + object count
+    - Task-specific reward: has_sofa, two_beds, etc.
+    
+    Final reward = composite_reward + task_weight * task_reward
+    
+    Args:
+        scenes (torch.Tensor): The scenes to score of shape (B, N, V).
+        scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
+        cfg (DictConfig): Configuration object (required for task settings).
     
     Returns:
         tuple: (total_rewards, reward_components)
@@ -588,26 +642,61 @@ def composite_reward(
     """
     from physical_constraint_rewards.commons import get_composite_reward
     
+    if cfg is None or not hasattr(cfg.ddpo, 'composite_plus_task'):
+        raise ValueError("cfg.ddpo.composite_plus_task configuration is required")
+    
+    task_cfg = cfg.ddpo.composite_plus_task
+    
+    # Get task-specific settings
+    task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
+    task_weight = task_cfg.get('task_weight', 2.0)
+    room_type = task_cfg.get('room_type', 'living_room')
+    importance_weights = task_cfg.get('importance_weights', None)
+    
+    # Convert importance_weights from DictConfig to dict if needed
+    if importance_weights is not None:
+        importance_weights = dict(importance_weights)
+    
     # Get number of classes from config
-    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, 'custom') else 22
+    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
     
-    # Use importance weights from config if not provided
-    if importance_weights is None and cfg and hasattr(cfg, 'ddpo'):
-        if hasattr(cfg.ddpo, 'composite_reward'):
-            importance_weights = dict(cfg.ddpo.composite_reward.importance_weights)
-    
-    # Compute composite reward
-    total_rewards, reward_components = get_composite_reward(
+    # 1. Compute composite reward (general scene quality)
+    composite_total, composite_components = get_composite_reward(
         scenes=scenes,
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
     )
     
-    print(f"[Ashok] Composite reward components:")
-    for name, values in reward_components.items():
-        print(f"  {name}: mean={values.mean().item():.4f}, std={values.std().item():.4f}")
-    print(f"[Ashok] Total composite rewards: mean={total_rewards.mean().item():.4f}, std={total_rewards.std().item():.4f}")
+    # 2. Compute task-specific reward
+    if task_reward_type == 'has_sofa':
+        task_reward = has_sofa_reward(scenes, scene_vec_desc, cfg)
+    elif task_reward_type == 'two_beds':
+        task_reward = two_beds_reward(scenes, scene_vec_desc, cfg)
+    elif task_reward_type == 'has_table':
+        # Add table checking (index 18)
+        task_reward = torch.zeros(scenes.shape[0], device=scenes.device)
+        for i, scene in enumerate(scenes):
+            has_table = (scene[:, 18] > 0).any().item()
+            task_reward[i] = float(has_table)
+    else:
+        raise ValueError(f"Unknown task_reward_type: {task_reward_type}")
+    
+    # 3. Combine rewards
+    total_rewards = composite_total + task_weight * task_reward
+    
+    # 4. Create comprehensive components dict for logging
+    reward_components = composite_components.copy()
+    reward_components['task_reward'] = task_reward
+    reward_components['composite_reward'] = composite_total
+    reward_components['total_reward'] = total_rewards
+    
+    # Print summary
+    print(f"[Ashok] Composite + Task Reward:")
+    print(f"  Task type: {task_reward_type}, Weight: {task_weight}")
+    print(f"  Composite: mean={composite_total.mean().item():.4f}, std={composite_total.std().item():.4f}")
+    print(f"  Task: mean={task_reward.mean().item():.4f}, std={task_reward.std().item():.4f}")
+    print(f"  Total: mean={total_rewards.mean().item():.4f}, std={total_rewards.std().item():.4f}")
     
     return total_rewards, reward_components
 

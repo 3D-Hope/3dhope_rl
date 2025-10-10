@@ -11,6 +11,7 @@ ddpo:
   use_custom_non_penetration_reward: False
   use_has_sofa_reward: False
   use_composite_reward: False  # Use composite reward with multiple physics constraints
+  use_composite_plus_task_reward: False  # Use composite reward + task-specific reward
   # The RL batch size, independent of the one specified in the experiment config.
   batch_size: 32
   # Only compute policy gradients on the last n timesteps. Set to 0 to use all timesteps.
@@ -54,6 +55,25 @@ ddpo:
       gravity: 1.0              # Critical: no floating furniture
       non_penetration: 1.0      # Critical: no overlapping objects
       object_count: 0.7         # Important: realistic clutter level
+  
+  # Used when `use_composite_plus_task_reward` is True.
+  # Combines composite reward (general scene quality) with task-specific reward.
+  composite_plus_task:
+    # Task-specific reward type: 'has_sofa', 'has_table', 'two_beds', etc.
+    task_reward_type: 'has_sofa'
+    
+    # Weight for task-specific reward (composite reward is weighted as sum of importance_weights)
+    # Final reward = composite_reward + task_weight * task_reward
+    task_weight: 1.0  # How much to emphasize task completion vs general quality
+    
+    # Inherit composite reward settings (room_type and importance_weights from above)
+    # Or override them here:
+    room_type: 'bedroom'  # Override for task-specific scenarios
+    importance_weights:
+      must_have_furniture: 1.5  # Lower since we have explicit task reward
+      gravity: 1.0
+      non_penetration: 1.0
+      object_count: 0.7
 
 # Whether to only diffuse over the continuous/ discrete part while taking the other part
 # from the dataset.

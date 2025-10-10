@@ -8,15 +8,16 @@ from tqdm import tqdm
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .ddpo_helpers import (
+    composite_reward,
+    composite_plus_task_reward,
     ddim_step_with_logprob,
     ddpm_step_with_logprob,
-    iou_reward,
     has_sofa_reward,
+    iou_reward,
     non_penetration_reward,
     number_of_physically_feasible_objects_reward,
     object_number_reward,
     prompt_following_reward,
-    composite_reward,
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
@@ -194,6 +195,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     self.cfg.ddpo.use_prompt_following_reward,
                     self.cfg.ddpo.use_physical_feasible_objects_reward,
                     self.cfg.ddpo.use_composite_reward,
+                    self.cfg.ddpo.use_composite_plus_task_reward,
                 ]
             )
             > 1
@@ -245,15 +247,19 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         elif self.cfg.ddpo.use_has_sofa_reward:
             # print("Using IoU reward")
             # Use IoU as reward - less overlap between objects is better
-            rewards = has_sofa_reward(scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg)
+            rewards = has_sofa_reward(
+                scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg
+            )
 
         elif self.cfg.ddpo.use_composite_reward:
-            print("Using composite reward (gravity + non-penetration + must-have + object count)")
+            print(
+                "Using composite reward (gravity + non-penetration + must-have + object count)"
+            )
             # Get room type from config
-            room_type = 'bedroom'  # default
-            if hasattr(self.cfg.ddpo, 'composite_reward'):
-                room_type = self.cfg.ddpo.composite_reward.get('room_type', 'bedroom')
-            
+            room_type = "bedroom"  # default
+            if hasattr(self.cfg.ddpo, "composite_reward"):
+                room_type = self.cfg.ddpo.composite_reward.get("room_type", "bedroom")
+
             # Compute composite reward with all physics constraints
             rewards, reward_components = composite_reward(
                 scenes=x0,
@@ -261,12 +267,39 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 cfg=self.cfg,
                 room_type=room_type,
             )
-            
+
             # Log individual components for analysis
-            if hasattr(self, 'log'):
+            if hasattr(self, "log"):
                 for name, values in reward_components.items():
-                    self.log(f"reward_components/{name}_mean", values.mean(), 
-                            on_step=True, on_epoch=False, prog_bar=False)
+                    self.log(
+                        f"reward_components/{name}_mean",
+                        values.mean(),
+                        on_step=True,
+                        on_epoch=False,
+                        prog_bar=False,
+                    )
+
+        elif self.cfg.ddpo.use_composite_plus_task_reward:
+            print(
+                "Using composite + task reward (physics constraints + task-specific goal)"
+            )
+            # Compute composite reward + task-specific reward
+            rewards, reward_components = composite_plus_task_reward(
+                scenes=x0,
+                scene_vec_desc=self.scene_vec_desc,
+                cfg=self.cfg,
+            )
+
+            # Log individual components for analysis
+            if hasattr(self, "log"):
+                for name, values in reward_components.items():
+                    self.log(
+                        f"reward_components/{name}_mean",
+                        values.mean(),
+                        on_step=True,
+                        on_epoch=False,
+                        prog_bar=False,
+                    )
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]
