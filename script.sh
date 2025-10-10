@@ -112,7 +112,7 @@ export DISPLAY=:0
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
 PYTHONPATH=. python -u main.py +name=first_rl \
-    load=/scratch/pramish_paudel/model.ckpt \
+    resume=7m2291fu \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -127,7 +127,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2e6 \
+    experiment.training.max_steps=1010000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=200.0 \

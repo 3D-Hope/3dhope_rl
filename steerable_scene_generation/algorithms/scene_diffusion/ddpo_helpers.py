@@ -537,7 +537,7 @@ def has_sofa_reward(
     Reward = 1 if there is a sofa in the scene, else 0.
     """
     rewards = torch.zeros(scenes.shape[0], device=scenes.device)  # Shape (B,)
-    print("[Ashok] scenes: ", scenes)
+    # print("[Ashok] scenes: ", scenes)
     for i, scene in enumerate(scenes):
         # print(f"class probs in reward {scene[:, : cfg.custom.num_classes]}")
         # Check if sofa class is present
@@ -547,6 +547,103 @@ def has_sofa_reward(
     print("[Ashok] has sofa rewards:", rewards)
     return rewards
 
+
+def descale_to_origin(x, minimum, maximum):
+    """
+    Descale normalized coordinates back to original range.
+    
+    Args:
+        x: Tensor of shape BxNx3 with values in range [-1, 1]
+        minimum: Tensor of shape 3 with minimum values for each dimension
+        maximum: Tensor of shape 3 with maximum values for each dimension
+        
+    Returns:
+        Tensor of shape BxNx3 with values descaled to original range
+    """
+    x = (x + 1) / 2
+    x = x * (maximum - minimum)[None, None, :] + minimum[None, None, :]
+    return x
+
+
+def mutable_reward(
+    scenes: torch.Tensor, 
+    scene_vec_desc: SceneVecDescription, 
+    reward_func, 
+    cfg=None,
+    class_to_name_map=None
+) -> torch.Tensor:
+    """
+    Descales generated scenes back to world coordinates and calls a dynamic reward function
+    passed as an argument. This allows for on-the-fly reward function creation and usage.
+    
+    Args:
+        scenes (torch.Tensor): The normalized scenes to score of shape (B, N, V).
+        scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
+        reward_func (callable): A reward function that takes descaled scenes, class labels, 
+                               class mapping, and other parameters.
+        cfg (DictConfig, optional): Optional configuration object.
+        class_to_name_map (dict, optional): Mapping from class indices to object names.
+                                          If None, will use default if available in cfg.
+                                          
+    Returns:
+        torch.Tensor: The rewards for the scenes of shape (B,).
+    """
+    # Default class-to-name mapping if not provided
+    if class_to_name_map is None:
+        if cfg and hasattr(cfg, 'class_mapping'):
+            class_to_name_map = cfg.class_mapping
+        else:
+            # Default mapping from the provided data
+            class_to_name_map = {
+                0: 'armchair', 1: 'bookshelf', 2: 'cabinet', 3: 'ceiling_lamp', 
+                4: 'chair', 5: 'children_cabinet', 6: 'coffee_table', 7: 'desk', 
+                8: 'double_bed', 9: 'dressing_chair', 10: 'dressing_table', 
+                11: 'kids_bed', 12: 'nightstand', 13: 'pendant_lamp', 14: 'shelf', 
+                15: 'single_bed', 16: 'sofa', 17: 'stool', 18: 'table', 
+                19: 'tv_stand', 20: 'wardrobe'
+            }
+    
+    device = scenes.device
+    
+    # Extract components from scenes
+    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, 'custom') else 22
+    
+    # Extract class labels, positions, and sizes
+    class_labels = scenes[:, :, :num_classes]  # Shape: B x N x num_classes
+    positions = scenes[:, :, num_classes:num_classes+3]  # Shape: B x N x 3
+    sizes = scenes[:, :, num_classes+3:num_classes+6]  # Shape: B x N x 3
+    
+    # Descale positions and sizes to original coordinate space
+    if cfg and hasattr(cfg, 'descale'):
+        pos_min = torch.tensor(cfg.descale.position_min, device=device)
+        pos_max = torch.tensor(cfg.descale.position_max, device=device)
+        size_min = torch.tensor(cfg.descale.size_min, device=device)
+        size_max = torch.tensor(cfg.descale.size_max, device=device)
+    else:
+        # Default min/max values from the provided code
+        pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
+        pos_max = torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device)
+        size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
+        size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
+    
+    descaled_positions = descale_to_origin(positions, pos_min, pos_max)
+    descaled_sizes = descale_to_origin(sizes, size_min, size_max)
+    
+    # Create a data structure with all necessary information for the reward function
+    scene_data = {
+        'original_scenes': scenes,
+        'class_labels': class_labels,
+        'positions': descaled_positions,
+        'sizes': descaled_sizes,
+        'class_to_name_map': class_to_name_map,
+        'num_classes': num_classes
+    }
+    
+    # Call the provided reward function
+    rewards = reward_func(scene_data, scene_vec_desc, cfg)
+    
+    print("[Ashok] dynamic rewards:", rewards)
+    return rewards
 
 def prompt_following_reward(
     scenes: torch.Tensor, prompts: list[str], scene_vec_desc: SceneVecDescription
