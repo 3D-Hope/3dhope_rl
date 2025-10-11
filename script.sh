@@ -111,7 +111,7 @@ export DISPLAY=:0
 # 🚀 Run training
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
-PYTHONPATH=. python -u main.py +name=has_sofa_with_composite_reward \
+PYTHONPATH=. python -u main.py +name=baseline_with_composite_reward \
     load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \

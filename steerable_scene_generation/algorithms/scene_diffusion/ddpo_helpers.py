@@ -607,10 +607,10 @@ def composite_reward(
     print(f"[Ashok] Composite reward components:")
     for name, values in reward_components.items():
         print(
-            f"  {name}: mean={values.mean().item():.4f}, std={values.std().item():.4f}"
+            f"  {name}: {values}"
         )
     print(
-        f"[Ashok] Total composite rewards: mean={total_rewards.mean().item():.4f}, std={total_rewards.std().item():.4f}"
+        f"[Ashok] Total composite rewards: {total_rewards}"
     )
 
     return total_rewards, reward_components

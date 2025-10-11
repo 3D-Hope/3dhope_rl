@@ -33,7 +33,7 @@ dataset.max_num_objects_per_scene=107
 
 ---
 # train diffuscene
-python main.py +name=first algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True
+python main.py +name=first algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.ddpo.use_non_penetration_reward=True experiment.find_unused_parameters=True algorithm.ddpo.batch_size=2
 
 <!-- dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
 dataset.max_num_objects_per_scene=30 \
@@ -50,7 +50,7 @@ algorithm=scene_diffuser_flux_transformer \
 algorithm.classifier_free_guidance.use=False \
 algorithm.ema.use=False \
 algorithm.trainer=rl_score \
-algorithm.ddpo.use_object_number_reward=True \
+algorithm.ddpo.use_non_penetration_reward=True \
 +algorithm.model.scene_vec_len=256 \
 algorithm.noise_schedule.scheduler=ddim \
 algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
@@ -275,8 +275,8 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.trainer=rl_score \
     algorithm.ddpo.use_iou_reward=False \
     algorithm.ddpo.use_has_sofa_reward=False \
-    algorithm.ddpo.use_composite_reward=False \
-    algorithm.ddpo.use_composite_plus_task_reward=True \
+    algorithm.ddpo.use_composite_reward=True \
+    algorithm.ddpo.use_composite_plus_task_reward=False \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \

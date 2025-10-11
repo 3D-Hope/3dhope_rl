@@ -310,7 +310,8 @@ def get_composite_reward(
         rewards_to_compute = final_importance.keys()
     else:
         # Legacy mode: compute rewards that have direct weights
-        rewards_to_compute = reward_weights.keys()
+        # rewards_to_compute = reward_weights.keys()
+        raise
 
     # Compute individual rewards (import here to avoid circular import)
     if "gravity" in rewards_to_compute:
@@ -358,12 +359,15 @@ def get_composite_reward(
         # New mode: normalize then weight by importance
         for reward_name, raw_reward in reward_components.items():
             normalized = normalize_reward(raw_reward, reward_name)
+            normalized += 1 # Shift to [0, 1] from [-1, 0]
             importance = final_importance.get(reward_name, 1.0)
             total_reward += normalized * importance
+            reward_components[reward_name] = normalized
     else:
         # Legacy mode: direct weighting (no normalization)
-        for reward_name, reward_value in reward_components.items():
-            weight = reward_weights.get(reward_name, 0.0)
-            total_reward += weight * reward_value
-
-    return total_reward, reward_components
+        # for reward_name, reward_value in reward_components.items():
+        #     weight = reward_weights.get(reward_name, 0.0)
+        #     total_reward += weight * reward_value
+        raise
+    importance_sum = sum(final_importance.values())
+    return total_reward/importance_sum, reward_components #total reward scale  [0, sum of importance weights] to [0, 1]
