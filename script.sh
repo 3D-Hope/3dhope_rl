@@ -111,7 +111,7 @@ export DISPLAY=:0
 # 🚀 Run training
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
-PYTHONPATH=. python -u main.py +name=baseline_with_composite_reward \
+PYTHONPATH=. python -u main.py +name=has_sofa_with_composite_reward \
     load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -124,7 +124,8 @@ PYTHONPATH=. python -u main.py +name=baseline_with_composite_reward \
     algorithm.trainer=rl_score \
     algorithm.ddpo.use_iou_reward=False \
     algorithm.ddpo.use_has_sofa_reward=False \
-    algorithm.ddpo.use_composite_reward=True \
+    algorithm.ddpo.use_composite_reward=False \
+    algorithm.ddpo.use_composite_plus_task_reward=True \
     algorithm.ddpo.use_object_number_reward=False \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
