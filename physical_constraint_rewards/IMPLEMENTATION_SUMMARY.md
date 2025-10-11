@@ -1,8 +1,8 @@
 # Physical Constraint Rewards - Implementation Summary
 - [x] gravity
 - [x] non penetration
-- [x] must have
-- [x] count
+- [x] must have furnitures(eg bed in bedroom)
+- [x] number of furnitures in scene
 #### Ignored in baseline rl (harder because no floor conditioning used)
 - [ ] night table (apparantly flux model we are using is doing great job at this so ignoring for now)
 - [ ] chair orientation

@@ -354,3 +354,4 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.n
 
 
 EMA is updated every training step
+
