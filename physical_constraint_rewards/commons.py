@@ -199,12 +199,14 @@ def get_composite_reward(
     NORMALIZATION_CONFIG = {
         "gravity": {
             "type": "tanh",
-            "scale": 0.1, #tried with 1, reward got minimized because values were in few cms,   tried with 0.01 too harsh did not learn, tanh saturated# Sensitivity # Sensitivity: 1 cm off the ground(total violations) is severely bad
+            "scale": 0.2, #tried with 1, reward got minimized because values were in few cms,   tried with 0.01 too harsh did not learn, tanh saturated# Sensitivity 
+            # tried 0.1 gravity raw rewards are values in rane [-2.5  , -0.0139] mean -0.129
+            # Sensitivity: 1 cm off the ground(total violations) is severely bad
             # NOT a maximum! Can handle arbitrarily large penalties smoothly
         },
         "non_penetration": {
             "type": "tanh",
-            "scale": 0.01, # 5.0 led to about 10% hoping to lower it further,  (after convergence of 5.0 scale curriculum learning may be)tried with 0.05 too easy(all reward 1) did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
+            "scale": 5, #IMP all scenes' rewards are max, no penetration at all in train and val # 5.0 led to about 10% hoping to lower it further,  (after convergence of 5.0 scale curriculum learning may be)tried with 0.05 too easy(all reward 1) did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
             # NOT a maximum! Can handle arbitrarily large overlaps smoothly
         },
         "must_have_furniture": {
