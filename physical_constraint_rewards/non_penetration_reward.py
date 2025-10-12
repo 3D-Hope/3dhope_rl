@@ -135,7 +135,7 @@ def compute_non_penetration_reward(parsed_scene):
     # Following original authors: reward = sum(distances) where distances are negative
     # Here: reward = -penetration_depth (more penetration = more negative)
     reward = -total_penetration
-
+    print(f"Non-penetration raw reward (negative total penetration in m): {reward}")
     return reward
 
 
