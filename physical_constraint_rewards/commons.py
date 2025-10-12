@@ -204,7 +204,7 @@ def get_composite_reward(
         },
         "non_penetration": {
             "type": "tanh",
-            "scale": 1, # 5.0 led to about 10% hoping to lower it further,  tried with 0.05 too harsh did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
+            "scale": 0.01, # 5.0 led to about 10% hoping to lower it further,  (after convergence of 5.0 scale curriculum learning may be)tried with 0.05 too easy(all reward 1) did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
             # NOT a maximum! Can handle arbitrarily large overlaps smoothly
         },
         "must_have_furniture": {
