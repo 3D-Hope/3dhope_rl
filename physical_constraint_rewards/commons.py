@@ -199,12 +199,12 @@ def get_composite_reward(
     NORMALIZATION_CONFIG = {
         "gravity": {
             "type": "tanh",
-            "scale": 1.0,  # Sensitivity: penalty -1.0 → normalized -0.76 (considered "severe")
+            "scale": 0.01,  # Sensitivity: 1 cm off the ground(total violations) is severely bad
             # NOT a maximum! Can handle arbitrarily large penalties smoothly
         },
         "non_penetration": {
             "type": "tanh",
-            "scale": 5.0,  # Sensitivity: penalty -5.0 → normalized -0.76 (considered "severe")
+            "scale": 0.05,  # Sensitivity: 5cm total penetration(considered "severe")
             # NOT a maximum! Can handle arbitrarily large overlaps smoothly
         },
         "must_have_furniture": {

@@ -67,9 +67,8 @@ def compute_gravity_following_reward(parsed_scene):
     # # Convert distance to reward (closer to ground = higher reward)
     # reward = -avg_distance
     reward = (
-        -total_distance
+        -total_distance #the values are in meters, this value is very small because only few mm off the ground was observed in most cases;
     )  # using total distance as penalty: penalizes scenes with more objects more heavily, regardless of quality.
-
     return reward
 
 

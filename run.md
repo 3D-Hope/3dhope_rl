@@ -129,7 +129,15 @@ dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.custom.loss=true algorithm.ema.use=False \
+algorithm.noise_schedule.scheduler=ddpm \
+algorithm.noise_schedule.ddim.num_inference_timesteps=150
+
 
 iou
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-26/06-12-27/sampled_scenes_results.pkl
@@ -214,7 +222,7 @@ custom:
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-10/09-14-20/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-11/13-46-55/sampled_scenes_results.pkl --no_texture --without_floor
 
 
 
@@ -310,6 +318,18 @@ dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
 algorithm.num_additional_tokens_for_sampling=0 \
 algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
+
+baseline with composite reward
+
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+load=juy0jvto \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=256 \
+algorithm.num_additional_tokens_for_sampling=0 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
+
 
 baseline with ddim
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
