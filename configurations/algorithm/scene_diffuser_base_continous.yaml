@@ -51,10 +51,10 @@ ddpo:
     # These are applied AFTER normalization to [-1, 0] range.
     # All rewards are normalized first, then weighted by importance.
     importance_weights:
-      must_have_furniture: 1.5  # Highest: room must be functional
+      must_have_furniture: 1.0  # Highest: room must be functional
       gravity: 1.0              # Critical: no floating furniture
       non_penetration: 1.0      # Critical: no overlapping objects
-      object_count: 0.7         # Important: realistic clutter level
+      object_count: 1.0         # Important: realistic clutter level
   
   # Used when `use_composite_plus_task_reward` is True.
   # Combines composite reward (general scene quality) with task-specific reward.

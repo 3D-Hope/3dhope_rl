@@ -203,47 +203,50 @@ def main(cfg: DictConfig) -> None:
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
 
         # Compute composite reward components for analysis
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("COMPOSITE REWARD ANALYSIS")
-        print("="*80)
+        print("=" * 80)
         try:
             from physical_constraint_rewards.commons import get_composite_reward
-            
+
             # Get composite reward with all components
             total_rewards, reward_components = get_composite_reward(
                 sampled_scenes,
                 num_classes=22,
                 importance_weights={
-                    'must_have_furniture': 1.5,
-                    'gravity': 1.0,
-                    'non_penetration': 1.0,
-                    'object_count': 0.7,
+                    "must_have_furniture": 1.5,
+                    "gravity": 1.0,
+                    "non_penetration": 1.0,
+                    "object_count": 0.7,
                 },
-                room_type='bedroom'
+                room_type="bedroom",
             )
-            
+
             # Compute averages for each component
             print(f"\nTotal Composite Reward (avg): {total_rewards.mean().item():.4f}")
             print(f"Total Composite Reward (std): {total_rewards.std().item():.4f}")
             print(f"\nIndividual Component Rewards (normalized to [0,1]):")
             print("-" * 60)
-            
+
             for component_name, component_values in reward_components.items():
                 avg_reward = component_values.mean().item()
                 std_reward = component_values.std().item()
                 min_reward = component_values.min().item()
                 max_reward = component_values.max().item()
-                
-                print(f"{component_name:25s}: avg={avg_reward:7.4f}, std={std_reward:7.4f}, "
-                      f"min={min_reward:7.4f}, max={max_reward:7.4f}")
-            
-            print("="*80 + "\n")
-            
+
+                print(
+                    f"{component_name:25s}: avg={avg_reward:7.4f}, std={std_reward:7.4f}, "
+                    f"min={min_reward:7.4f}, max={max_reward:7.4f}"
+                )
+
+            print("=" * 80 + "\n")
+
         except Exception as e:
             print(f"Warning: Could not compute composite rewards: {e}")
             import traceback
+
             traceback.print_exc()
-        
+
         print(f"[DEBUG] Sampled scenes numpy shape: {sampled_scenes_np.shape}")
         bbox_params_list = []
         n_classes = 22  # TODO: make it configurable, it should include empty token
@@ -293,10 +296,16 @@ def main(cfg: DictConfig) -> None:
                     "angles": np.array(angles)[None, :],
                 }
             )
-        print(f"[Ashok] x number of scenes with 2 beds {n_scenes_with_2_beds} out of {sampled_scenes_np.shape[0]}")
-        print(f"[Ashok] number of scenes with sofa {n_scenes_with_sofa} out of {sampled_scenes_np.shape[0]}")
+        print(
+            f"[Ashok] x number of scenes with 2 beds {n_scenes_with_2_beds} out of {sampled_scenes_np.shape[0]}"
+        )
+        print(
+            f"[Ashok] number of scenes with sofa {n_scenes_with_sofa} out of {sampled_scenes_np.shape[0]}"
+        )
         print(f"[Ashok] number of sofas in scenes {number_of_sofas_in_scenes}")
-        print(f"[Ashok] avg number of sofas in scenes {np.mean(number_of_sofas_in_scenes)}")
+        print(
+            f"[Ashok] avg number of sofas in scenes {np.mean(number_of_sofas_in_scenes)}"
+        )
 
         # import sys;sys.exit(0)
         # print("bbox param list", bbox_params_list)
