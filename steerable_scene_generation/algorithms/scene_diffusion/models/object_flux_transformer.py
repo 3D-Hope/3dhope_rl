@@ -511,9 +511,9 @@ class ObjectFluxTransformer(nn.Module):
             raise ValueError(
                 f"Hidden size {hidden_dim} must be divisible by num_heads {num_heads}"
             )
-        if num_double_layers > 0 and text_cond_dim is None:
+        if num_double_layers > 0 and text_cond_dim is None and floor_cond_dim is None:
             console_logger.warning(
-                "num_double_layers is ignored because text_cond_dim is None."
+                "num_double_layers is ignored because text_cond_dim and floor_cond_dim are None."
             )
 
         self.scene_in = nn.Linear(object_feature_dim, hidden_dim)

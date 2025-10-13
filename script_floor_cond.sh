@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=16:00:00
+#SBATCH --time=30:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -144,7 +144,11 @@ PYTHONPATH=. python -u main.py +name=flux_transformer_floor_cond \
     algorithm.test.num_samples_to_render=0 \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
-    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    experiment.training.batch_size=128 \
+    experiment.validation.batch_size=128 \
+    experiment.test.batch_size=128 \
+    experiment.training.optim.accumulate_grad_batches=2
 
 
 # Check exit status
