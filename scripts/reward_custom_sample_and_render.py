@@ -208,6 +208,10 @@ def main(cfg: DictConfig) -> None:
         print("=" * 80)
         try:
             from physical_constraint_rewards.commons import get_composite_reward
+            from physical_constraint_rewards.gravity_following_reward import (
+                compute_gravity_following_reward,
+            )
+            from physical_constraint_rewards.commons import parse_and_descale_scenes
 
             # Get composite reward with all components
             total_rewards, reward_components = get_composite_reward(
@@ -241,6 +245,82 @@ def main(cfg: DictConfig) -> None:
 
             print("=" * 80 + "\n")
 
+            # Detailed gravity violation analysis
+            print("\n" + "=" * 80)
+            print("DETAILED GRAVITY VIOLATION ANALYSIS")
+            print("=" * 80)
+            
+            # Parse scenes to get descaled positions and sizes
+            parsed_scene = parse_and_descale_scenes(sampled_scenes, num_classes=22)
+            
+            # Compute raw gravity reward (negative penalty)
+            gravity_raw = compute_gravity_following_reward(parsed_scene)
+            
+            # Convert to numpy for statistics
+            r = gravity_raw.cpu().numpy()
+            
+            # Basic descriptive statistics
+            stats = {
+                "mean": np.mean(r),
+                "median": np.median(r),
+                "std_dev": np.std(r),
+                "min": np.min(r),
+                "max": np.max(r),
+                "iqr": np.percentile(r, 75) - np.percentile(r, 25),
+                "skewness": ((r - np.mean(r))**3).mean() / (np.std(r)**3 + 1e-8),
+                "kurtosis": ((r - np.mean(r))**4).mean() / (np.std(r)**4 + 1e-8),
+            }
+            
+            print("\n=== Raw Gravity Reward Statistics (Negative Penalty) ===")
+            print("-" * 60)
+            for k, v in stats.items():
+                print(f"{k:20s}: {v:+.6f}")
+            
+            print("\n=== Percentile Distribution ===")
+            print("-" * 60)
+            for p in [5, 25, 50, 75, 95, 99]:
+                print(f"{p:2d}th percentile: {np.percentile(r, p):+.6f}")
+            
+            print("\n=== Variation Metrics ===")
+            print("-" * 60)
+            batch_var = np.var(r)
+            batch_cv = np.std(r) / (abs(np.mean(r)) + 1e-8)
+            print(f"Variance              : {batch_var:.6f}")
+            print(f"Coefficient of Var    : {batch_cv:.6f}")
+            
+            # Count scenes by severity
+            print("\n=== Violation Severity Breakdown ===")
+            print("-" * 60)
+            perfect_scenes = np.sum(r == 0.0)
+            minor_violations = np.sum((r < 0) & (r >= -0.1))
+            moderate_violations = np.sum((r < -0.1) & (r >= -0.5))
+            severe_violations = np.sum(r < -0.5)
+            
+            total = len(r)
+            print(f"Perfect (r = 0)       : {perfect_scenes:4d} / {total} ({100*perfect_scenes/total:5.1f}%)")
+            print(f"Minor (-0.1 < r < 0)  : {minor_violations:4d} / {total} ({100*minor_violations/total:5.1f}%)")
+            print(f"Moderate (-0.5 < r < -0.1): {moderate_violations:4d} / {total} ({100*moderate_violations/total:5.1f}%)")
+            print(f"Severe (r < -0.5)     : {severe_violations:4d} / {total} ({100*severe_violations/total:5.1f}%)")
+            
+            # Physical interpretation
+            print("\n=== Physical Interpretation ===")
+            print("-" * 60)
+            print("NOTE: Gravity reward is NEGATIVE of total floating area (m²)")
+            print(f"Average floating area : {-np.mean(r):.4f} m²")
+            print(f"Median floating area  : {-np.median(r):.4f} m²")
+            print(f"Max floating area     : {-np.min(r):.4f} m² (worst scene)")
+            print(f"Min floating area     : {-np.max(r):.4f} m² (best scene)")
+            
+            print("\n=== Recommended Scale Parameter ===")
+            print("-" * 60)
+            # Recommend scale based on data distribution
+            recommended_scale = np.percentile(-r, 75)  # Use 75th percentile of violation
+            print(f"Based on 75th percentile violation: {recommended_scale:.4f}")
+            print(f"This means violations around {recommended_scale:.4f} m² will get ~-0.76 normalized penalty")
+            print(f"Current scale in code: Check NORMALIZATION_CONFIG['gravity']['scale']")
+            
+            print("=" * 80 + "\n")
+
         except Exception as e:
             print(f"Warning: Could not compute composite rewards: {e}")
             import traceback
@@ -251,26 +331,26 @@ def main(cfg: DictConfig) -> None:
         bbox_params_list = []
         n_classes = 22  # TODO: make it configurable, it should include empty token
         path_to_results = output_dir / "sampled_scenes_results.pkl"
-        n_scenes_with_2_beds = 0
-        n_scenes_with_sofa = 0
-        number_of_sofas_in_scenes = []
+        # n_scenes_with_2_beds = 0
+        # n_scenes_with_sofa = 0
+        # number_of_sofas_in_scenes = []
         for i in range(sampled_scenes_np.shape[0]):
             class_labels, translations, sizes, angles = [], [], [], []
-            n_beds = 0
-            has_sofa = False
-            number_of_sofas = 0
+            # n_beds = 0
+            # has_sofa = False
+            # number_of_sofas = 0
             for j in range(sampled_scenes_np.shape[1]):
                 # print(f"[Ashok] class probs {sampled_scenes_np[i, j, :n_classes]}")
-                if sampled_scenes_np[i, j, 17] > 0:
-                    has_sofa = True
+                # if sampled_scenes_np[i, j, 17] > 0:
+                #     has_sofa = True
 
                 class_label_idx = np.argmax(sampled_scenes_np[i, j, :n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
-                    # TODO: CLEAN THIS MESS
-                    if class_label_idx in [8, 15, 11]:
-                        n_beds += 1
-                    if class_label_idx == 17:
-                        number_of_sofas += 1
+                    # # Note: CLEAN THIS MESS, i did this to quickly test the task specific reward such as must have a sofa reward
+                    # if class_label_idx in [8, 15, 11]:
+                    #     n_beds += 1
+                    # if class_label_idx == 17:
+                    #     number_of_sofas += 1
                     # continue
                     ohe = np.zeros(n_classes - 1)
                     ohe[class_label_idx] = 1
@@ -282,11 +362,11 @@ def main(cfg: DictConfig) -> None:
                     angles.append(
                         sampled_scenes_np[i, j, n_classes + 6 : n_classes + 8]
                     )
-            if n_beds == 2:
-                n_scenes_with_2_beds += 1
-            if has_sofa:
-                n_scenes_with_sofa += 1
-            number_of_sofas_in_scenes.append(number_of_sofas)
+            # if n_beds == 2:
+            #     n_scenes_with_2_beds += 1
+            # if has_sofa:
+            #     n_scenes_with_sofa += 1
+            # number_of_sofas_in_scenes.append(number_of_sofas)
             # continue
             bbox_params_list.append(
                 {
@@ -296,16 +376,16 @@ def main(cfg: DictConfig) -> None:
                     "angles": np.array(angles)[None, :],
                 }
             )
-        print(
-            f"[Ashok] x number of scenes with 2 beds {n_scenes_with_2_beds} out of {sampled_scenes_np.shape[0]}"
-        )
-        print(
-            f"[Ashok] number of scenes with sofa {n_scenes_with_sofa} out of {sampled_scenes_np.shape[0]}"
-        )
-        print(f"[Ashok] number of sofas in scenes {number_of_sofas_in_scenes}")
-        print(
-            f"[Ashok] avg number of sofas in scenes {np.mean(number_of_sofas_in_scenes)}"
-        )
+        # print(
+        #     f"[Ashok] x number of scenes with 2 beds {n_scenes_with_2_beds} out of {sampled_scenes_np.shape[0]}"
+        # )
+        # print(
+        #     f"[Ashok] number of scenes with sofa {n_scenes_with_sofa} out of {sampled_scenes_np.shape[0]}"
+        # )
+        # print(f"[Ashok] number of sofas in scenes {number_of_sofas_in_scenes}")
+        # print(
+        #     f"[Ashok] avg number of sofas in scenes {np.mean(number_of_sofas_in_scenes)}"
+        # )
 
         # import sys;sys.exit(0)
         # print("bbox param list", bbox_params_list)

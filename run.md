@@ -117,8 +117,9 @@ PYTHONPATH=. python main.py +name=genz dataset=custom_scene dataset.processed_sc
 experiment.training.max_steps=2e6
 
 
-PYTHONPATH=. python main.py +name=test dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true
+PYTHONPATH=. python main.py +name=test_diffuscene dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true experiment.training.checkpointing.every_n_train_steps=1
 
+enotaatr
 
 no iou
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-26/06-11-54/sampled_scenes_results.pkl
@@ -166,13 +167,28 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find
 python scripts/download_checkpoint.py --run_id bgdrozky --entity 078bct021-ashok-d --project 3dhope_rl
 
 
+PYTHONPATH=. python main.py +name=test_diffuscene \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_diffuscene \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.custom.loss=true \
+experiment.training.checkpointing.every_n_train_steps=1 \
+experiment.training.checkpointing.save_last=True \
+experiment.training.max_steps=5
+
 
 PYTHONPATH=. python -u main.py +name=first_rl \
-    resume=trkemg4h \
+    resume=1m3m432c \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_flux_transformer \
+    algorithm=scene_diffuser_diffuscene\
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=False \
     algorithm.trainer=rl_score \
@@ -190,7 +206,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     experiment.lr_scheduler.num_warmup_steps=250 \
     algorithm.ddpo.batch_size=2 \
     experiment.training.checkpointing.every_n_train_steps=500 \
-    algorithm.num_additional_tokens_for_sampling=2 \
+    algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=true \
@@ -200,9 +216,11 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     algorithm.test.num_samples_to_render=0 \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
-    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    experiment.training.precision=bf16-mixed
 
-
+PYTHONPATH=. python main.py +name=diffuscene_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
+experiment.training.max_steps=1e6
 
 ---
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/latest-run/checkpoints/I=4999-step=10000.ckpt
@@ -311,13 +329,13 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 
 
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
-load=7m2291fu \
+load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
 algorithm.num_additional_tokens_for_sampling=0 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddpm algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
 
 baseline with composite reward
 

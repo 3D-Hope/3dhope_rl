@@ -320,8 +320,9 @@ def get_composite_reward(
         from physical_constraint_rewards.gravity_following_reward import (
             compute_gravity_following_reward,
         )
-
-        reward_components["gravity"] = compute_gravity_following_reward(parsed_scene)
+        average_gravity = compute_gravity_following_reward(parsed_scene) / len(parsed_scene)
+        print(f"average gravity reward {average_gravity}")
+    #     reward_components["gravity"] = compute_gravity_following_reward(parsed_scene) #NOTE: flux diffusion baseline already has about 6mm voilaiton in average. so trying to optimize this further makes it unlearn instead, so just logging the values 
 
     if "object_count" in rewards_to_compute:
         from physical_constraint_rewards.object_count_reward import (
