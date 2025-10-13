@@ -105,57 +105,158 @@ source .venv/bin/activate
 wandb login
 pip install -e ../ThreedFront
 export PYTHONUNBUFFERED=1
-export DISPLAY=:0
 
 
 # 🚀 Run training
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
-PYTHONPATH=. python -u main.py +name=baseline_with_composite_reward_reg_50 \
-    resume=juy0jvto \
+
+# Create logs directory for individual training runs
+mkdir -p training_logs
+
+echo "="*80
+echo "STARTING SIMULTANEOUS TRAINING RUNS"
+echo "="*80
+
+# Run DiffuScene baseline in background
+echo "[1/2] Starting DiffuScene baseline training..."
+PYTHONPATH=. python -u main.py +name=diffuscene_baseline \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_flux_transformer \
-    algorithm.classifier_free_guidance.use=False \
-    algorithm.ema.use=True \
-    algorithm.trainer=rl_score \
-    algorithm.ddpo.use_iou_reward=False \
-    algorithm.ddpo.use_has_sofa_reward=False \
-    algorithm.ddpo.use_composite_reward=True \
-    algorithm.ddpo.use_composite_plus_task_reward=False \
-    algorithm.ddpo.use_object_number_reward=False \
-    algorithm.noise_schedule.scheduler=ddim \
-    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2000000 \
-    experiment.validation.limit_batch=1 \
-    experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
-    experiment.reset_lr_scheduler=True \
-    experiment.training.lr=1e-6 \
-    experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=256 \
-    experiment.training.checkpointing.every_n_train_steps=500 \
-    algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=100 \
+    algorithm=scene_diffuser_diffuscene \
+    algorithm.trainer=ddpm \
     experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.weight=0 \
     algorithm.custom.loss=true \
-    algorithm.validation.num_samples_to_render=0 \
-    algorithm.validation.num_samples_to_visualize=0 \
-    algorithm.validation.num_directives_to_generate=0 \
-    algorithm.test.num_samples_to_render=0 \
-    algorithm.test.num_samples_to_visualize=0 \
-    algorithm.test.num_directives_to_generate=0 \
-    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+    experiment.training.max_steps=1e6 \
+    resume=jfgw3io6 \
+    > training_logs/diffuscene_baseline.log 2>&1 &
 
+DIFFUSCENE_PID=$!
+echo "✓ DiffuScene baseline started with PID: $DIFFUSCENE_PID"
 
-# Check exit status
-if [ $? -eq 0 ]; then
-    echo "✅ Training completed successfully at: $(date)"
+# Small delay to avoid simultaneous initialization issues
+sleep 5
+
+# Run MiDiffusion baseline in background
+echo "[2/2] Starting MiDiffusion baseline training..."
+PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
+    dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
+    dataset._name=custom_scene \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.weight=0 \
+    algorithm.custom.loss=true \
+    > training_logs/midiffusion_baseline.log 2>&1 &
+
+MIDIFFUSION_PID=$!
+echo "✓ MiDiffusion baseline started with PID: $MIDIFFUSION_PID"
+
+echo ""
+echo "="*80
+echo "BOTH TRAINING RUNS STARTED"
+echo "="*80
+echo "DiffuScene PID    : $DIFFUSCENE_PID"
+echo "MiDiffusion PID   : $MIDIFFUSION_PID"
+echo "Logs directory    : training_logs/"
+echo ""
+echo "Monitor progress with:"
+echo "  tail -f training_logs/diffuscene_baseline.log"
+echo "  tail -f training_logs/midiffusion_baseline.log"
+echo "="*80
+echo ""
+
+# Monitor GPU usage
+echo "Initial GPU status:"
+nvidia-smi
+
+# Wait for both processes to complete
+echo ""
+echo "Waiting for training processes to complete..."
+echo "(This will run until both finish or job time limit is reached)"
+echo ""
+
+# Function to check if process is still running
+check_process() {
+    if ps -p $1 > /dev/null 2>&1; then
+        return 0  # Process is running
+    else
+        return 1  # Process is not running
+    fi
+}
+
+# Monitor both processes
+while true; do
+    DIFFUSCENE_RUNNING=false
+    MIDIFFUSION_RUNNING=false
+    
+    if check_process $DIFFUSCENE_PID; then
+        DIFFUSCENE_RUNNING=true
+    fi
+    
+    if check_process $MIDIFFUSION_PID; then
+        MIDIFFUSION_RUNNING=true
+    fi
+    
+    # Check if both are done
+    if ! $DIFFUSCENE_RUNNING && ! $MIDIFFUSION_RUNNING; then
+        echo ""
+        echo "Both training processes have completed!"
+        break
+    fi
+    
+    # Print status every 5 minutes
+    sleep 300
+    echo "[$(date)] Status - DiffuScene: $(if $DIFFUSCENE_RUNNING; then echo 'RUNNING'; else echo 'STOPPED'; fi), MiDiffusion: $(if $MIDIFFUSION_RUNNING; then echo 'RUNNING'; else echo 'STOPPED'; fi)"
+    nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits | head -1
+done
+
+# Wait for any remaining background processes
+wait
+
+# Check exit status of both
+DIFFUSCENE_EXIT=0
+MIDIFFUSION_EXIT=0
+
+wait $DIFFUSCENE_PID 2>/dev/null
+DIFFUSCENE_EXIT=$?
+
+wait $MIDIFFUSION_PID 2>/dev/null
+MIDIFFUSION_EXIT=$?
+
+echo ""
+echo "="*80
+echo "TRAINING RESULTS"
+echo "="*80
+
+echo ""
+echo "="*80
+echo "TRAINING RESULTS"
+echo "="*80
+echo "DiffuScene exit code    : $DIFFUSCENE_EXIT $(if [ $DIFFUSCENE_EXIT -eq 0 ]; then echo '✅'; else echo '❌'; fi)"
+echo "MiDiffusion exit code   : $MIDIFFUSION_EXIT $(if [ $MIDIFFUSION_EXIT -eq 0 ]; then echo '✅'; else echo '❌'; fi)"
+echo "="*80
+echo ""
+
+# Overall exit status (fail if either failed)
+if [ $DIFFUSCENE_EXIT -eq 0 ] && [ $MIDIFFUSION_EXIT -eq 0 ]; then
+    echo "✅ Both training runs completed successfully at: $(date)"
+    EXIT_STATUS=0
 else
-    echo "❌ Training failed at: $(date)"
+    echo "❌ One or more training runs failed at: $(date)"
+    echo "   Check logs in training_logs/ for details"
+    EXIT_STATUS=1
 fi
 
 echo "Job completed at: $(date)"
+exit $EXIT_STATUS

@@ -119,6 +119,8 @@ experiment.training.max_steps=2e6
 
 PYTHONPATH=. python main.py +name=test_diffuscene dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true experiment.training.checkpointing.every_n_train_steps=1
 
+PYTHONPATH=. python main.py +name=continuous_midiffusion_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true experiment.training.checkpointing.every_n_train_steps=1
+
 enotaatr
 
 no iou
@@ -220,7 +222,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
     experiment.training.precision=bf16-mixed
 
 PYTHONPATH=. python main.py +name=diffuscene_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
-experiment.training.max_steps=1e6
+experiment.training.max_steps=1e6 resume=jfgw3io6
 
 ---
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/latest-run/checkpoints/I=4999-step=10000.ckpt
@@ -240,7 +242,7 @@ custom:
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-11/13-46-55/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-13/10-12-13/sampled_scenes_results.pkl --no_texture --without_floor
 
 
 
@@ -269,12 +271,12 @@ after rl finetuning
 
 
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
-load=trkemg4h \
+load=jfgw3io6 \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=14 \
 +num_scenes=256 \
-algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=False debug=True
+algorithm=scene_diffuser_diffuscene algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True debug=True
 
 
 
