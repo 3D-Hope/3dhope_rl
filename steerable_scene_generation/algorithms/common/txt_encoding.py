@@ -286,4 +286,5 @@ def load_txt_encoder_from_config(
     else:
         raise ValueError("Unsupported txt_encoder:", encoder)
     dim = txt_encoder.hidden_size if component != "tokenizer" else 0
+    print(f"[Ashok] Loaded {encoder} {size} txt_encoder with dim {dim}")
     return txt_encoder, dim

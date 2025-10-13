@@ -336,9 +336,10 @@ class CustomDataset(BaseDataset):
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
+        # print(f"[Ashok] raw_item: {raw_item}")
         scene_tensor = self._to_scene_tensor(raw_item)
 
-        item: dict[str, Any] = {"scenes": scene_tensor, "idx": idx}
+        item: dict[str, Any] = {"scenes": scene_tensor, "idx": idx, "fpbpn": raw_item["fpbpn"]}
 
         # if self.cfg.use_permutation_augmentation:
         #     perm = torch.randperm(len(scene_tensor))
@@ -369,7 +370,7 @@ class CustomDataset(BaseDataset):
                         ]["coarse"]
                     else:
                         item["text_cond_coarse"] = self._empty_encoding_coarse
-
+        
         return item
 
     def _to_scene_tensor(self, item: dict) -> torch.Tensor:

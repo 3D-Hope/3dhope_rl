@@ -91,7 +91,8 @@ algorithm=scene_diffuser_flux_transformer \
 algorithm.trainer=ddpm \
 experiment.find_unused_parameters=True \
 algorithm.classifier_free_guidance.use=False \
-algorithm.classifier_free_guidance.weight=0 \
+algorithm.classifier_free_guidance.use_floor=True \
+algorithm.classifier_free_guidance.weight=1.5 \
 algorithm.custom.loss=true
 
 PYTHONPATH=. python /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/steerable_scene_generation/datasets/custom_scene/custom_scene.py \
@@ -224,6 +225,9 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 PYTHONPATH=. python main.py +name=diffuscene_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
 experiment.training.max_steps=1e6 resume=jfgw3io6
 
+
+PYTHONPATH=. python main.py +name=livingroom_flux_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
+experiment.training.max_steps=1e6
 ---
 /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/latest-run/checkpoints/I=4999-step=10000.ckpt
 
@@ -243,6 +247,8 @@ custom:
 
 <!--  Render Results -->
 python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-13/10-12-13/sampled_scenes_results.pkl --no_texture --without_floor
+
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-13/22-12-11/sampled_scenes_results.pkl --no_texture
 
 
 
@@ -395,3 +401,70 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.n
 
 EMA is updated every training step
 
+
+
+PYTHONPATH=. python main.py +name=livingroom_flux_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 \
+dataset._name=custom_scene \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
+experiment.training.max_steps=1e6 \
+dataset.data.dataset_directory=livingroom \
+dataset.data.annotation_file=livingroom_threed_front_splits.csv \
+dataset.data.room_type=livingroom
+
+
+PYTHONPATH=. python main.py +name=livingroom_flux_baseline dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 \
+dataset._name=custom_scene \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true \
+experiment.training.max_steps=1e6 \
+dataset.data.dataset_directory=bedroom \
+dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+dataset.data.room_type=bedroom
+
+
+PYTHONPATH=. python main.py +name=flux_transformer_floor_cond \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.use_floor=True \
+algorithm.classifier_free_guidance.weight=-1 \
+algorithm.custom.loss=true
+
+
+
+<!-- Overfit -->
+
+PYTHONPATH=. python main.py +name=flux_transformer_floor_cond \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.use_floor=True \
+algorithm.classifier_free_guidance.weight=0.7 \
+algorithm.custom.loss=true \
+dataset.training.splits=["overfit"] \
+dataset.validation.splits=["overfit"]
+
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+load=q4d3nkdd \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset._name=custom_scene \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=256 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.use_floor=True \
+algorithm.classifier_free_guidance.weight=0.7 algorithm.custom.loss=true \
+dataset.training.splits=["overfit"] \
+dataset.validation.splits=["overfit"]

@@ -6,6 +6,9 @@ from steerable_scene_generation.algorithms.common.ema_model import EMAModel
 from steerable_scene_generation.algorithms.common.txt_encoding import (
     load_txt_encoder_from_config,
 )
+from steerable_scene_generation.algorithms.common.floor_encoder import (
+    load_floor_encoder_from_config,
+)
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .models import ObjectFluxTransformer
@@ -64,6 +67,13 @@ def create_scene_diffuser_flux_transformer(
                 )
             else:
                 text_cond_dim = None
+
+            if self.cfg.classifier_free_guidance.use_floor:
+                self.floor_encoder, floor_cond_dim = load_floor_encoder_from_config()
+            else:
+                self.floor_encoder = None
+                floor_cond_dim = None
+                
             use_coarse = (
                 self.cfg.classifier_free_guidance.txt_encoder_coarse is not None
             )
@@ -87,7 +97,9 @@ def create_scene_diffuser_flux_transformer(
                 head_dim=self.cfg.model.head_dim,
                 cond_dim=text_cond_dim_coarse,
                 text_cond_dim=text_cond_dim,
+                floor_cond_dim=floor_cond_dim if self.cfg.classifier_free_guidance.use_floor else None,
                 object_feature_dim_out=obj_diff_vec_len,
+                max_objects=self.cfg.max_num_objects_per_scene
             )
 
             if self.cfg.ema.use:
@@ -125,6 +137,7 @@ def create_scene_diffuser_flux_transformer(
             model = self.ema.model if use_ema else self.model
 
             text_cond, text_cond_coarse = None, None
+            floor_cond = None
             if cond_dict is not None and self.txt_encoder is not None:
                 # Use bfloat16 for text encoder.
                 with torch.autocast(
@@ -147,13 +160,18 @@ def create_scene_diffuser_flux_transformer(
                         text_cond_coarse = text_cond_coarse.mean(
                             dim=1
                         )  # Shape (B, C_coarse)
-
+            
+            if cond_dict is not None and self.floor_encoder is not None:
+                floor_cond = self.floor_encoder(
+                    cond_dict["fpbpn"]
+                )  # Shape (B, 64)
             # Predict the noise.
             predicted_noise = model(
                 noisy_scenes,
                 timestep=timesteps,
                 cond=text_cond_coarse,
-                text_cond=text_cond,
+                text_cond=text_cond, #TODO: send the encoded fpbpn here
+                floor_cond=floor_cond,
             )  # Shape (B, N, V)
 
             return predicted_noise

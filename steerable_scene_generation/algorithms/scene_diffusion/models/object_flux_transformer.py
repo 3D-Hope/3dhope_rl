@@ -484,7 +484,9 @@ class ObjectFluxTransformer(nn.Module):
         head_dim: Optional[int] = None,
         cond_dim: Optional[int] = None,
         text_cond_dim: Optional[int] = None,
+        floor_cond_dim: Optional[int] = None,
         object_feature_dim_out: Optional[int] = None,
+        max_objects: Optional[int] = 12,
     ):
         """
         Args:
@@ -519,10 +521,16 @@ class ObjectFluxTransformer(nn.Module):
         if cond_dim is not None:
             self.vector_in = MLPEmbedder(in_dim=cond_dim, hidden_dim=hidden_dim)
         if text_cond_dim is not None:
-            self.text_in = nn.Linear(text_cond_dim, hidden_dim)
+            self.text_in = nn.Linear(text_cond_dim, hidden_dim) #b, 110, 512
 
         self.cond_dim = cond_dim
         self.text_cond_dim = text_cond_dim
+        
+        if floor_cond_dim is not None:
+            self.max_objects = max_objects
+            self.floor_in = nn.Linear(floor_cond_dim, hidden_dim)
+
+        self.floor_cond_dim = floor_cond_dim
 
         self.double_blocks = (
             nn.ModuleList(
@@ -536,7 +544,7 @@ class ObjectFluxTransformer(nn.Module):
                     for _ in range(num_double_layers)
                 ]
             )
-            if text_cond_dim is not None
+            if text_cond_dim is not None or floor_cond_dim is not None
             else None
         )
 
@@ -554,7 +562,7 @@ class ObjectFluxTransformer(nn.Module):
 
         if object_feature_dim_out is None:
             object_feature_dim_out = object_feature_dim
-        print(f"[Ashok] object_feature_dim_out: {object_feature_dim_out}")
+        # print(f"[Ashok] object_feature_dim_out: {object_feature_dim_out}")
         self.final_layer = LastLayer(hidden_dim, object_feature_dim_out)
 
     def get_timestep_feature(
@@ -589,6 +597,7 @@ class ObjectFluxTransformer(nn.Module):
         timestep: Union[torch.Tensor, float, int],
         cond: torch.Tensor | None = None,
         text_cond: torch.Tensor | None = None,
+        floor_cond: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -612,12 +621,14 @@ class ObjectFluxTransformer(nn.Module):
 
         # Combine input conditioning and timestep conditioning.
         cond_vec = global_timestep_feature
+        # print(f"[Ashok] text cond.shape: {text_cond.shape}, timestep.shape: {timestep.shape}")
+        # print(f"[Ashok] cond_vec.shape: {cond_vec.shape}")
         if cond is not None:
             cond_vec += self.vector_in(cond)
 
         if text_cond is not None:
             txt_vec = self.text_in(text_cond)
-
+            # print(f"[Ashok] txt_vec.shape: {txt_vec.shape}") #b,110,512, our b, 12, 64
             for block in self.double_blocks:
                 sample, txt_vec = block(sample, txt_vec, cond_vec)
 
@@ -625,12 +636,27 @@ class ObjectFluxTransformer(nn.Module):
                 (txt_vec, sample), dim=1
             )  # Shape (B, txt_seq_len + num_objects, hidden_dim)
 
+        if floor_cond is not None:
+            floor_vec = floor_cond.repeat(1, self.max_objects, 1)  # b, 12, 64
+            floor_vec = self.floor_in(floor_vec)  # b, 12, 512
+            # print(f"[Ashok] floor_vec.shape: {floor_vec.shape}") #b,64
+            for block in self.double_blocks:
+                sample, floor_vec = block(sample, floor_vec, cond_vec)
+
+            sample = torch.cat(
+                (floor_vec, sample), dim=1
+            )  # Shape (B, floor_seq_len + num_objects, hidden_dim)
         for block in self.single_blocks:
             sample = block(sample, cond=cond_vec)
 
         if text_cond is not None:
             sample = sample[
                 :, txt_vec.shape[1] :, ...
+            ]  # Shape (B, num_objects, hidden_dim)
+
+        if floor_cond is not None:
+            sample = sample[
+                :, floor_vec.shape[1] :, ...
             ]  # Shape (B, num_objects, hidden_dim)
 
         sample = self.final_layer(

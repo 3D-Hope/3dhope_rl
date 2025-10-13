@@ -67,6 +67,8 @@ classifier_free_guidance:
     use_data_labels: False # Use data labels for sampling
     # Labels to use for sampling. Only used if `use_data_labels` is False.
     labels: "A scene with 10 objects." # str | list[str]
+  use_floor: False # Use FPBPN for floor conditioning
+
 
 # Recommended to disable during training and enable during test.
 postprocessing:
