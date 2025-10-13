@@ -150,7 +150,7 @@ DIFFUSCENE_PID=$!
 echo "✓ DiffuScene baseline started with PID: $DIFFUSCENE_PID"
 
 # Small delay to avoid simultaneous initialization issues
-sleep 120000
+sleep 120
 
 # Run MiDiffusion baseline in background
 echo "[2/2] Starting MiDiffusion baseline training..."
