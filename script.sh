@@ -82,6 +82,9 @@ echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python path: $(which python)"
 echo "Python version: $(python --version)"
 
+# Install Xvfb for virtual display (needed for rendering)
+echo "Installing Xvfb..."
+conda install -y -c conda-forge xorg-libxfb xvfb-run xorg-libxrender xorg-libxext
 
 # Check GPU
 echo "GPU information:"
@@ -134,13 +137,20 @@ PYTHONPATH=. python -u main.py +name=diffuscene_baseline \
     algorithm.custom.loss=true \
     experiment.training.max_steps=1e6 \
     resume=jfgw3io6 \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     > training_logs/diffuscene_baseline.log 2>&1 &
 
 DIFFUSCENE_PID=$!
 echo "✓ DiffuScene baseline started with PID: $DIFFUSCENE_PID"
 
 # Small delay to avoid simultaneous initialization issues
-sleep 5
+sleep 120000
 
 # Run MiDiffusion baseline in background
 echo "[2/2] Starting MiDiffusion baseline training..."
@@ -157,6 +167,13 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
     algorithm.classifier_free_guidance.use=False \
     algorithm.classifier_free_guidance.weight=0 \
     algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     > training_logs/midiffusion_baseline.log 2>&1 &
 
 MIDIFFUSION_PID=$!
