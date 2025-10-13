@@ -82,10 +82,6 @@ echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python path: $(which python)"
 echo "Python version: $(python --version)"
 
-# Install Xvfb for virtual display (needed for rendering)
-echo "Installing Xvfb..."
-conda install -y -c conda-forge xorg-libxfb xvfb-run xorg-libxrender xorg-libxext
-
 # Check GPU
 echo "GPU information:"
 nvidia-smi
@@ -107,12 +103,19 @@ poetry install
 source .venv/bin/activate
 wandb login
 pip install -e ../ThreedFront
+
+# Set environment variables for headless rendering
 export PYTHONUNBUFFERED=1
+export DISPLAY=:0
+
+# Install Xvfb for virtual display (needed for rendering during validation)
+echo "Installing Xvfb for headless rendering..."
+conda install -y -c conda-forge xorg-libxfb xvfb-run xorg-libxrender xorg-libxext
+echo "✅ Xvfb installed"
 
 
 # 🚀 Run training
 echo "Starting training at: $(date)"
-export PYTHONUNBUFFERED=1
 
 # Create logs directory for individual training runs
 mkdir -p training_logs
