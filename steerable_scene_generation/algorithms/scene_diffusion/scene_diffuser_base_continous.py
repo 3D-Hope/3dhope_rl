@@ -56,6 +56,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         self,
         num_samples: int,
         use_ema: bool = False,
+        data_batch: Dict[str, torch.Tensor] | None = None,
     ) -> torch.Tensor:
         """
         Sample scenes from the model without guidance. The scenes are inverse
@@ -86,7 +87,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         ):
             with torch.no_grad():
                 residual = self.predict_noise(
-                    xt, t, cond_dict=None, use_ema=use_ema
+                    xt, t, cond_dict=data_batch, use_ema=use_ema
                 )  # Shape (B, N, V)
 
             # Compute the updated sample.
@@ -357,7 +358,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
                     num, cond_dict=data_batch, use_ema=use_ema
                 )
             else:
-                scenes = self.sample_scenes_without_guidance(num, use_ema=use_ema)
+                scenes = self.sample_scenes_without_guidance(num, use_ema=use_ema, data_batch=data_batch)
             sampled_scene_batches.append(scenes)
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 

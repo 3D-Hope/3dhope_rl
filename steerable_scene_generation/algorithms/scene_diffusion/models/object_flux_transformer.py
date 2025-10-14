@@ -521,11 +521,11 @@ class ObjectFluxTransformer(nn.Module):
         if cond_dim is not None:
             self.vector_in = MLPEmbedder(in_dim=cond_dim, hidden_dim=hidden_dim)
         if text_cond_dim is not None:
-            self.text_in = nn.Linear(text_cond_dim, hidden_dim) #b, 110, 512
+            self.text_in = nn.Linear(text_cond_dim, hidden_dim)  # b, 110, 512
 
         self.cond_dim = cond_dim
         self.text_cond_dim = text_cond_dim
-        
+
         if floor_cond_dim is not None:
             self.max_objects = max_objects
             self.floor_in = nn.Linear(floor_cond_dim, hidden_dim)

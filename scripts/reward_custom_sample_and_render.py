@@ -175,18 +175,43 @@ def main(cfg: DictConfig) -> None:
 
     logging.info(f"Saved ground truth scene to {gt_text_path}")
 
-    # Create a dataloader for the custom dataset
+    # Limit dataset to num_scenes samples
+    dataset_size = len(custom_dataset)
+    num_scenes_to_sample = min(num_scenes, dataset_size)
+    
+    # Create subset of dataset with only the first num_scenes samples
+    from torch.utils.data import Subset
+    indices = list(range(num_scenes_to_sample))
+    limited_dataset = Subset(custom_dataset, indices)
+    
+    print(f"[DEBUG] Full dataset size: {dataset_size}")
+    print(f"[DEBUG] Sampling {num_scenes_to_sample} scenes")
+    
+    # Use batch size from config, not num_scenes
+    batch_size = cfg.experiment.get("test", {}).get("batch_size", cfg.experiment.validation.batch_size)
+    print(f"[DEBUG] Using batch size: {batch_size}")
+    
+    # Create a dataloader for the limited dataset
     dataloader = torch.utils.data.DataLoader(
-        custom_dataset,
-        batch_size=num_scenes,
+        limited_dataset,
+        batch_size=batch_size,
         num_workers=4,
         shuffle=False,
         persistent_workers=False,
         pin_memory=cfg.experiment.test.pin_memory,
     )
 
-    print(f"[DEBUG] Created custom dataset with size: {len(custom_dataset)}")
-
+    print(f"[DEBUG] Created limited dataset with size: {len(limited_dataset)}")
+    # At line ~190, before model prediction
+    for batch in dataloader:
+        print(f"[DEBUG] Batch keys: {batch.keys()}")
+        print(f"[DEBUG] Has fpbpn: {'fpbpn' in batch}")
+        if 'fpbpn' in batch:
+            print(f"[DEBUG] fpbpn shape: {batch['fpbpn'].shape}")
+            print(f"[DEBUG] fpbpn sample values: {batch['fpbpn'][0, :5]}")
+        else:
+            print("[ERROR] fpbpn MISSING - Floor conditioning won't work!")
+        break
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
 
