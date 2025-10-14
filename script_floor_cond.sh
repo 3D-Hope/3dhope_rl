@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=30:00:00
+#SBATCH --time=1-12:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -20,12 +20,12 @@ free -h
 df -h
 set -x
 
-if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
-    echo "Copying model checkpoint"
-    rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
-else
-    echo "✅ Model checkpoint already exists in scratch."
-fi
+# if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
+#     echo "Copying model checkpoint"
+#     rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
+# else
+#     echo "✅ Model checkpoint already exists in scratch."
+# fi
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
     echo "copying data "
     rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
@@ -112,6 +112,7 @@ export DISPLAY=:0
 echo "Starting training at: $(date)"
 export PYTHONUNBUFFERED=1
 PYTHONPATH=. python -u main.py +name=flux_transformer_floor_cond \
+    resume=eviaimru \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -120,22 +121,9 @@ PYTHONPATH=. python -u main.py +name=flux_transformer_floor_cond \
     algorithm=scene_diffuser_flux_transformer \
     algorithm.classifier_free_guidance.use=False \
     algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=0 \
     algorithm.ema.use=True \
     algorithm.trainer=ddpm \
-    algorithm.ddpo.use_iou_reward=False \
-    algorithm.ddpo.use_has_sofa_reward=False \
-    algorithm.ddpo.use_composite_reward=False \
-    algorithm.ddpo.use_composite_plus_task_reward=False \
-    algorithm.ddpo.use_object_number_reward=False \
-    algorithm.noise_schedule.scheduler=ddpm \
-    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.validation.limit_batch=1 \
-    experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
-    experiment.reset_lr_scheduler=True \
-    experiment.training.checkpointing.every_n_train_steps=500 \
-    algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=true \
     algorithm.validation.num_samples_to_render=0 \

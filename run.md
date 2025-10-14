@@ -248,7 +248,7 @@ custom:
 <!--  Render Results -->
 python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-14/11-08-41/sampled_scenes_results.pkl --no_texture --without_floor
 
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-13/22-12-11/sampled_scenes_results.pkl --no_texture
+python ../ThreedFront/scripts/render_results.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-14/13-32-38/sampled_scenes_results.pkl --no_texture
 
 
 
@@ -465,9 +465,20 @@ algorithm.trainer=ddpm \
 experiment.find_unused_parameters=True \
 algorithm.classifier_free_guidance.use=False \
 algorithm.classifier_free_guidance.use_floor=True \
-algorithm.classifier_free_guidance.weight=0.7 algorithm.custom.loss=true \
+algorithm.classifier_free_guidance.weight=1.0 algorithm.custom.loss=true \
 dataset.training.splits=["overfit"] \
 dataset.validation.splits=["overfit"]
+
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+load=q4d3nkdd \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=5 \
+experiment.test.batch_size=32 \
+algorithm.num_additional_tokens_for_sampling=0 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=True dataset.training.splits=["overfit"] dataset.validation.splits=["overfit"]
+
 
 
 

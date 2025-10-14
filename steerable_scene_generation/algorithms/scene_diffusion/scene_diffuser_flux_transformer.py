@@ -160,29 +160,29 @@ def create_scene_diffuser_flux_transformer(
                         text_cond_coarse = text_cond_coarse.mean(
                             dim=1
                         )  # Shape (B, C_coarse)
-            print(f"[Ashok] it does not go into the if here")
-            if cond_dict is not None and self.floor_encoder is not None:
-                print(f"[DEBUG] cond_dict keys: {list(cond_dict.keys())}")
-                if 'fpbpn' not in cond_dict:
-                    print("[ERROR] fpbpn NOT in cond_dict during inference!")
-                    print(f"[ERROR] Available: {list(cond_dict.keys())}")
-                else:
-                    print(f"[DEBUG] fpbpn shape in cond_dict: {cond_dict['fpbpn'].shape}")
+            # print(f"[Ashok] it does not go into the if here")
+            # if cond_dict is not None and self.floor_encoder is not None:
+            #     # print(f"[DEBUG] cond_dict keys: {list(cond_dict.keys())}")
+            #     if 'fpbpn' not in cond_dict:
+            #         print("[ERROR] fpbpn NOT in cond_dict during inference!")
+            #         print(f"[ERROR] Available: {list(cond_dict.keys())}")
+            #     else:
+            #         print(f"[DEBUG] fpbpn shape in cond_dict: {cond_dict['fpbpn'].shape}")
                 
-                floor_cond = self.floor_encoder(cond_dict["fpbpn"])
-                print(f"[DEBUG] floor_cond after encoder: {floor_cond.shape}")
+            #     floor_cond = self.floor_encoder(cond_dict["fpbpn"])
+            #     print(f"[DEBUG] floor_cond after encoder: {floor_cond.shape}")
                 
             if cond_dict is not None and self.floor_encoder is not None:
                 floor_cond = self.floor_encoder(
                     cond_dict["fpbpn"]
                 )  # Shape (B, 64)
-                print(f"[Ashok] floor_cond shape: {floor_cond.shape}, fpbpn shape: {cond_dict['fpbpn'].shape}")
+                # print(f"[Ashok] floor_cond shape: {floor_cond.shape}, fpbpn shape: {cond_dict['fpbpn'].shape}")
             # Predict the noise.
             predicted_noise = model(
                 noisy_scenes,
                 timestep=timesteps,
                 cond=text_cond_coarse,
-                text_cond=text_cond, #TODO: send the encoded fpbpn here
+                text_cond=text_cond, 
                 floor_cond=floor_cond,
             )  # Shape (B, N, V)
 

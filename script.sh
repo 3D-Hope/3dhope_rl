@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=16:00:00
+#SBATCH --time=1-06:00:00 
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -20,12 +20,12 @@ free -h
 df -h
 set -x
 
-if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
-    echo "Copying model checkpoint"
-    rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
-else
-    echo "✅ Model checkpoint already exists in scratch."
-fi
+# if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
+#     echo "Copying model checkpoint"
+#     rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
+# else
+#     echo "✅ Model checkpoint already exists in scratch."
+# fi
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
     echo "copying data "
     rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
@@ -158,6 +158,7 @@ sleep 120
 # Run MiDiffusion baseline in background
 echo "[2/2] Starting MiDiffusion baseline training..."
 PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
+    resume=pfksynuz \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
