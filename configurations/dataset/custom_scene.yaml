@@ -20,6 +20,7 @@ data:
     train_stats: "dataset_stats.txt"
     room_layout_size: "64,64"
     room_type: "bedroom"
+    
 
 network:
     type: "diffusion_scene_layout_mixed"

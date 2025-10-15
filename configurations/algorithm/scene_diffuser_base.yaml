@@ -1,6 +1,8 @@
 defaults:
   - base_pytorch_algo # inherits from configurations/algorithm/base_algo.yaml
 
+dataset: ${dataset}
+
 # Dataset specific attributes
 translation_vec_len: ${dataset.translation_vec_len}
 rotation_parametrization: ${dataset.rotation_parametrization}

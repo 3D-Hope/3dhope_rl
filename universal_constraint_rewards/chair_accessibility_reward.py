@@ -472,7 +472,7 @@ def test_chair_accessibility_reward():
 
         return scene
 
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # Test 1: Chair facing wall (bad)
     print("\nTest 1: Chair facing wall")

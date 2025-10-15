@@ -175,7 +175,7 @@ def test_object_count_reward():
         return scene
 
     # Import parse function
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # ========================================================================
     # Test 1: Diverse batch (matches training distribution well)

@@ -1,12 +1,12 @@
 import torch
-
+import json
 class RewardNormalizer:
-    def __init__(self, baseline_stats: dict, alpha: float = 1.0, beta: float = 0.99, eps: float = 1e-8):
+    def __init__(self, baseline_stats_path: str, alpha: float = 1.0, beta: float = 0.99, eps: float = 1e-8):
         """
         Reward normalizer with per-reward statistics and EMA updating.
 
         Args:
-            baseline_stats (dict): Output of get_reward_stats_from_baseline(), e.g.
+            baseline_stats_path (str): Path to the baseline stats file.
                 {
                     "gravity": {"min": -1.2, "max": 0.8, "mean": -0.3, "stddev": 0.4},
                     "non_pen": {"min": -0.05, "max": 0.0, "mean": -0.02, "stddev": 0.01}
@@ -21,6 +21,7 @@ class RewardNormalizer:
 
         # Initialize stats for each reward function
         self.stats = {}
+        baseline_stats = json.load(open(baseline_stats_path))
         for name, s in baseline_stats.items():
             self.stats[name] = {
                 "min": torch.tensor(s["min"], dtype=torch.float32),

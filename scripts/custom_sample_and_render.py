@@ -217,6 +217,9 @@ def main(cfg: DictConfig) -> None:
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 
         print(f"[DEBUG] Sampled scenes shape: {sampled_scenes.shape}")
+        
+        with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
+            pickle.dump(sampled_scenes, f)
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
         bbox_params_list = []

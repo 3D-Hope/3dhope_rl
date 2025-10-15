@@ -31,6 +31,9 @@ from .inpainting_helpers import (
     generate_physical_feasibility_inpainting_masks,
 )
 
+from universal_constraint_rewards.commons import parse_and_descale_scenes, get_universal_reward
+from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
+from dynamic_constraint_rewards.commons import get_dynamic_reward
 
 def ddpm_step_with_logprob(
     scheduler: DDPMScheduler,
@@ -554,8 +557,8 @@ def has_sofa_reward(
     return rewards
 
 
-def composite_reward(
-    scenes: torch.Tensor,
+def universal_reward(
+    parsed_scene: dict,
     scene_vec_desc: SceneVecDescription,
     cfg=None,
     room_type: str = "bedroom",
@@ -574,7 +577,7 @@ def composite_reward(
     All rewards are normalized to [-1, 0] range, then weighted by importance.
 
     Args:
-        scenes (torch.Tensor): The scenes to score of shape (B, N, V).
+        parsed_scene (dict): The parsed scene to score.
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
         cfg (DictConfig, optional): Configuration object.
         room_type (str): Type of room for must-have furniture ('bedroom', 'living_room', etc.)
@@ -586,40 +589,43 @@ def composite_reward(
             - total_rewards: Tensor of shape (B,) with combined rewards
             - reward_components: Dict with individual reward values for logging
     """
-    from physical_constraint_rewards.commons import get_composite_reward
+    from universal_constraint_rewards.commons import get_universal_reward
 
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
     # Use importance weights from config if not provided
     if importance_weights is None and cfg and hasattr(cfg, "ddpo"):
-        if hasattr(cfg.ddpo, "composite_reward"):
-            importance_weights = dict(cfg.ddpo.composite_reward.importance_weights)
+        if hasattr(cfg.ddpo, "universal_reward"):
+            importance_weights = dict(cfg.ddpo.universal_reward.importance_weights)
 
     # Compute composite reward
-    total_rewards, reward_components = get_composite_reward(
-        scenes=scenes,
+    total_rewards, reward_components = get_universal_reward(
+        parsed_scene=parsed_scene,
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
     )
 
-    print(f"[Ashok] Composite reward components:")
+    print(f"[Ashok] Universal reward components:")
     for name, values in reward_components.items():
         print(
             f"  {name}: {values}"
         )
     print(
-        f"[Ashok] Total composite rewards: {total_rewards}"
+        f"[Ashok] Total universal rewards: {total_rewards}"
     )
 
     return total_rewards, reward_components
 
 
-def composite_plus_task_reward(
+def composite_reward(
     scenes: torch.Tensor,
     scene_vec_desc: SceneVecDescription,
-    cfg=None,
+    dynamic_reward_normalizer: Optional[RewardNormalizer],
+    cfg: DictConfig,
+    get_reward_functions: dict,
+    room_type: str = "bedroom",
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward (general scene quality) plus task-specific reward.
@@ -639,18 +645,16 @@ def composite_plus_task_reward(
         tuple: (total_rewards, reward_components)
             - total_rewards: Tensor of shape (B,) with combined rewards
             - reward_components: Dict with individual reward values for logging
-    """
-    from physical_constraint_rewards.commons import get_composite_reward
+    """    
+    if cfg is None or not hasattr(cfg.ddpo, 'dynamic_constraint_rewards'):
+        raise ValueError("cfg.ddpo.dynamic_constraint_rewards configuration is required")
     
-    if cfg is None or not hasattr(cfg.ddpo, 'composite_plus_task'):
-        raise ValueError("cfg.ddpo.composite_plus_task configuration is required")
-    
-    task_cfg = cfg.ddpo.composite_plus_task
+    task_cfg = cfg.ddpo.dynamic_constraint_rewards
     
     # Get task-specific settings
-    task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
-    task_weight = task_cfg.get('task_weight', 2.0)
-    room_type = task_cfg.get('room_type', 'living_room')
+    # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
+    # task_weight = task_cfg.get('task_weight', 2.0)
+    room_type = task_cfg.get('room_type', 'bedroom')
     importance_weights = task_cfg.get('importance_weights', None)
     
     # Convert importance_weights from DictConfig to dict if needed
@@ -660,158 +664,33 @@ def composite_plus_task_reward(
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
     
+    
+    parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
+    
     # 1. Compute composite reward (general scene quality)
-    composite_total, composite_components = get_composite_reward(
-        scenes=scenes,
+    universal_total, universal_components = get_universal_reward(
+        parsed_scene=parsed_scene,
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
     )
     
-    # 2. Compute task-specific reward
-    if task_reward_type == 'has_sofa':
-        task_reward = has_sofa_reward(scenes, scene_vec_desc, cfg)
-    elif task_reward_type == 'two_beds':
-        task_reward = two_beds_reward(scenes, scene_vec_desc, cfg)
-    elif task_reward_type == 'has_table':
-        # Add table checking (index 18)
-        task_reward = torch.zeros(scenes.shape[0], device=scenes.device)
-        for i, scene in enumerate(scenes):
-            has_table = (scene[:, 18] > 0).any().item()
-            task_reward[i] = float(has_table)
-    else:
-        raise ValueError(f"Unknown task_reward_type: {task_reward_type}")
     
-    # 3. Combine rewards
-    total_rewards = composite_total + task_weight * task_reward
+    dynamic_total, dynamic_components = get_dynamic_reward(
+        parsed_scene=parsed_scene,
+        num_classes=num_classes,
+        dynamic_importance_weights=None, #TODO: add dynamic importance weights from LLM
+        room_type=room_type,
+        dynamic_reward_normalizer=dynamic_reward_normalizer,
+        get_reward_functions=get_reward_functions,
+        config=cfg,
+    )
     
-    # 4. Create comprehensive components dict for logging
-    reward_components = composite_components.copy()
-    reward_components['task_reward'] = task_reward
-    reward_components['composite_reward'] = composite_total
-    reward_components['total_reward'] = total_rewards
-    
-    # Print summary
-    print(f"[Ashok] Composite + Task Reward:")
-    print(f"  Task type: {task_reward_type}, Weight: {task_weight}")
-    print(f"  Composite: mean={composite_total.mean().item():.4f}, std={composite_total.std().item():.4f}")
-    print(f"  Task: mean={task_reward.mean().item():.4f}, std={task_reward.std().item():.4f}")
-    print(f"  Total: mean={total_rewards.mean().item():.4f}, std={total_rewards.std().item():.4f}")
+    total_rewards = universal_total + dynamic_total
+    reward_components = universal_components.copy()
+    reward_components.update(dynamic_components)
     
     return total_rewards, reward_components
-
-
-def descale_to_origin(x, minimum, maximum):
-    """
-    Descale normalized coordinates back to original range.
-
-    Args:
-        x: Tensor of shape BxNx3 with values in range [-1, 1]
-        minimum: Tensor of shape 3 with minimum values for each dimension
-        maximum: Tensor of shape 3 with maximum values for each dimension
-
-    Returns:
-        Tensor of shape BxNx3 with values descaled to original range
-    """
-    x = (x + 1) / 2
-    x = x * (maximum - minimum)[None, None, :] + minimum[None, None, :]
-    return x
-
-
-def mutable_reward(
-    scenes: torch.Tensor,
-    scene_vec_desc: SceneVecDescription,
-    reward_func,
-    cfg=None,
-    class_to_name_map=None,
-) -> torch.Tensor:
-    """
-    Descales generated scenes back to world coordinates and calls a dynamic reward function
-    passed as an argument. This allows for on-the-fly reward function creation and usage.
-
-    Args:
-        scenes (torch.Tensor): The normalized scenes to score of shape (B, N, V).
-        scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
-        reward_func (callable): A reward function that takes descaled scenes, class labels,
-                               class mapping, and other parameters.
-        cfg (DictConfig, optional): Optional configuration object.
-        class_to_name_map (dict, optional): Mapping from class indices to object names.
-                                          If None, will use default if available in cfg.
-
-    Returns:
-        torch.Tensor: The rewards for the scenes of shape (B,).
-    """
-    # Default class-to-name mapping if not provided
-    if class_to_name_map is None:
-        if cfg and hasattr(cfg, "class_mapping"):
-            class_to_name_map = cfg.class_mapping
-        else:
-            # Default mapping from the provided data
-            class_to_name_map = {
-                0: "armchair",
-                1: "bookshelf",
-                2: "cabinet",
-                3: "ceiling_lamp",
-                4: "chair",
-                5: "children_cabinet",
-                6: "coffee_table",
-                7: "desk",
-                8: "double_bed",
-                9: "dressing_chair",
-                10: "dressing_table",
-                11: "kids_bed",
-                12: "nightstand",
-                13: "pendant_lamp",
-                14: "shelf",
-                15: "single_bed",
-                16: "sofa",
-                17: "stool",
-                18: "table",
-                19: "tv_stand",
-                20: "wardrobe",
-            }
-
-    device = scenes.device
-
-    # Extract components from scenes
-    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
-
-    # Extract class labels, positions, and sizes
-    class_labels = scenes[:, :, :num_classes]  # Shape: B x N x num_classes
-    positions = scenes[:, :, num_classes : num_classes + 3]  # Shape: B x N x 3
-    sizes = scenes[:, :, num_classes + 3 : num_classes + 6]  # Shape: B x N x 3
-
-    # Descale positions and sizes to original coordinate space
-    if cfg and hasattr(cfg, "descale"):
-        pos_min = torch.tensor(cfg.descale.position_min, device=device)
-        pos_max = torch.tensor(cfg.descale.position_max, device=device)
-        size_min = torch.tensor(cfg.descale.size_min, device=device)
-        size_max = torch.tensor(cfg.descale.size_max, device=device)
-    else:
-        # Default min/max values from the provided code
-        pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
-        pos_max = torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device)
-        size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
-        size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
-
-    descaled_positions = descale_to_origin(positions, pos_min, pos_max)
-    descaled_sizes = descale_to_origin(sizes, size_min, size_max)
-
-    # Create a data structure with all necessary information for the reward function
-    scene_data = {
-        "original_scenes": scenes,
-        "class_labels": class_labels,
-        "positions": descaled_positions,
-        "sizes": descaled_sizes,
-        "class_to_name_map": class_to_name_map,
-        "num_classes": num_classes,
-    }
-
-    # Call the provided reward function
-    rewards = reward_func(scene_data, scene_vec_desc, cfg)
-
-    print("[Ashok] dynamic rewards:", rewards)
-    return rewards
 
 
 def prompt_following_reward(

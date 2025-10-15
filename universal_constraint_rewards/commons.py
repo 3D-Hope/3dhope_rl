@@ -87,7 +87,7 @@ def descale_size(sizes, size_min=None, size_max=None, device="cuda"):
     return descale_to_origin(sizes, size_min, size_max)
 
 
-def parse_and_descale_scenes(scenes, num_classes=22):
+def parse_and_descale_scenes(scenes, num_classes=22, parse_only = False):
     """
     Parse scene tensor and descale positions/sizes to world coordinates.
 
@@ -120,8 +120,12 @@ def parse_and_descale_scenes(scenes, num_classes=22):
     ]  # [cos_theta, sin_theta]
 
     # Descale to world coordinates
-    positions = descale_pos(positions_normalized, device=device)
-    sizes = descale_size(sizes_normalized, device=device)
+    if not parse_only:
+        positions = descale_pos(positions_normalized, device=device)
+        sizes = descale_size(sizes_normalized, device=device)
+    else:
+        positions = positions_normalized
+        sizes = sizes_normalized
 
     # Get object categories
     object_indices = torch.argmax(one_hot, dim=-1)
@@ -141,8 +145,10 @@ def parse_and_descale_scenes(scenes, num_classes=22):
     }
 
 
-def get_composite_reward(
-    scenes, num_classes=22, reward_weights=None, importance_weights=None, **kwargs
+
+
+def get_universal_reward(
+    parsed_scene, num_classes=22, reward_weights=None, importance_weights=None, **kwargs
 ):
     """
     Entry point for computing composite reward from multiple reward functions.
@@ -301,7 +307,7 @@ def get_composite_reward(
         use_normalization = True
 
     # Parse and descale scenes once
-    parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
+    # parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
 
     # Initialize reward components
     reward_components = {}
@@ -317,7 +323,7 @@ def get_composite_reward(
 
     # Compute individual rewards (import here to avoid circular import)
     if "gravity" in rewards_to_compute:
-        from physical_constraint_rewards.gravity_following_reward import (
+        from universal_constraint_rewards.gravity_following_reward import (
             compute_gravity_following_reward,
         )
         average_gravity = compute_gravity_following_reward(parsed_scene) / len(parsed_scene)
@@ -325,7 +331,7 @@ def get_composite_reward(
     #     reward_components["gravity"] = compute_gravity_following_reward(parsed_scene) #NOTE: flux diffusion baseline already has about 6mm voilaiton in average. so trying to optimize this further makes it unlearn instead, so just logging the values 
 
     if "object_count" in rewards_to_compute:
-        from physical_constraint_rewards.object_count_reward import (
+        from universal_constraint_rewards.object_count_reward import (
             compute_object_count_reward,
         )
 
@@ -335,7 +341,7 @@ def get_composite_reward(
         )
 
     if "must_have_furniture" in rewards_to_compute:
-        from physical_constraint_rewards.must_have_furniture_reward import (
+        from universal_constraint_rewards.must_have_furniture_reward import (
             compute_must_have_furniture_reward,
         )
 
@@ -345,17 +351,19 @@ def get_composite_reward(
         )
 
     if "non_penetration" in rewards_to_compute:
-        from physical_constraint_rewards.non_penetration_reward import (
+        from universal_constraint_rewards.non_penetration_reward import (
             compute_non_penetration_reward,
         )
 
         reward_components["non_penetration"] = compute_non_penetration_reward(
             parsed_scene
         )
+        
+    
 
     # Combine rewards with weights
-    batch_size = scenes.shape[0]
-    device = scenes.device
+    batch_size = parsed_scene["is_empty"].shape[0]
+    device = parsed_scene["is_empty"].device
     total_reward = torch.zeros(batch_size, device=device)
 
     if use_normalization:
@@ -377,3 +385,5 @@ def get_composite_reward(
         total_reward / importance_sum,
         reward_components,
     )  # total reward scale  [0, sum of importance weights] to [0, 1]
+    
+

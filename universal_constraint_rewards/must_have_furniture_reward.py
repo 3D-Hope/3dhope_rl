@@ -4,7 +4,7 @@ A bedroom must have at least one bed of any type (single_bed, double_bed, kids_b
 
 import torch
 
-from physical_constraint_rewards.commons import idx_to_labels
+from universal_constraint_rewards.commons import idx_to_labels
 
 
 def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom"):
@@ -117,7 +117,7 @@ def test_must_have_furniture_reward():
     scenes = torch.stack([scene1, scene2, scene3, scene4, scene5], dim=0)
 
     # Import parse function
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # Parse scenes
     parsed = parse_and_descale_scenes(scenes, num_classes=num_classes)

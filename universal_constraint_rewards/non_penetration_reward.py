@@ -13,7 +13,7 @@ Penetration depth is better than overlap area or IoU because:
 
 import torch
 
-from physical_constraint_rewards.commons import ceiling_objects, idx_to_labels
+from universal_constraint_rewards.commons import ceiling_objects, idx_to_labels
 
 
 def compute_aabb_penetration_depth(centers1, sizes1, centers2, sizes2):
@@ -223,7 +223,7 @@ def test_non_penetration_reward():
     scenes = torch.stack([scene1, scene2, scene3, scene4, scene5], dim=0)
 
     # Import parse function
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # Parse scenes
     parsed = parse_and_descale_scenes(scenes, num_classes=num_classes)

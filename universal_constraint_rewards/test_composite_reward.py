@@ -4,7 +4,7 @@ Test the composite reward system with all implemented rewards.
 
 import torch
 
-from physical_constraint_rewards.commons import get_composite_reward
+from universal_constraint_rewards.commons import get_composite_reward
 
 
 def test_composite_reward_system():

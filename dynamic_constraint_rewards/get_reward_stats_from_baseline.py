@@ -11,12 +11,17 @@ import subprocess
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Callable, Any
+from universal_constraint_rewards.commons import parse_and_descale_scenes
+import torch
+from omegaconf import DictConfig
+import json
 
 
 def get_reward_stats_from_baseline(
     reward_functions: Dict[str, Callable],
     load: str = "bgdrozky",
     dataset: str = "custom_scene",
+    config: DictConfig = None,
     dataset_processed_scene_data_path: str = "data/metadatas/custom_scene_metadata.json",
     dataset_max_num_objects_per_scene: int = 12,
     num_scenes: int = 256,
@@ -105,7 +110,7 @@ def get_reward_stats_from_baseline(
     outputs_dir = Path(__file__).parent.parent / "outputs"
     
     # Recursively find all pkl files and get the most recent one
-    pkl_files = list(outputs_dir.glob("**/sampled_scenes_results.pkl"))
+    pkl_files = list(outputs_dir.glob("**/raw_sampled_scenes.pkl"))
     
     if not pkl_files:
         raise FileNotFoundError(f"Could not find sampled_scenes_results.pkl in outputs directory: {outputs_dir}")
@@ -117,42 +122,25 @@ def get_reward_stats_from_baseline(
     
     # Load the pickle file containing ThreedFrontResults
     with open(pkl_path, "rb") as f:
-        threed_front_results = pickle.load(f)
+        raw_results = pickle.load(f)
+        
+    # print(f"[SAUGAT] Raw results: {raw_results}")
+    raw_results = torch.tensor(raw_results)
+    parsed_scenes = parse_and_descale_scenes(raw_results)
     
-    # Extract the layout list from ThreedFrontResults
-    # The ThreedFrontResults class stores layouts in _predicted_layouts (private attribute)
-    # Each layout contains dicts with keys: "class_labels", "translations", "sizes", "angles"
-    layout_list = threed_front_results._predicted_layouts
     
-    print(f"Loaded {len(layout_list)} scenes")
-    
-    # Compute rewards for each scene and each reward function
+    room_type = config.algorithm.ddpo.dynamic_constraint_rewards.room_type
+    all_rooms_info = json.load(open(os.path.join(config.dataset.data.path_to_dataset_files, "all_rooms_info.json")))
+    idx_to_labels = all_rooms_info[room_type]["unique_values"]
+    max_objects = all_rooms_info[room_type]["max_objects"]
+    num_classes = all_rooms_info[room_type]["num_classes"]
+
     reward_stats = {}
     
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
-        rewards = []
-        
-        for scene_idx, scene_params in enumerate(layout_list):
-            try:
-                # Each scene_params is a dict with:
-                # - class_labels: array of one-hot encoded class labels
-                # - translations: array of 3D positions
-                # - sizes: array of 3D sizes
-                # - angles: array of 2D angle representations (cos, sin)
+        rewards = reward_func(parsed_scenes, idx_to_labels=idx_to_labels, room_type=room_type, max_objects=max_objects, num_classes=num_classes)
                 
-                reward = reward_func(scene_params)
-                
-                # Validate reward is in [0, 1]
-                if not (0 <= reward <= 1):
-                    print(f"Warning: Reward {reward} for scene {scene_idx} is outside [0, 1] range")
-                
-                rewards.append(reward)
-                
-            except Exception as e:
-                print(f"Error computing reward for scene {scene_idx}: {e}")
-                continue
-        
         # Compute statistics
         rewards_array = np.array(rewards)
         

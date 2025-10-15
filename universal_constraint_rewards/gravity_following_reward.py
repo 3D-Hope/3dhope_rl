@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from physical_constraint_rewards.commons import ceiling_objects, idx_to_labels
+from universal_constraint_rewards.commons import ceiling_objects, idx_to_labels
 
 
 def compute_gravity_following_reward(parsed_scene):
@@ -204,7 +204,7 @@ def test_gravity_following_reward():
     scenes = torch.stack([scene1, scene2, scene3], dim=0)
 
     # Import parse function
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # Parse scenes
     parsed = parse_and_descale_scenes(scenes, num_classes=num_classes)

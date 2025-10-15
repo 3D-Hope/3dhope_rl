@@ -1,0 +1,1 @@
+{"code_2_adequate_space": {"min": 0.0, "max": 3.0, "mean": 0.12962962687015533, "stddev": 0.609987735748291, "num_scenes": 162}, "code_children_cabinet": {"min": 0.0, "max": 10.0, "mean": 0.37037035822868347, "stddev": 1.8885259628295898, "num_scenes": 162}, "code_kids_bed": {"min": 0.0, "max": 1.0, "mean": 0.043209876865148544, "stddev": 0.20332925021648407, "num_scenes": 162}}

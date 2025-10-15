@@ -9,7 +9,6 @@ from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .ddpo_helpers import (
     composite_reward,
-    composite_plus_task_reward,
     ddim_step_with_logprob,
     ddpm_step_with_logprob,
     has_sofa_reward,
@@ -21,6 +20,8 @@ from .ddpo_helpers import (
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
+from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
+from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
 
 
 class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
@@ -37,6 +38,17 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         # Variable for storing the reward computation cache.
         self.reward_cache = None
+        self.cfg = cfg
+        if self.cfg.ddpo.dynamic_constraint_rewards.use:
+            self.dynamic_reward_normalizer = RewardNormalizer(self.cfg.ddpo.dynamic_constraint_rewards.stats_path)
+        else:
+            self.dynamic_reward_normalizer = None
+        
+        if self.cfg.ddpo.dynamic_constraint_rewards.use:
+            self.get_reward_functions, self.test_reward_functions =     import_dynamic_reward_functions(self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir)
+        else:
+            self.get_reward_functions = None
+            self.test_reward_functions = None
 
     def generate_trajs_for_ddpo(
         self,
@@ -194,8 +206,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     self.cfg.ddpo.use_object_number_reward,
                     self.cfg.ddpo.use_prompt_following_reward,
                     self.cfg.ddpo.use_physical_feasible_objects_reward,
-                    self.cfg.ddpo.use_composite_reward,
-                    self.cfg.ddpo.use_composite_plus_task_reward,
+                    self.cfg.ddpo.dynamic_constraint_rewards.use,
                 ]
             )
             > 1
@@ -251,14 +262,14 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg
             )
 
-        elif self.cfg.ddpo.use_composite_reward:
+        elif self.cfg.ddpo.dynamic_constraint_rewards.use:
             print(
                 "Using composite reward (gravity + non-penetration + must-have + object count)"
             )
             # Get room type from config
             room_type = "bedroom"  # default
-            if hasattr(self.cfg.ddpo, "composite_reward"):
-                room_type = self.cfg.ddpo.composite_reward.get("room_type", "bedroom")
+            if hasattr(self.cfg.ddpo, "dynamic_constraint_rewards"):
+                room_type = self.cfg.ddpo.dynamic_constraint_rewards.get("room_type", "bedroom")
 
             # Compute composite reward with all physics constraints
             rewards, reward_components = composite_reward(
@@ -266,6 +277,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 scene_vec_desc=self.scene_vec_desc,
                 cfg=self.cfg,
                 room_type=room_type,
+                dynamic_reward_normalizer=self.dynamic_reward_normalizer,
+                get_reward_functions=self.get_reward_functions,
             )
 
             # Log individual components for analysis
@@ -279,27 +292,6 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                         prog_bar=False,
                     )
 
-        elif self.cfg.ddpo.use_composite_plus_task_reward:
-            print(
-                "Using composite + task reward (physics constraints + task-specific goal)"
-            )
-            # Compute composite reward + task-specific reward
-            rewards, reward_components = composite_plus_task_reward(
-                scenes=x0,
-                scene_vec_desc=self.scene_vec_desc,
-                cfg=self.cfg,
-            )
-
-            # Log individual components for analysis
-            if hasattr(self, "log"):
-                for name, values in reward_components.items():
-                    self.log(
-                        f"reward_components/{name}_mean",
-                        values.mean(),
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=False,
-                    )
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]

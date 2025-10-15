@@ -448,7 +448,7 @@ def test_night_tables_reward():
     num_classes = 22
     num_objects = 12
 
-    from physical_constraint_rewards.commons import parse_and_descale_scenes
+    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
     # Room bounds for normalization
     x_min, x_max = -2.7625005, 2.7784417
