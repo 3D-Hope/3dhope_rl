@@ -1,11 +1,15 @@
 import json
 
+all_rooms_info = json.load(
+    open(
+        "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files/all_rooms_info.json"
+    )
+)
 
-all_rooms_info = json.load(open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files/all_rooms_info.json"))
 
 def create_constraint_prompt(room_type, query, max_constraints):
     idx_to_labels = all_rooms_info[room_type]["unique_values"]
-    
+
     prompt = f"""
     You are an expert in interior design and 3D scene generation. You need to generate constraints for a {room_type} scene generation system.
     
@@ -50,11 +54,12 @@ def create_constraint_prompt(room_type, query, max_constraints):
     """
     return prompt
 
+
 def create_reward_prompt(room_type, query, constraint):
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes"]
     idx_to_labels = all_rooms_info[room_type]["unique_values"]
-    
+
     prompt = f"""
         You are an expert in 3D scene generation and reinforcement learning. You need to generate Python reward functions for custom constraints in a scene generation system.
 
@@ -351,18 +356,18 @@ Now, generate the reward function for the following query:
 
 if __name__ == "__main__":
     # print(create_constraint_prompt("bedroom", "a kids room", 3))
-    
+
     with open("constraint_prompt.txt", "w") as f:
         f.write(create_constraint_prompt("bedroom", "a kids room", 3))
-        
+
     constraints = {
         "constraints": [
             "a kids_bed must be present in the room",
             "a children_cabinet should be included for storage",
-            "the room should have adequate space around the kids_bed for safe movement"
+            "the room should have adequate space around the kids_bed for safe movement",
         ]
     }
-    
+
     for constraint in constraints["constraints"]:
         with open(f"reward_prompt_{constraint}.txt", "w") as f:
             f.write(create_reward_prompt("bedroom", "a kids room", constraint))

@@ -15,6 +15,8 @@ from diffusers.utils.torch_utils import randn_tensor
 from omegaconf import DictConfig
 from pydrake.all import QueryObject, SignedDistancePair
 
+from dynamic_constraint_rewards.commons import get_dynamic_reward
+from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.algorithms.common.dataclasses import (
     PlantSceneGraphCache,
     SceneVecDescription,
@@ -25,15 +27,16 @@ from steerable_scene_generation.utils.drake_utils import (
 from steerable_scene_generation.utils.prompt_following_metrics import (
     compute_prompt_following_metrics,
 )
+from universal_constraint_rewards.commons import (
+    get_universal_reward,
+    parse_and_descale_scenes,
+)
 
 from .inpainting_helpers import (
     generate_empty_object_inpainting_masks,
     generate_physical_feasibility_inpainting_masks,
 )
 
-from universal_constraint_rewards.commons import parse_and_descale_scenes, get_universal_reward
-from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
-from dynamic_constraint_rewards.commons import get_dynamic_reward
 
 def ddpm_step_with_logprob(
     scheduler: DDPMScheduler,
@@ -609,12 +612,8 @@ def universal_reward(
 
     print(f"[Ashok] Universal reward components:")
     for name, values in reward_components.items():
-        print(
-            f"  {name}: {values}"
-        )
-    print(
-        f"[Ashok] Total universal rewards: {total_rewards}"
-    )
+        print(f"  {name}: {values}")
+    print(f"[Ashok] Total universal rewards: {total_rewards}")
 
     return total_rewards, reward_components
 
@@ -629,44 +628,45 @@ def composite_reward(
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward (general scene quality) plus task-specific reward.
-    
+
     This combines:
     - Composite reward: gravity + non-penetration + must-have + object count
     - Task-specific reward: has_sofa, two_beds, etc.
-    
+
     Final reward = composite_reward + task_weight * task_reward
-    
+
     Args:
         scenes (torch.Tensor): The scenes to score of shape (B, N, V).
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
         cfg (DictConfig): Configuration object (required for task settings).
-    
+
     Returns:
         tuple: (total_rewards, reward_components)
             - total_rewards: Tensor of shape (B,) with combined rewards
             - reward_components: Dict with individual reward values for logging
-    """    
-    if cfg is None or not hasattr(cfg.ddpo, 'dynamic_constraint_rewards'):
-        raise ValueError("cfg.ddpo.dynamic_constraint_rewards configuration is required")
-    
+    """
+    if cfg is None or not hasattr(cfg.ddpo, "dynamic_constraint_rewards"):
+        raise ValueError(
+            "cfg.ddpo.dynamic_constraint_rewards configuration is required"
+        )
+
     task_cfg = cfg.ddpo.dynamic_constraint_rewards
-    
+
     # Get task-specific settings
     # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
     # task_weight = task_cfg.get('task_weight', 2.0)
-    room_type = task_cfg.get('room_type', 'bedroom')
-    importance_weights = task_cfg.get('importance_weights', None)
-    
+    room_type = task_cfg.get("room_type", "bedroom")
+    importance_weights = task_cfg.get("importance_weights", None)
+
     # Convert importance_weights from DictConfig to dict if needed
     if importance_weights is not None:
         importance_weights = dict(importance_weights)
-    
+
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
-    
-    
+
     parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
-    
+
     # 1. Compute composite reward (general scene quality)
     universal_total, universal_components = get_universal_reward(
         parsed_scene=parsed_scene,
@@ -674,22 +674,21 @@ def composite_reward(
         importance_weights=importance_weights,
         room_type=room_type,
     )
-    
-    
+
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
         num_classes=num_classes,
-        dynamic_importance_weights=None, #TODO: add dynamic importance weights from LLM
+        dynamic_importance_weights=None,  # TODO: add dynamic importance weights from LLM
         room_type=room_type,
         dynamic_reward_normalizer=dynamic_reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
     )
-    
+
     total_rewards = universal_total + dynamic_total
     reward_components = universal_components.copy()
     reward_components.update(dynamic_components)
-    
+
     return total_rewards, reward_components
 
 

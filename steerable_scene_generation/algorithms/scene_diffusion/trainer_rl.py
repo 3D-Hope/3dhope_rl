@@ -5,6 +5,8 @@ import torch
 from diffusers import DDIMScheduler, DDPMScheduler
 from tqdm import tqdm
 
+from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
+from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .ddpo_helpers import (
@@ -20,8 +22,6 @@ from .ddpo_helpers import (
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
-from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
-from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
 
 
 class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
@@ -40,12 +40,19 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         self.reward_cache = None
         self.cfg = cfg
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
-            self.dynamic_reward_normalizer = RewardNormalizer(self.cfg.ddpo.dynamic_constraint_rewards.stats_path)
+            self.dynamic_reward_normalizer = RewardNormalizer(
+                self.cfg.ddpo.dynamic_constraint_rewards.stats_path
+            )
         else:
             self.dynamic_reward_normalizer = None
-        
+
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
-            self.get_reward_functions, self.test_reward_functions =     import_dynamic_reward_functions(self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir)
+            (
+                self.get_reward_functions,
+                self.test_reward_functions,
+            ) = import_dynamic_reward_functions(
+                self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir
+            )
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
@@ -269,7 +276,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # Get room type from config
             room_type = "bedroom"  # default
             if hasattr(self.cfg.ddpo, "dynamic_constraint_rewards"):
-                room_type = self.cfg.ddpo.dynamic_constraint_rewards.get("room_type", "bedroom")
+                room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
+                    "room_type", "bedroom"
+                )
 
             # Compute composite reward with all physics constraints
             rewards, reward_components = composite_reward(
@@ -291,7 +300,6 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                         on_epoch=False,
                         prog_bar=False,
                     )
-
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]

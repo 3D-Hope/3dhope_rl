@@ -1,10 +1,14 @@
-import torch
 import json
 import os
+
+import torch
+
 from universal_constraint_rewards.commons import parse_and_descale_scenes
+
 
 def import_dynamic_reward_functions(reward_code_dir: str):
     import os
+
     # Test each reward function individually.
     reward_functions = {}
     # Iterate through each file inside reward_code_dir and import the reward function.
@@ -21,63 +25,76 @@ def import_dynamic_reward_functions(reward_code_dir: str):
 
             # print(f"[SAUGAT] Imported reward function from {file.split('.')[0]}")
 
-            reward_functions[file.split('.')[0]] = {
+            reward_functions[file.split(".")[0]] = {
                 "get_reward": get_reward,
-                "test_reward": test_reward
+                "test_reward": test_reward,
             }
     get_reward_functions = {}
     for key, value in reward_functions.items():
         get_reward_functions[key] = value["get_reward"]
-    
+
     test_reward_functions = {}
     for key, value in reward_functions.items():
         test_reward_functions[key] = value["test_reward"]
-        
+
     return get_reward_functions, test_reward_functions
 
+
 def get_dynamic_reward(
-    parsed_scene, num_classes=22, dynamic_importance_weights=None, dynamic_reward_normalizer=None, get_reward_functions=None, config=None, **kwargs
+    parsed_scene,
+    num_classes=22,
+    dynamic_importance_weights=None,
+    dynamic_reward_normalizer=None,
+    get_reward_functions=None,
+    config=None,
+    **kwargs,
 ):
     """
     Entry point for computing dynamic reward from multiple reward functions.
-    
+
     this function assumes, llm has already created variable number of rewards to follow user's instruction. these reward functions are runnable.
-    
+
     llm should also give use a technique to normalize each reward to be bounded with in [0, 1] range.
     0 is worst 1 is the best scene.
-    
-    
+
+
     this function returns the sum of all those rewards weighted by importance weights. and the total should also be in range [0, 1].
     """
     rewards = {}
     room_type = config.ddpo.dynamic_constraint_rewards.room_type
-    all_rooms_info = json.load(open(os.path.join(config.dataset.data.path_to_dataset_files, "all_rooms_info.json")))
+    all_rooms_info = json.load(
+        open(
+            os.path.join(
+                config.dataset.data.path_to_dataset_files, "all_rooms_info.json"
+            )
+        )
+    )
     idx_to_label = all_rooms_info[room_type]["unique_values"]
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes"]
     for key, value in get_reward_functions.items():
-        reward = value(parsed_scene, idx_to_label=idx_to_label,num_classes=num_classes, max_objects=max_objects, **kwargs)
+        reward = value(
+            parsed_scene,
+            idx_to_label=idx_to_label,
+            num_classes=num_classes,
+            max_objects=max_objects,
+            **kwargs,
+        )
         rewards[key] = reward
-    
+
     if dynamic_reward_normalizer is not None:
         for key, value in rewards.items():
             rewards[key] = dynamic_reward_normalizer.normalize(key, torch.tensor(value))
-            
+
     rewards_sum = 0
     if dynamic_importance_weights is None:
         dynamic_importance_weights = {key: 1.0 for key in rewards.keys()}
-        
+
     reward_components = {}
-            
+
     for key, value in rewards.items():
         importance = dynamic_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
         reward_components[key] = value
-    
+
     return rewards_sum / sum(dynamic_importance_weights.values()), reward_components
-    
-    
-    
-    
-  
-    

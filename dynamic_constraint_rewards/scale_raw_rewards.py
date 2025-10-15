@@ -1,7 +1,16 @@
-import torch
 import json
+
+import torch
+
+
 class RewardNormalizer:
-    def __init__(self, baseline_stats_path: str, alpha: float = 1.0, beta: float = 0.99, eps: float = 1e-8):
+    def __init__(
+        self,
+        baseline_stats_path: str,
+        alpha: float = 1.0,
+        beta: float = 0.99,
+        eps: float = 1e-8,
+    ):
         """
         Reward normalizer with per-reward statistics and EMA updating.
 
@@ -25,7 +34,7 @@ class RewardNormalizer:
         for name, s in baseline_stats.items():
             self.stats[name] = {
                 "min": torch.tensor(s["min"], dtype=torch.float32),
-                "max": torch.tensor(s["max"], dtype=torch.float32)
+                "max": torch.tensor(s["max"], dtype=torch.float32),
             }
 
     def normalize(self, name: str, rewards: torch.Tensor) -> torch.Tensor:
@@ -40,7 +49,9 @@ class RewardNormalizer:
             torch.Tensor: Normalized rewards in [0, 1].
         """
         if name not in self.stats:
-            raise ValueError(f"Unknown reward name '{name}' — initialize first via baseline stats.")
+            raise ValueError(
+                f"Unknown reward name '{name}' — initialize first via baseline stats."
+            )
 
         device = rewards.device
         r_min = self.stats[name]["min"].to(device)
@@ -69,7 +80,7 @@ class RewardNormalizer:
         return {
             name: {
                 "min": float(v["min"].cpu().item()),
-                "max": float(v["max"].cpu().item())
+                "max": float(v["max"].cpu().item()),
             }
             for name, v in self.stats.items()
         }

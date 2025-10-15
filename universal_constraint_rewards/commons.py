@@ -87,7 +87,7 @@ def descale_size(sizes, size_min=None, size_max=None, device="cuda"):
     return descale_to_origin(sizes, size_min, size_max)
 
 
-def parse_and_descale_scenes(scenes, num_classes=22, parse_only = False):
+def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False):
     """
     Parse scene tensor and descale positions/sizes to world coordinates.
 
@@ -143,8 +143,6 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only = False):
         "is_empty": is_empty,
         "device": device,
     }
-
-
 
 
 def get_universal_reward(
@@ -205,14 +203,14 @@ def get_universal_reward(
     NORMALIZATION_CONFIG = {
         "gravity": {
             "type": "tanh",
-            "scale": 0.2, #tried with 1, reward got minimized because values were in few cms,   tried with 0.01 too harsh did not learn, tanh saturated# Sensitivity 
+            "scale": 0.2,  # tried with 1, reward got minimized because values were in few cms,   tried with 0.01 too harsh did not learn, tanh saturated# Sensitivity
             # tried 0.1 gravity raw rewards are values in rane [-2.5  , -0.0139] mean -0.129
             # Sensitivity: 1 cm off the ground(total violations) is severely bad
             # NOT a maximum! Can handle arbitrarily large penalties smoothly
         },
         "non_penetration": {
             "type": "tanh",
-            "scale": 5, #IMP all scenes' rewards are max, no penetration at all in train and val # 5.0 led to about 10% hoping to lower it further,  (after convergence of 5.0 scale curriculum learning may be)tried with 0.05 too easy(all reward 1) did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
+            "scale": 5,  # IMP all scenes' rewards are max, no penetration at all in train and val # 5.0 led to about 10% hoping to lower it further,  (after convergence of 5.0 scale curriculum learning may be)tried with 0.05 too easy(all reward 1) did not learn, tanh saturated# Sensitivity: 5cm total penetration(considered "severe")
             # NOT a maximum! Can handle arbitrarily large overlaps smoothly
         },
         "must_have_furniture": {
@@ -326,9 +324,12 @@ def get_universal_reward(
         from universal_constraint_rewards.gravity_following_reward import (
             compute_gravity_following_reward,
         )
-        average_gravity = compute_gravity_following_reward(parsed_scene) / len(parsed_scene)
+
+        average_gravity = compute_gravity_following_reward(parsed_scene) / len(
+            parsed_scene
+        )
         print(f"average gravity reward {average_gravity}")
-    #     reward_components["gravity"] = compute_gravity_following_reward(parsed_scene) #NOTE: flux diffusion baseline already has about 6mm voilaiton in average. so trying to optimize this further makes it unlearn instead, so just logging the values 
+    #     reward_components["gravity"] = compute_gravity_following_reward(parsed_scene) #NOTE: flux diffusion baseline already has about 6mm voilaiton in average. so trying to optimize this further makes it unlearn instead, so just logging the values
 
     if "object_count" in rewards_to_compute:
         from universal_constraint_rewards.object_count_reward import (
@@ -358,8 +359,6 @@ def get_universal_reward(
         reward_components["non_penetration"] = compute_non_penetration_reward(
             parsed_scene
         )
-        
-    
 
     # Combine rewards with weights
     batch_size = parsed_scene["is_empty"].shape[0]
@@ -385,5 +384,3 @@ def get_universal_reward(
         total_reward / importance_sum,
         reward_components,
     )  # total reward scale  [0, sum of importance weights] to [0, 1]
-    
-

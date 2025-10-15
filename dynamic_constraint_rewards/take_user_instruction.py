@@ -1,20 +1,21 @@
 # takes the user input
 import argparse
-from call_agent import ConstraintGenerator, RewardGenerator
-import os
-import torch
-from get_reward_stats_from_baseline import get_reward_stats_from_baseline
-from scale_raw_rewards import RewardNormalizer
 import json
+import os
+
 import hydra
-from omegaconf import DictConfig, OmegaConf
-from steerable_scene_generation.utils.omegaconf import register_resolvers
+import torch
+
+from call_agent import ConstraintGenerator, RewardGenerator
 from commons import import_dynamic_reward_functions
+from get_reward_stats_from_baseline import get_reward_stats_from_baseline
+from omegaconf import DictConfig, OmegaConf
+from scale_raw_rewards import RewardNormalizer
+
+from steerable_scene_generation.utils.omegaconf import register_resolvers
 
 
-@hydra.main(
-    version_base=None, config_path="../configurations", config_name="config"
-)
+@hydra.main(version_base=None, config_path="../configurations", config_name="config")
 def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
@@ -42,21 +43,21 @@ def main(cfg: DictConfig):
 
     # Test each reward function individually.
 
-    
-    get_reward_functions, test_reward_functions = import_dynamic_reward_functions(reward_code_dir)
-
+    get_reward_functions, test_reward_functions = import_dynamic_reward_functions(
+        reward_code_dir
+    )
 
     # Test each reward function individually.
     for file in test_reward_functions:
         test_reward_functions[file]()
 
-    stats = get_reward_stats_from_baseline(get_reward_functions, num_scenes=162, config=cfg)
+    stats = get_reward_stats_from_baseline(
+        get_reward_functions, num_scenes=162, config=cfg
+    )
     print("Stats: ", stats)
-
 
     with open("stats.json", "w") as f:
         json.dump(stats, f)
-
 
     # Testing normaizer
     # reward_normalizer = RewardNormalizer(stats)
@@ -64,6 +65,7 @@ def main(cfg: DictConfig):
     # for key, value in get_reward_functions.items():
     #     normalized_reward = reward_normalizer.normalize(key, torch.tensor([1.0, 2.0, 3.0]))
     #     print(f"Normalized reward for {key}: {normalized_reward}")
+
 
 if __name__ == "__main__":
     main()

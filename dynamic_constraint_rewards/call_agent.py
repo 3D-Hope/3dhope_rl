@@ -1,13 +1,16 @@
 import json
 import os
-from dotenv import load_dotenv
-from create_prompt import create_constraint_prompt, create_reward_prompt
+
 import google.generativeai as genai
+
+from create_prompt import create_constraint_prompt, create_reward_prompt
+from dotenv import load_dotenv
 from openai import OpenAI
 
 # Add Groq import, handle gracefully if missing
 try:
     from groq import Groq
+
     GROQ_AVAILABLE = True
 except ImportError:
     GROQ_AVAILABLE = False
@@ -15,6 +18,7 @@ except ImportError:
 # Add Anthropic import, handle gracefully if missing
 try:
     import anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
@@ -34,26 +38,35 @@ provider = (LLM_PROVIDER or "gemini").lower()
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
+
 class ConstraintGenerator:
     def __init__(self):
         if provider == "gemini":
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
         elif provider == "openai":
             self.model = OpenAI(api_key=OPENAI_API_KEY)
         elif provider == "groq":
             if not GROQ_AVAILABLE:
-                raise ImportError("groq package is not installed. Please install it (`pip install groq`).")
+                raise ImportError(
+                    "groq package is not installed. Please install it (`pip install groq`)."
+                )
             self.model = Groq(api_key=GROQ_API_KEY)
         elif provider == "anthropic":
             if not ANTHROPIC_AVAILABLE:
-                raise ImportError("anthropic package is not installed. Please install it (`pip install anthropic`).")
+                raise ImportError(
+                    "anthropic package is not installed. Please install it (`pip install anthropic`)."
+                )
             self.model = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         else:
             raise ValueError(f"Invalid LLM provider: {provider}")
         self.max_constraints = 3
 
     def generate_constraints(self, instructions_json):
-        prompt = create_constraint_prompt(instructions_json["room_type"], instructions_json["query"], self.max_constraints)
+        prompt = create_constraint_prompt(
+            instructions_json["room_type"],
+            instructions_json["query"],
+            self.max_constraints,
+        )
         # print("[SAUGAT] Prompt: ", prompt)
         response_text = None
         if provider == "gemini":
@@ -61,14 +74,13 @@ class ConstraintGenerator:
             response_text = response.text.strip()
         elif provider == "openai":
             response = self.model.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}]
+                model="gpt-4", messages=[{"role": "user", "content": prompt}]
             )
             response_text = response.choices[0].message.content.strip()
         elif provider == "groq":
             response = self.model.chat.completions.create(
                 model="moonshotai/kimi-k2-instruct-0905",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             response_text = response.choices[0].message.content.strip()
         elif provider == "anthropic":
@@ -76,9 +88,7 @@ class ConstraintGenerator:
             response = self.model.messages.create(
                 model="claude-sonnet-4-5",  # or use "claude-3-sonnet-20240229" etc.
                 max_tokens=2048,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
             # anthropic returns content as a list of content blocks; join for plain text
             response_text = ""
@@ -99,32 +109,44 @@ class ConstraintGenerator:
         except Exception as e:
             # If not valid JSON, try extracting JSON substring
             import re
+
             json_match = re.search(r"\{[\s\S]*\}", response_text)
             if json_match:
                 constraints_json = json.loads(json_match.group(0))
             else:
-                raise RuntimeError(f"Failed to parse JSON from response: {response_text}") from e
+                raise RuntimeError(
+                    f"Failed to parse JSON from response: {response_text}"
+                ) from e
         return constraints_json
+
 
 class RewardGenerator:
     def __init__(self):
         if provider == "gemini":
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
         elif provider == "openai":
             self.model = OpenAI(api_key=OPENAI_API_KEY)
         elif provider == "groq":
             if not GROQ_AVAILABLE:
-                raise ImportError("groq package is not installed. Please install it (`pip install groq`).")
+                raise ImportError(
+                    "groq package is not installed. Please install it (`pip install groq`)."
+                )
             self.model = Groq(api_key=GROQ_API_KEY)
         elif provider == "anthropic":
             if not ANTHROPIC_AVAILABLE:
-                raise ImportError("anthropic package is not installed. Please install it (`pip install anthropic`).")
+                raise ImportError(
+                    "anthropic package is not installed. Please install it (`pip install anthropic`)."
+                )
             self.model = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         else:
             raise ValueError(f"Invalid LLM provider: {provider}")
 
     def generate_reward(self, instructions_json):
-        prompt = create_reward_prompt(instructions_json["room_type"], instructions_json["query"], instructions_json["constraint"])
+        prompt = create_reward_prompt(
+            instructions_json["room_type"],
+            instructions_json["query"],
+            instructions_json["constraint"],
+        )
         # print("[SAUGAT] Prompt: ", prompt)
         response_text = None
         if provider == "gemini":
@@ -132,23 +154,20 @@ class RewardGenerator:
             response_text = response.text.strip()
         elif provider == "openai":
             response = self.model.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}]
+                model="gpt-4", messages=[{"role": "user", "content": prompt}]
             )
             response_text = response.choices[0].message.content.strip()
         elif provider == "groq":
             response = self.model.chat.completions.create(
                 model="moonshotai/kimi-k2-instruct-0905",
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             response_text = response.choices[0].message.content.strip()
         elif provider == "anthropic":
             response = self.model.messages.create(
                 model="claude-sonnet-4-5",
                 max_tokens=2048,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
             response_text = ""
             if hasattr(response, "content") and isinstance(response.content, list):
@@ -169,18 +188,13 @@ class RewardGenerator:
         if response_text.endswith("```"):
             response_text = response_text[:-3]
         response_text = response_text.strip()
-        return {
-            "success": True,
-            "raw_response": response_text
-        }
+        return {"success": True, "raw_response": response_text}
+
 
 if __name__ == "__main__":
     print("=" * 50)
     print("\n")
-    instructions_json = {
-        "room_type": "bedroom",
-        "query": "kids room"
-    }
+    instructions_json = {"room_type": "bedroom", "query": "kids room"}
 
     constraint_generator = ConstraintGenerator()
     reward_generator = RewardGenerator()
@@ -194,7 +208,13 @@ if __name__ == "__main__":
     for i in range(len(constraints["constraints"])):
         constraint = constraints["constraints"][i]
         # print(f"[SAUGAT] Constraint {i+1}: {constraint}")
-        result = reward_generator.generate_reward({"room_type": instructions_json["room_type"], "query": instructions_json["query"], "constraint": constraint})
+        result = reward_generator.generate_reward(
+            {
+                "room_type": instructions_json["room_type"],
+                "query": instructions_json["query"],
+                "constraint": constraint,
+            }
+        )
         code = result["raw_response"]
         # print(f"[SAUGAT] Reward code {i+1}: {code}")
 

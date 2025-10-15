@@ -180,19 +180,22 @@ def main(cfg: DictConfig) -> None:
     # Limit dataset to num_scenes samples
     dataset_size = len(custom_dataset)
     num_scenes_to_sample = min(num_scenes, dataset_size)
-    
+
     # Create subset of dataset with only the first num_scenes samples
     from torch.utils.data import Subset
+
     indices = list(range(num_scenes_to_sample))
     limited_dataset = Subset(custom_dataset, indices)
-    
+
     print(f"[DEBUG] Full dataset size: {dataset_size}")
     print(f"[DEBUG] Sampling {num_scenes_to_sample} scenes")
-    
+
     # Use batch size from config, not num_scenes
-    batch_size = cfg.experiment.get("test", {}).get("batch_size", cfg.experiment.validation.batch_size)
+    batch_size = cfg.experiment.get("test", {}).get(
+        "batch_size", cfg.experiment.validation.batch_size
+    )
     print(f"[DEBUG] Using batch size: {batch_size}")
-    
+
     # Create a dataloader for the limited dataset
     dataloader = torch.utils.data.DataLoader(
         limited_dataset,
@@ -217,7 +220,7 @@ def main(cfg: DictConfig) -> None:
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 
         print(f"[DEBUG] Sampled scenes shape: {sampled_scenes.shape}")
-        
+
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
 
