@@ -49,7 +49,7 @@ os.environ[
     "HF_DATASETS_CACHE"
 ] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
-# config = {'data': {'dataset_directory': '/mnt/sv-share/MiData/bedroom', 'dataset_type': 'cached_threedfront', 'encoding_type': 'cached_diffusion_cosin_angle_wocm_no_prm_eval', 'annotation_file': '/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/MiDiffusion/../ThreedFront/dataset_files/bedroom_threed_front_splits_original.csv', 'augmentations': ['fixed_rotations'], 'train_stats': 'dataset_stats.txt', 'room_layout_size': '64,64', 'room_type': 'bedroom'}, 'network': {'type': 'diffusion_scene_layout_mixed', 'sample_num_points': 12, 'max_cuboids': 19, 'angle_dim': 2, 'room_mask_condition': True, 'room_latent_dim': 64, 'position_condition': False, 'position_emb_dim': 0, 'time_num': 1000, 'diffusion_semantic_kwargs': {'att_1': 0.99999, 'att_T': 9e-06, 'ctt_1': 9e-06, 'ctt_T': 0.99999, 'model_output_type': 'x0', 'mask_weight': 1, 'auxiliary_loss_weight': 0.0005, 'adaptive_auxiliary_loss': True}, 'diffusion_geometric_kwargs': {'schedule_type': 'linear', 'beta_start': 0.0001, 'beta_end': 0.02, 'loss_type': 'mse', 'model_mean_type': 'eps', 'model_var_type': 'fixedsmall', 'train_stats_file': '/mnt/sv-share/MiData/bedroom/dataset_stats.txt'}, 'net_type': 'transformer', 'net_kwargs': {'seperate_all': True, 'n_layer': 8, 'n_embd': 512, 'n_head': 4, 'dim_feedforward': 2048, 'dropout': 0.1, 'activate': 'GELU', 'timestep_type': 'adalayernorm_abs', 'mlp_type': 'fc'}, 'class_dim': 22}, 'feature_extractor': {'name': 'pointnet_simple', 'feat_units': [4, 64, 64, 512, 64]}, 'training': {'splits': ['overfit'], 'epochs': 50000, 'batch_size': 64, 'save_frequency': 100, 'max_grad_norm': 10, 'optimizer': 'Adam', 'weight_decay': 0.0, 'schedule': 'step', 'lr': 0.0002, 'lr_step': 10000, 'lr_decay': 0.5}, 'validation': {'splits': ['overfit'], 'frequency': 100, 'batch_size': 64}, 'logger': {'type': 'wandb', 'project': 'MiDiffusion'}}
+
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
@@ -232,11 +232,11 @@ def main(cfg: DictConfig) -> None:
         print("COMPOSITE REWARD ANALYSIS")
         print("=" * 80)
         try:
-            from physical_constraint_rewards.commons import get_composite_reward
-            from physical_constraint_rewards.gravity_following_reward import (
+            from universal_constraint_rewards.commons import get_composite_reward
+            from universal_constraint_rewards.gravity_following_reward import (
                 compute_gravity_following_reward,
             )
-            from physical_constraint_rewards.commons import parse_and_descale_scenes
+            from universal_constraint_rewards.commons import parse_and_descale_scenes
 
             # Get composite reward with all components
             total_rewards, reward_components = get_composite_reward(
@@ -433,7 +433,7 @@ def main(cfg: DictConfig) -> None:
         # TODO: fixme
         kl_divergence = threed_front_results.kl_divergence()
         print("object category kl divergence:", kl_divergence)
-
+        return path_to_results
     ###---
     # # Log to wandb and save locally
     # pickle_path = output_dir / "sampled_scenes.pkl"
@@ -453,6 +453,7 @@ def main(cfg: DictConfig) -> None:
     # wandb.save(str(text_path))
 
     except Exception as e:
+        raise
         logging.error(f"Error during sampling: {str(e)}")
         # Still try to save any partial results
         try:

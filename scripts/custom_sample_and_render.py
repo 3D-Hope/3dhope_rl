@@ -265,6 +265,7 @@ def main(cfg: DictConfig) -> None:
         kl_divergence = threed_front_results.kl_divergence()
         print("object category kl divergence:", kl_divergence)
 
+        return path_to_results
         # Calculate and save object statistics for both generated and ground truth scenes
         import json
 
