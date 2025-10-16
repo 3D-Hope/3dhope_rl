@@ -309,7 +309,7 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg
     algorithm.trainer=rl_score \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_constraint_rewards/stats.json \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=2000000 \
