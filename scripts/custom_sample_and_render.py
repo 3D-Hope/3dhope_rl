@@ -179,16 +179,30 @@ def main(cfg: DictConfig) -> None:
 
     # Limit dataset to num_scenes samples
     dataset_size = len(custom_dataset)
-    num_scenes_to_sample = min(num_scenes, dataset_size)
-
-    # Create subset of dataset with only the first num_scenes samples
+    num_scenes_to_sample = num_scenes  # Always use requested num_scenes
+    
+    # Create indices with resampling if needed
+    if num_scenes_to_sample <= dataset_size:
+        # Use first num_scenes samples without resampling
+        indices = list(range(num_scenes_to_sample))
+    else:
+        # Need to resample: repeat the dataset multiple times
+        print(f"[INFO] Requested {num_scenes_to_sample} scenes but dataset only has {dataset_size} scenes.")
+        print(f"[INFO] Will resample with replacement to generate {num_scenes_to_sample} scenes.")
+        indices = [i % dataset_size for i in range(num_scenes_to_sample)]
+    
+    # Create subset of dataset with the indices (may include duplicates)
     from torch.utils.data import Subset
 
-    indices = list(range(num_scenes_to_sample))
     limited_dataset = Subset(custom_dataset, indices)
+    
+    # Store the actual dataset indices for each sample (needed for conditions and floor rendering)
+    sampled_dataset_indices = indices.copy()  # This tracks which dataset index was used for each sample
 
     print(f"[DEBUG] Full dataset size: {dataset_size}")
     print(f"[DEBUG] Sampling {num_scenes_to_sample} scenes")
+    print(f"[DEBUG] Number of unique scenes: {min(dataset_size, num_scenes_to_sample)}")
+    print(f"[DEBUG] Sample indices (first 10): {sampled_dataset_indices[:10]}")
 
     # Use batch size from config, not num_scenes
     batch_size = cfg.experiment.get("test", {}).get(
@@ -215,11 +229,22 @@ def main(cfg: DictConfig) -> None:
         print("[DEBUG] Starting to sample scenes...")
         # Sample scenes from the model
         sampled_scene_batches = experiment.exec_task("predict", dataloader=dataloader)
-        # TODO: get indices of sampled scenes
-        sampled_indices = list(range(len(sampled_scene_batches[0])))
+        
+        # Use the actual dataset indices that were sampled (handles resampling with replacement)
+        # sampled_dataset_indices contains the original dataset index for each sampled scene
+        sampled_indices = sampled_dataset_indices
+        
+        print(f"[DEBUG] Number of sampled scenes: {len(sampled_indices)}")
+        print(f"[DEBUG] Sampled indices length matches batches: {len(sampled_indices) == sum(len(batch) for batch in sampled_scene_batches)}")
+        
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 
         print(f"[DEBUG] Sampled scenes shape: {sampled_scenes.shape}")
+        print(f"[DEBUG] Sampled indices count: {len(sampled_indices)}")
+        
+        # Verify the counts match
+        assert len(sampled_indices) == sampled_scenes.shape[0], \
+            f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
 
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
@@ -268,10 +293,10 @@ def main(cfg: DictConfig) -> None:
         pickle.dump(threed_front_results, open(path_to_results, "wb"))
         print("Saved result to:", path_to_results)
 
+        return path_to_results
         kl_divergence = threed_front_results.kl_divergence()
         print("object category kl divergence:", kl_divergence)
 
-        return path_to_results
         # Calculate and save object statistics for both generated and ground truth scenes
         import json
 
