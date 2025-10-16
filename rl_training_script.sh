@@ -178,42 +178,66 @@ cd ~/codes/3dhope_rl/ || {
 echo "Current directory: $(pwd)"
 echo ""
 
-# Setup Poetry from scratch directory
+# Check for Poetry in multiple locations
+POETRY_CMD=""
 POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
 POETRY_BIN="$POETRY_HOME/bin/poetry"
 
-if [ ! -f "$POETRY_BIN" ]; then
-    echo "Poetry not found in scratch, installing..."
-    mkdir -p "$POETRY_HOME"
-    
-    # Download and install Poetry to scratch
-    echo "Downloading Poetry installer..."
-    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
-        echo "❌ Failed to install Poetry to scratch"
-        echo "Falling back to pip installation..."
-        pip install poetry || {
-            echo "❌ Failed to install Poetry via pip"
-            exit 1
-        }
-        POETRY_BIN="poetry"
-    }
-    echo "✅ Poetry installed to $POETRY_HOME"
-else
-    echo "✅ Poetry already exists in scratch at $POETRY_BIN"
-fi
-
-# Add Poetry to PATH
-export PATH="$POETRY_HOME/bin:$PATH"
-
-# Verify Poetry is accessible
-echo "Poetry path: $(which poetry || echo $POETRY_BIN)"
+# First, check if Poetry is available in current conda environment
+echo "Checking for Poetry installation..."
 if command -v poetry &> /dev/null; then
-    echo "Poetry version: $(poetry --version)"
     POETRY_CMD="poetry"
-else
-    echo "Poetry version: $($POETRY_BIN --version)"
+    echo "✅ Poetry found in current environment: $(which poetry)"
+    echo "   Version: $(poetry --version)"
+# Second, check if Poetry exists in scratch
+elif [ -f "$POETRY_BIN" ]; then
     POETRY_CMD="$POETRY_BIN"
+    export PATH="$POETRY_HOME/bin:$PATH"
+    echo "✅ Poetry found in scratch: $POETRY_BIN"
+    echo "   Version: $($POETRY_BIN --version)"
+# Third, try to install Poetry via conda (fastest and most reliable in conda env)
+else
+    echo "Poetry not found, trying to install via conda..."
+    conda install -y -c conda-forge poetry 2>&1 | grep -v "Collecting package metadata" || {
+        echo "⚠️  Conda install failed, installing to scratch..."
+        mkdir -p "$POETRY_HOME"
+        
+        # Download and install Poetry to scratch
+        echo "Downloading Poetry installer..."
+        curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
+            echo "❌ Failed to install Poetry to scratch"
+            echo "Falling back to pip installation..."
+            pip install poetry || {
+                echo "❌ Failed to install Poetry via pip"
+                exit 1
+            }
+            POETRY_CMD="poetry"
+        }
+        
+        if [ -f "$POETRY_BIN" ]; then
+            POETRY_CMD="$POETRY_BIN"
+            export PATH="$POETRY_HOME/bin:$PATH"
+            echo "✅ Poetry installed to $POETRY_HOME"
+        fi
+    }
+    
+    # Check again after installation
+    if command -v poetry &> /dev/null; then
+        POETRY_CMD="poetry"
+        echo "✅ Poetry installed successfully"
+        echo "   Location: $(which poetry)"
+        echo "   Version: $(poetry --version)"
+    elif [ -f "$POETRY_BIN" ]; then
+        POETRY_CMD="$POETRY_BIN"
+        echo "✅ Poetry installed to scratch"
+        echo "   Version: $($POETRY_BIN --version)"
+    else
+        echo "❌ Failed to install Poetry"
+        exit 1
+    fi
 fi
+
+echo ""
 
 # Configure Poetry to create virtualenv in project
 echo "Configuring Poetry..."
@@ -250,6 +274,7 @@ if [ -n "$WANDB_API_KEY" ]; then
     wandb login --relogin "$WANDB_API_KEY" || echo "⚠️  wandb login failed, but continuing..."
 else
     echo "⚠️  WANDB_API_KEY not set, skipping wandb login"
+    echo "   Note: If you have wandb configured, it should work automatically"
 fi
 
 # Install ThreedFront package
