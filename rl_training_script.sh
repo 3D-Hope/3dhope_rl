@@ -8,49 +8,96 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
+# Exit on error but with better error reporting
+set -e
+trap 'echo "❌ Error on line $LINENO. Exit code: $?" >&2' ERR
+
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
 # Print debug information
+echo "════════════════════════════════════════════════════════════════════════════════"
 echo "Job started at: $(date)"
 echo "Running on node: $(hostname)"
 echo "Working directory: $(pwd)"
-echo "Scratch contents: $(ls /scratch/pramish_paudel)"
+echo "Job ID: $SLURM_JOB_ID"
+echo "════════════════════════════════════════════════════════════════════════════════"
+echo ""
+
+echo "System information:"
 free -h
-df -h
-set -x
+df -h /scratch/pramish_paudel
+echo ""
 
+echo "System information:"
+free -h
+df -h /scratch/pramish_paudel
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 1: Copy model checkpoint
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 1: Checking model checkpoint..."
 if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
-    echo "Copying model checkpoint"
-    rsync -aHzv /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/
+    echo "Copying model checkpoint..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy model checkpoint"
+        exit 1
+    }
+    echo "✅ Model checkpoint copied"
 else
-    echo "✅ Model checkpoint already exists in scratch."
+    echo "✅ Model checkpoint already exists in scratch"
 fi
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 2: Copy and extract dataset
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 2: Checking bedroom dataset..."
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
-    echo "copying data "
-    rsync -aHzv /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/
+    echo "Copying bedroom dataset..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy bedroom dataset"
+        exit 1
+    }
 
-    # Unzip dataset
+    echo "Extracting dataset..."
     cd /scratch/pramish_paudel/
-    unzip bedroom.zip
+    unzip -q bedroom.zip || {
+        echo "❌ Failed to extract bedroom dataset"
+        exit 1
+    }
     rm bedroom.zip
+    echo "✅ Bedroom dataset extracted"
 else
-    echo "✅ Bedroom dataset already exists in scratch."
+    echo "✅ Bedroom dataset already exists in scratch"
 fi
+echo ""
 
-# 🔧 Setup Miniconda
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 3: Setup Miniconda/Miniforge
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 3: Setting up Conda environment..."
 CONDA_DIR="/scratch/pramish_paudel/tools/miniforge"
 
 if [ ! -d "$CONDA_DIR" ]; then
-    echo "Installing Miniconda/Miniforge..."
+    echo "Installing Miniforge..."
     mkdir -p /scratch/pramish_paudel/tools/
     cd /scratch/pramish_paudel/tools/
 
-    # Download Miniforge (better than Miniconda for conda-forge packages)
-    wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" -O miniforge.sh
+    # Download Miniforge
+    wget -q --show-progress "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" -O miniforge.sh || {
+        echo "❌ Failed to download Miniforge"
+        exit 1
+    }
 
     # Install silently
-    bash miniforge.sh -b -p $CONDA_DIR
+    bash miniforge.sh -b -p $CONDA_DIR || {
+        echo "❌ Failed to install Miniforge"
+        exit 1
+    }
     rm miniforge.sh
     echo "✅ Miniforge installed at $CONDA_DIR"
 else
@@ -58,59 +105,172 @@ else
 fi
 
 # Source conda
-echo "Sourcing conda from: $CONDA_DIR/etc/profile.d/conda.sh"
-source "$CONDA_DIR/etc/profile.d/conda.sh"
+echo "Sourcing conda..."
+source "$CONDA_DIR/etc/profile.d/conda.sh" || {
+    echo "❌ Failed to source conda"
+    exit 1
+}
 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
+echo ""
 
-# 🐍 Create and setup environment
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 4: Create and activate Python environment
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 4: Setting up Python environment..."
 if ! conda env list | grep -q "3dhope_rl"; then
     echo "Creating conda environment: 3dhope_rl"
-    conda create -n 3dhope_rl python=3.10 -y
+    conda create -n 3dhope_rl python=3.10 -y || {
+        echo "❌ Failed to create conda environment"
+        exit 1
+    }
 
     echo "Activating conda environment: 3dhope_rl"
-    conda activate 3dhope_rl
+    conda activate 3dhope_rl || {
+        echo "❌ Failed to activate conda environment"
+        exit 1
+    }
 
+    echo "Installing pip in conda environment..."
+    conda install pip -y || {
+        echo "❌ Failed to install pip"
+        exit 1
+    }
 
-    echo "✅ Environment setup complete!"
+    echo "✅ Environment setup complete"
 else
     echo "✅ Environment '3dhope_rl' already exists"
-    conda activate 3dhope_rl
+    conda activate 3dhope_rl || {
+        echo "❌ Failed to activate existing conda environment"
+        exit 1
+    }
 fi
 
 # Verify setup
-echo "Active conda environment: $CONDA_DEFAULT_ENV"
-echo "Python path: $(which python)"
-echo "Python version: $(python --version)"
+echo ""
+echo "Environment verification:"
+echo "  Active conda environment: $CONDA_DEFAULT_ENV"
+echo "  Python path: $(which python)"
+echo "  Python version: $(python --version)"
+echo "  Pip path: $(which pip)"
+echo ""
+echo ""
 
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 5: Check GPU
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 5: Checking GPU availability..."
+nvidia-smi || {
+    echo "⚠️  GPU check failed, but continuing..."
+}
+echo ""
 
-# Check GPU
-echo "GPU information:"
-nvidia-smi
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 6: Setup project directory and dependencies
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 6: Installing project dependencies..."
+cd ~/codes/3dhope_rl/ || {
+    echo "❌ Failed to change to project directory"
+    exit 1
+}
 
-# 📂 Move to your training script directory
-cd ~/codes/3dhope_rl/
-
-# Verify we're in the right directory
 echo "Current directory: $(pwd)"
-echo "Contents of current directory:"
-ls -la
+echo ""
+
+# Setup Poetry from scratch directory
+POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
+POETRY_BIN="$POETRY_HOME/bin/poetry"
+
+if [ ! -f "$POETRY_BIN" ]; then
+    echo "Poetry not found in scratch, installing..."
+    mkdir -p "$POETRY_HOME"
+    
+    # Download and install Poetry to scratch
+    echo "Downloading Poetry installer..."
+    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
+        echo "❌ Failed to install Poetry to scratch"
+        echo "Falling back to pip installation..."
+        pip install poetry || {
+            echo "❌ Failed to install Poetry via pip"
+            exit 1
+        }
+        POETRY_BIN="poetry"
+    }
+    echo "✅ Poetry installed to $POETRY_HOME"
+else
+    echo "✅ Poetry already exists in scratch at $POETRY_BIN"
+fi
+
+# Add Poetry to PATH
+export PATH="$POETRY_HOME/bin:$PATH"
+
+# Verify Poetry is accessible
+echo "Poetry path: $(which poetry || echo $POETRY_BIN)"
+if command -v poetry &> /dev/null; then
+    echo "Poetry version: $(poetry --version)"
+    POETRY_CMD="poetry"
+else
+    echo "Poetry version: $($POETRY_BIN --version)"
+    POETRY_CMD="$POETRY_BIN"
+fi
+
+# Configure Poetry to create virtualenv in project
+echo "Configuring Poetry..."
+$POETRY_CMD config virtualenvs.in-project true || {
+    echo "⚠️  Failed to configure Poetry, but continuing..."
+}
 
 # Install project dependencies
-if ! command -v poetry &> /dev/null; then
-    curl -sSL https://install.python-poetry.org | python3 -
+echo "Installing dependencies with Poetry..."
+$POETRY_CMD install --no-interaction 2>&1 | tee /tmp/poetry_install.log || {
+    echo "❌ Poetry install failed, falling back to pip..."
+    echo "Last 20 lines of Poetry install log:"
+    tail -20 /tmp/poetry_install.log
+    
+    pip install -e . || {
+        echo "❌ Pip install also failed"
+        exit 1
+    }
+    pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
+}
+
+# Activate virtual environment
+if [ -d ".venv" ]; then
+    echo "Activating Poetry virtualenv..."
+    source .venv/bin/activate
+    echo "✅ Using Poetry virtualenv"
+else
+    echo "⚠️  No .venv found, using conda environment"
 fi
-poetry config virtualenvs.in-project true
-poetry install
-source .venv/bin/activate
-wandb login
-pip install -e ../ThreedFront
+
+# Login to wandb (use --relogin to avoid interactive prompt)
+echo "Logging in to wandb..."
+if [ -n "$WANDB_API_KEY" ]; then
+    wandb login --relogin "$WANDB_API_KEY" || echo "⚠️  wandb login failed, but continuing..."
+else
+    echo "⚠️  WANDB_API_KEY not set, skipping wandb login"
+fi
+
+# Install ThreedFront package
+echo "Installing ThreedFront package..."
+pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
+
+# Set environment variables
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
 
-
+echo "✅ All dependencies installed and configured"
 # 🚀 Run training
-echo "Starting training at: $(date)"
+echo ""
+echo "════════════════════════════════════════════════════════════════════════════════"
+echo "STAGE 7: Starting RL training..."
+echo "Training started at: $(date)"
+echo "════════════════════════════════════════════════════════════════════════════════"
+echo ""
+
 export PYTHONUNBUFFERED=1
+
 PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg_50 \
     load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
@@ -146,12 +306,17 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
 
-
 # Check exit status
+echo ""
+echo "════════════════════════════════════════════════════════════════════════════════"
 if [ $? -eq 0 ]; then
     echo "✅ Training completed successfully at: $(date)"
+    exit 0
 else
     echo "❌ Training failed at: $(date)"
+    exit 1
 fi
+echo "════════════════════════════════════════════════════════════════════════════════"
+echo ""
 
 echo "Job completed at: $(date)"
