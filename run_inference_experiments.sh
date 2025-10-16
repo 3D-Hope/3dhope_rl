@@ -1,10 +1,30 @@
 #!/bin/bash
 
 # Script to run inference experiments with different configurations
-# Experiments for runs: bgdrozky and juy0jvto
-# Testing: DDPM/DDIM schedulers with EMA True/False
+# Experiments for runs: jfgw3io6 (DiffuScene), pfksynuz (Continuous MI)
+# Testing: DDPM/DDIM schedulers with EMA=True only
 
 set -e  # Exit on error
+
+# Create logs directory if it doesn't exist
+LOGS_DIR="logs/inference_experiments"
+mkdir -p "$LOGS_DIR"
+
+# Create log file with timestamp
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="$LOGS_DIR/experiment_batch_${TIMESTAMP}.log"
+RESULTS_CSV="$LOGS_DIR/experiment_results_${TIMESTAMP}.csv"
+
+# Array to store experiment results
+declare -a EXPERIMENT_RESULTS
+
+# Function to log message to both console and file
+log() {
+    echo "$@" | tee -a "$LOG_FILE"
+}
+
+echo "Logging all output to: $LOG_FILE"
+echo ""
 
 # Color codes for better visibility
 RED='\033[0;31m'
@@ -18,155 +38,264 @@ NC='\033[0m' # No Color
 print_experiment_header() {
     local run_id=$1
     local scheduler=$2
-    local ema=$3
-    local exp_num=$4
+    local exp_num=$3
+    local model_name=$4
     
-    echo ""
-    echo "################################################################################"
-    echo "################################################################################"
-    echo "###"
-    echo "###  EXPERIMENT $exp_num"
-    echo "###"
-    echo "###  Run ID: $run_id"
-    echo "###  Scheduler: $scheduler"
-    echo "###  EMA: $ema"
-    echo "###"
-    echo "################################################################################"
-    echo "################################################################################"
-    echo ""
+    log ""
+    log "################################################################################"
+    log "################################################################################"
+    log "###"
+    log "###  EXPERIMENT $exp_num"
+    log "###"
+    log "###  Model: $model_name"
+    log "###  Run ID: $run_id"
+    log "###  Scheduler: $scheduler"
+    log "###  EMA: True (always)"
+    log "###"
+    log "################################################################################"
+    log "################################################################################"
+    log ""
 }
 
 # Function to run experiment
 run_experiment() {
     local run_id=$1
     local scheduler=$2
-    local ema=$3
-    local exp_num=$4
+    local exp_num=$3
+    local algorithm=$4
+    local model_name=$5
     
-    print_experiment_header "$run_id" "$scheduler" "$ema" "$exp_num"
+    # Set num_timesteps based on scheduler
+    local num_timesteps
+    if [ "$scheduler" = "ddpm" ]; then
+        num_timesteps=1000
+    else
+        num_timesteps=150
+    fi
     
-    echo "Configuration:"
-    echo "  - load: $run_id"
-    echo "  - algorithm.noise_schedule.scheduler: $scheduler"
-    echo "  - algorithm.ema.use: $ema"
-    echo "  - num_scenes: 256"
-    echo "  - algorithm.noise_schedule.ddim.num_inference_timesteps: 150"
-    echo ""
-    echo "Starting experiment at: $(date)"
-    echo ""
+    # Always use EMA=True
+    local ema="True"
     
-    PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+    print_experiment_header "$run_id" "$scheduler" "$exp_num" "$model_name"
+    
+    log "Configuration:"
+    log "  - Model: $model_name"
+    log "  - load: $run_id"
+    log "  - algorithm: $algorithm"
+    log "  - algorithm.noise_schedule.scheduler: $scheduler"
+    log "  - algorithm.ema.use: $ema (always True)"
+    log "  - num_scenes: 1000"
+    log "  - algorithm.noise_schedule.ddim.num_inference_timesteps: $num_timesteps"
+    log ""
+    log "Starting experiment at: $(date)"
+    log ""
+    
+    # Run the experiment and redirect output to both console and log file
+    PYTHONPATH=. python scripts/custom_sample_and_render.py \
         dataset=custom_scene \
         dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
         dataset.max_num_objects_per_scene=12 \
-        +num_scenes=256 \
-        algorithm=scene_diffuser_flux_transformer \
+        +num_scenes=1000 \
+        algorithm=$algorithm \
         experiment.find_unused_parameters=True \
         algorithm.classifier_free_guidance.use=False \
         algorithm.classifier_free_guidance.weight=0 \
         algorithm.num_additional_tokens_for_sampling=0 \
         algorithm.custom.loss=true \
-        algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+        algorithm.noise_schedule.ddim.num_inference_timesteps=$num_timesteps \
         algorithm.trainer=ddpm \
         load=$run_id \
         algorithm.noise_schedule.scheduler=$scheduler \
-        algorithm.ema.use=$ema
+        experiment.test.batch_size=128 \
+        algorithm.ema.use=True \
+        algorithm.classifier_free_guidance.use_floor=False 2>&1 | tee -a "$LOG_FILE"
     
-    echo ""
-    echo "Experiment completed at: $(date)"
-    echo ""
-    echo "################################################################################"
-    echo "###  END OF EXPERIMENT $exp_num"
-    echo "################################################################################"
-    echo ""
-    echo ""
+    # Find the generated pkl file (most recent sampled_scenes_results.pkl)
+    local output_dir=$(find outputs -type f -name "sampled_scenes_results.pkl" -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2- | xargs dirname)
+    local pkl_file="$output_dir/sampled_scenes_results.pkl"
+    
+    log ""
+    log "Experiment completed at: $(date)"
+    
+    # Store result information
+    if [ -f "$pkl_file" ]; then
+        log "✅ Generated results saved to: $pkl_file"
+        # Store in results array: exp_num,model_name,run_id,scheduler,ema,num_timesteps,pkl_file
+        EXPERIMENT_RESULTS+=("$exp_num,$model_name,$run_id,$scheduler,$ema,$num_timesteps,$pkl_file")
+    else
+        log "⚠️  Warning: Could not find generated pkl file for this experiment"
+        EXPERIMENT_RESULTS+=("$exp_num,$model_name,$run_id,$scheduler,$ema,$num_timesteps,NOT_FOUND")
+    fi
+    
+    log ""
+    log "################################################################################"
+    log "###  END OF EXPERIMENT $exp_num"
+    log "################################################################################"
+    log ""
+    log ""
 }
 
 # Main execution
-echo ""
-echo "================================================================================"
-echo "                    INFERENCE EXPERIMENTS BATCH"
-echo "================================================================================"
-echo ""
-echo "Total experiments to run: 8"
-echo ""
-echo "Run IDs:"
-echo "  1. bgdrozky"
-echo "  2. juy0jvto"
-echo ""
-echo "Schedulers: DDPM, DDIM"
-echo "EMA settings: True, False"
-echo ""
-echo "Starting batch at: $(date)"
-echo "================================================================================"
-echo ""
+log ""
+log "================================================================================"
+log "                    INFERENCE EXPERIMENTS BATCH"
+log "================================================================================"
+log ""
+log "Total experiments to run: 4"
+log ""
+log "Run IDs:"
+log "  # 1. bgdrozky (Flux Transformer) - COMMENTED OUT"
+log "  # 2. juy0jvto (Flux Transformer) - COMMENTED OUT"
+log "  3. jfgw3io6 (DiffuScene)"
+log "  4. pfksynuz (Continuous MI)"
+log ""
+log "Schedulers: DDPM (1000 timesteps), DDIM (150 timesteps)"
+log "EMA settings: True (always)"
+log ""
+log "Starting batch at: $(date)"
+log "================================================================================"
+log ""
 
 exp_counter=1
 
-# Experiments for run bgdrozky
-echo ""
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-echo ">>>"
-echo ">>>  STARTING EXPERIMENTS FOR RUN: bgdrozky"
-echo ">>>"
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-echo ""
+# # Experiments for run bgdrozky (Flux Transformer) - COMMENTED OUT
+# echo ""
+# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# echo ">>>"
+# echo ">>>  STARTING EXPERIMENTS FOR RUN: bgdrozky (Flux Transformer)"
+# echo ">>>"
+# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# echo ""
+# 
+# run_experiment "bgdrozky" "ddpm" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "bgdrozky" "ddpm" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "bgdrozky" "ddim" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "bgdrozky" "ddim" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
 
-run_experiment "bgdrozky" "ddpm" "True" "$exp_counter"
+# # Experiments for run juy0jvto (Flux Transformer) - COMMENTED OUT
+# echo ""
+# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# echo ">>>"
+# echo ">>>  STARTING EXPERIMENTS FOR RUN: juy0jvto (Flux Transformer)"
+# echo ">>>"
+# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# echo ""
+# 
+# run_experiment "juy0jvto" "ddpm" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "juy0jvto" "ddpm" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "juy0jvto" "ddim" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+# 
+# run_experiment "juy0jvto" "ddim" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+# ((exp_counter++))
+
+# Experiments for run jfgw3io6 (DiffuScene)
+log ""
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>"
+log ">>>  STARTING EXPERIMENTS FOR RUN: jfgw3io6 (DiffuScene)"
+log ">>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ""
+
+run_experiment "jfgw3io6" "ddpm" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
 ((exp_counter++))
 
-run_experiment "bgdrozky" "ddpm" "False" "$exp_counter"
+run_experiment "jfgw3io6" "ddim" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
 ((exp_counter++))
 
-run_experiment "bgdrozky" "ddim" "True" "$exp_counter"
+# Experiments for run pfksynuz (Continuous MI)
+log ""
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>"
+log ">>>  STARTING EXPERIMENTS FOR RUN: pfksynuz (Continuous MI)"
+log ">>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ""
+
+run_experiment "pfksynuz" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
 ((exp_counter++))
 
-run_experiment "bgdrozky" "ddim" "False" "$exp_counter"
-((exp_counter++))
-
-# Experiments for run juy0jvto
-echo ""
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-echo ">>>"
-echo ">>>  STARTING EXPERIMENTS FOR RUN: juy0jvto"
-echo ">>>"
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-echo ""
-
-run_experiment "juy0jvto" "ddpm" "True" "$exp_counter"
-((exp_counter++))
-
-run_experiment "juy0jvto" "ddpm" "False" "$exp_counter"
-((exp_counter++))
-
-run_experiment "juy0jvto" "ddim" "True" "$exp_counter"
-((exp_counter++))
-
-run_experiment "juy0jvto" "ddim" "False" "$exp_counter"
+run_experiment "pfksynuz" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
 ((exp_counter++))
 
 # Summary
-echo ""
-echo "================================================================================"
-echo "                    ALL EXPERIMENTS COMPLETED"
-echo "================================================================================"
-echo ""
-echo "Total experiments run: 8"
-echo "Completed at: $(date)"
-echo ""
-echo "Summary of experiments:"
-echo ""
-echo "Run: bgdrozky"
-echo "  1. DDPM + EMA=True"
-echo "  2. DDPM + EMA=False"
-echo "  3. DDIM + EMA=True"
-echo "  4. DDIM + EMA=False"
-echo ""
-echo "Run: juy0jvto"
-echo "  5. DDPM + EMA=True"
-echo "  6. DDPM + EMA=False"
-echo "  7. DDIM + EMA=True"
-echo "  8. DDIM + EMA=False"
-echo ""
-echo "================================================================================"
-echo ""
+log ""
+log "================================================================================"
+log "                    ALL EXPERIMENTS COMPLETED"
+log "================================================================================"
+log ""
+log "Total experiments run: 4"
+log "Completed at: $(date)"
+log ""
+log "Summary of experiments:"
+log ""
+log "# Run: bgdrozky (Flux Transformer) - COMMENTED OUT"
+log "# Run: juy0jvto (Flux Transformer) - COMMENTED OUT"
+log ""
+log "Run: jfgw3io6 (DiffuScene)"
+log "  1. DDPM (1000) + EMA=True"
+log "  2. DDIM (150) + EMA=True"
+log ""
+log "Run: pfksynuz (Continuous MI)"
+log "  3. DDPM (1000) + EMA=True"
+log "  4. DDIM (150) + EMA=True"
+log ""
+log "================================================================================"
+log ""
+
+# Generate CSV file with results
+log "Generating results CSV file..."
+log ""
+
+# CSV Header
+echo "experiment_num,model_name,run_id,scheduler,ema,num_timesteps,pkl_file_path" > "$RESULTS_CSV"
+
+# Add all experiment results
+for result in "${EXPERIMENT_RESULTS[@]}"; do
+    echo "$result" >> "$RESULTS_CSV"
+done
+
+log "✅ Results CSV saved to: $RESULTS_CSV"
+log ""
+
+# Print the results table to log
+log "================================================================================"
+log "                    EXPERIMENT RESULTS TABLE"
+log "================================================================================"
+log ""
+log "$(printf '%-5s %-20s %-12s %-10s %-6s %-15s %-s\n' 'Exp#' 'Model' 'Run ID' 'Scheduler' 'EMA' 'Timesteps' 'PKL File')"
+log "$(printf '%-5s %-20s %-12s %-10s %-6s %-15s %-s\n' '----' '--------------------' '------------' '----------' '------' '---------------' '--------')"
+
+for result in "${EXPERIMENT_RESULTS[@]}"; do
+    IFS=',' read -r exp_num model_name run_id scheduler ema num_timesteps pkl_file <<< "$result"
+    # Truncate pkl path for display
+    pkl_display=$(echo "$pkl_file" | sed 's|outputs/||')
+    log "$(printf '%-5s %-20s %-12s %-10s %-6s %-15s %s\n' "$exp_num" "$model_name" "$run_id" "$scheduler" "$ema" "$num_timesteps" "$pkl_display")"
+done
+
+log ""
+log "================================================================================"
+log ""
+log "Full paths in CSV file: $RESULTS_CSV"
+log "Log file saved to: $LOG_FILE"
+log ""
+log "To view the CSV:"
+log "  cat $RESULTS_CSV"
+log ""
+log "To view results in column format:"
+log "  column -t -s',' $RESULTS_CSV"
+log ""
+log "================================================================================"
+log ""

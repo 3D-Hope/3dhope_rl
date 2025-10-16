@@ -131,7 +131,7 @@ PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-dataset.max_num_objects_per_scene=12 \
+dataset.max_num_objects_per_scene=1000 \
 +num_scenes=256 \
 algorithm=scene_diffuser_flux_transformer \
 algorithm.trainer=ddpm \
@@ -552,25 +552,28 @@ algorithm.custom.loss=true \
 algorithm.ema.use=True
 
 diffuscene
-PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=jfgw3io6 \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
 algorithm.num_additional_tokens_for_sampling=0 \
-algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=False
+algorithm=scene_diffuser_diffuscene algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=False experiment.test.batch_size=196
 
 
 continuous mi
-PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=pfksynuz \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 +num_scenes=256 \
 algorithm.num_additional_tokens_for_sampling=0 \
-algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=False
+algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=False experiment.test.batch_size=196
+
+
+
 
 
 
@@ -623,3 +626,23 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# evals
+edit pkl file path and run
+./batch_eval.sh
