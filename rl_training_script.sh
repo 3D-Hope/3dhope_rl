@@ -332,7 +332,12 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_tv_
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
-    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom
+    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium
+
     
 
 # Check exit status

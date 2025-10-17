@@ -13,7 +13,7 @@ def import_dynamic_reward_functions(reward_code_dir: str):
     reward_functions = {}
     # Iterate through each file inside reward_code_dir and import the reward function.
     for file in os.listdir(reward_code_dir):
-        if file.endswith(".py"):
+        if file.endswith(".py") and file != "__init__.py":
             # Dynamically import the module and extract get_reward and test_reward.
             import importlib
 
@@ -75,11 +75,12 @@ def get_dynamic_reward(
     for key, value in get_reward_functions.items():
         reward = value(
             parsed_scene,
-            idx_to_label=idx_to_label,
+            idx_to_labels=idx_to_label,
             num_classes=num_classes,
             max_objects=max_objects,
             **kwargs,
         )
+        print(f"[Ashok] Raw reward for {key}: {reward}")
         rewards[key] = reward
 
     if dynamic_reward_normalizer is not None:
