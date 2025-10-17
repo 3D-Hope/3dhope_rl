@@ -693,7 +693,6 @@ PYTHONPATH=. python -u main.py +name=diffuscene_baseline \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
 
 PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
-    resume=pfksynuz \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset._name=custom_scene \
@@ -702,6 +701,7 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
     algorithm.trainer=ddpm \
     experiment.find_unused_parameters=True \
     algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
     algorithm.classifier_free_guidance.weight=0 \
     algorithm.custom.loss=true \
     algorithm.validation.num_samples_to_render=0 \
@@ -714,7 +714,7 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
 
 
 
-
+PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline     dataset=custom_scene     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json     dataset._name=custom_scene     dataset.max_num_objects_per_scene=12     algorithm=scene_diffuser_midiffusion     algorithm.trainer=ddpm     experiment.find_unused_parameters=True     algorithm.classifier_free_guidance.use=False     algorithm.classifier_free_guidance.use_floor=True     algorithm.classifier_free_guidance.weight=0     algorithm.custom.loss=true     algorithm.validation.num_samples_to_render=0     algorithm.validation.num_samples_to_visualize=0     algorithm.validation.num_directives_to_generate=0     algorithm.test.num_samples_to_render=0     algorithm.test.num_samples_to_visualize=0     algorithm.test.num_directives_to_generate=0     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
 
 
 

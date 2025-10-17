@@ -3,6 +3,9 @@ from typing import Any, Dict, Type, Union
 import torch
 
 from steerable_scene_generation.algorithms.common.ema_model import EMAModel
+from steerable_scene_generation.algorithms.common.floor_encoder import (
+    load_floor_encoder_from_config,
+)
 from steerable_scene_generation.algorithms.common.txt_encoding import (
     load_txt_encoder_from_config,
 )
@@ -52,14 +55,22 @@ def create_scene_diffuser_midiffusion(
             """Create all pytorch models."""
             super()._build_model()
 
-            # Conditioning.
+            # Conditioning: Text OR Floor (mutually exclusive)
             if self.cfg.classifier_free_guidance.use:
                 self.txt_encoder, text_cond_dim = load_txt_encoder_from_config(
                     self.cfg, component="encoder"
                 )
+                self.floor_encoder = None
+                context_dim = text_cond_dim
+            elif self.cfg.classifier_free_guidance.use_floor:
+                self.floor_encoder, floor_cond_dim = load_floor_encoder_from_config()
+                self.txt_encoder = None
+                context_dim = floor_cond_dim  # 64D from PointNet
+                print(f"[Ashok] Using floor encoder with context dim: {context_dim}")
             else:
                 self.txt_encoder = None
-                text_cond_dim = 0
+                self.floor_encoder = None
+                context_dim = 0
 
             network_dim = {
                 "objectness_dim": 0,  # Not used by our scene representation
@@ -79,7 +90,7 @@ def create_scene_diffuser_midiffusion(
                 dropout=self.cfg.model.dropout,
                 activate=self.cfg.model.activate,
                 timestep_type=self.cfg.model.timestep_type,
-                context_dim=text_cond_dim,  # Text instead of floor plan condition
+                context_dim=context_dim,  # Text OR Floor context
                 mlp_type=self.cfg.model.mlp_type,
             )
 
@@ -130,9 +141,10 @@ def create_scene_diffuser_midiffusion(
                 # Broadcast to batch dimension.
                 timesteps = timesteps.expand(noisy_scenes.size(0))  # Shape (B,)
 
-            text_cond = None
+            # Context: Text OR Floor (mutually exclusive)
+            context = None
             if cond_dict is not None and self.txt_encoder is not None:
-                # Use bfloat16 for text encoder.
+                # Text conditioning
                 with torch.autocast(
                     device_type=self.device.type,
                     dtype=(
@@ -148,13 +160,25 @@ def create_scene_diffuser_midiffusion(
                     text_cond = text_cond.to(noisy_scenes.dtype)
 
                     # Expand context along num_objects dimension.
-                    text_cond = text_cond.unsqueeze(1).expand(
+                    context = text_cond.unsqueeze(1).expand(
                         -1, noisy_scenes.size(1), -1
                     )  # Shape (B, N, C)
+            elif cond_dict is not None and self.floor_encoder is not None:
+                # Floor conditioning (same pattern as Flux)
+                floor_cond = self.floor_encoder(
+                    cond_dict["fpbpn"]
+                )  # Shape (B, 64)
+                # print(f"[Ashok] Floor condition shape: {floor_cond.shape}")
+                floor_cond = floor_cond.to(noisy_scenes.dtype)
+                
+                # Expand context along num_objects dimension (same as text)
+                context = floor_cond.unsqueeze(1).expand(
+                    -1, noisy_scenes.size(1), -1
+                )  # Shape (B, N, 64)
 
             # Predict the noise.
             predicted_noise = model(
-                noisy_scenes, time=timesteps, context=text_cond, context_cross=None
+                noisy_scenes, time=timesteps, context=context, context_cross=None
             )  # Shape (B, N, V)
 
             return predicted_noise
