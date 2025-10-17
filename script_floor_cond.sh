@@ -136,7 +136,12 @@ PYTHONPATH=. python -u main.py +name=flux_transformer_floor_cond \
     experiment.training.batch_size=128 \
     experiment.validation.batch_size=128 \
     experiment.test.batch_size=128 \
-    experiment.training.optim.accumulate_grad_batches=2
+    experiment.training.optim.accumulate_grad_batches=2 \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium
+
 
 
 # Check exit status
