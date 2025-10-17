@@ -666,6 +666,9 @@ def composite_reward(
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
     parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
+    # print(f"[Ashok] parsed scene {parsed_scene}")
+    # for key in parsed_scene:
+    #     print(f"[Ashok] datatype of {key} is {type(parsed_scene[key])}")
 
     # 1. Compute composite reward (general scene quality)
     universal_total, universal_components = get_universal_reward(
@@ -674,6 +677,12 @@ def composite_reward(
         importance_weights=importance_weights,
         room_type=room_type,
     )
+    
+    # kwargs = {
+    #     "room_type": room_type,
+    #     "idx_to_labels": "x"
+        
+    # }
 
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,

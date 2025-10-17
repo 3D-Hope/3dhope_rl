@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to run inference experiments with different configurations
-# Experiments for runs: jfgw3io6 (DiffuScene), pfksynuz (Continuous MI)
+# Experiments for runs: bgdrozky (Flux Transformer), juy0jvto (Flux Transformer)
 # Testing: DDPM/DDIM schedulers with EMA=True only
 
 set -e  # Exit on error
@@ -84,7 +84,7 @@ run_experiment() {
     log "  - algorithm: $algorithm"
     log "  - algorithm.noise_schedule.scheduler: $scheduler"
     log "  - algorithm.ema.use: $ema (always True)"
-    log "  - num_scenes: 1000"
+    log "  - num_scenes: 256"
     log "  - algorithm.noise_schedule.ddim.num_inference_timesteps: $num_timesteps"
     log ""
     log "Starting experiment at: $(date)"
@@ -106,8 +106,8 @@ run_experiment() {
         algorithm.trainer=ddpm \
         load=$run_id \
         algorithm.noise_schedule.scheduler=$scheduler \
-        experiment.test.batch_size=128 \
         algorithm.ema.use=True \
+        experiment.test.batch_size=196 \
         algorithm.classifier_free_guidance.use_floor=False 2>&1 | tee -a "$LOG_FILE"
     
     # Find the generated pkl file (most recent sampled_scenes_results.pkl)
@@ -144,10 +144,10 @@ log ""
 log "Total experiments to run: 4"
 log ""
 log "Run IDs:"
-log "  # 1. bgdrozky (Flux Transformer) - COMMENTED OUT"
-log "  # 2. juy0jvto (Flux Transformer) - COMMENTED OUT"
-log "  3. jfgw3io6 (DiffuScene)"
-log "  4. pfksynuz (Continuous MI)"
+log "  1. bgdrozky (Flux Transformer)"
+log "  2. juy0jvto (Flux Transformer)"
+log "  # 3. jfgw3io6 (DiffuScene) - COMMENTED OUT"
+log "  # 4. pfksynuz (Continuous MI) - COMMENTED OUT"
 log ""
 log "Schedulers: DDPM (1000 timesteps), DDIM (150 timesteps)"
 log "EMA settings: True (always)"
@@ -158,77 +158,65 @@ log ""
 
 exp_counter=1
 
-# # Experiments for run bgdrozky (Flux Transformer) - COMMENTED OUT
-# echo ""
-# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-# echo ">>>"
-# echo ">>>  STARTING EXPERIMENTS FOR RUN: bgdrozky (Flux Transformer)"
-# echo ">>>"
-# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-# echo ""
-# 
-# run_experiment "bgdrozky" "ddpm" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "bgdrozky" "ddpm" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "bgdrozky" "ddim" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "bgdrozky" "ddim" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-
-# # Experiments for run juy0jvto (Flux Transformer) - COMMENTED OUT
-# echo ""
-# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-# echo ">>>"
-# echo ">>>  STARTING EXPERIMENTS FOR RUN: juy0jvto (Flux Transformer)"
-# echo ">>>"
-# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-# echo ""
-# 
-# run_experiment "juy0jvto" "ddpm" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "juy0jvto" "ddpm" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "juy0jvto" "ddim" "True" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-# 
-# run_experiment "juy0jvto" "ddim" "False" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
-# ((exp_counter++))
-
-# Experiments for run jfgw3io6 (DiffuScene)
+# Experiments for run bgdrozky (Flux Transformer)
 log ""
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: jfgw3io6 (DiffuScene)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: bgdrozky (Flux Transformer)"
 log ">>>"
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "jfgw3io6" "ddpm" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
+run_experiment "bgdrozky" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
 ((exp_counter++))
 
-run_experiment "jfgw3io6" "ddim" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
+run_experiment "bgdrozky" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
 ((exp_counter++))
 
-# Experiments for run pfksynuz (Continuous MI)
+# Experiments for run juy0jvto (Flux Transformer)
 log ""
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: pfksynuz (Continuous MI)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: juy0jvto (Flux Transformer)"
 log ">>>"
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "pfksynuz" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
+run_experiment "juy0jvto" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
 ((exp_counter++))
 
-run_experiment "pfksynuz" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
+run_experiment "juy0jvto" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
 ((exp_counter++))
+
+# # Experiments for run jfgw3io6 (DiffuScene) - COMMENTED OUT
+# log ""
+# log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# log ">>>"
+# log ">>>  STARTING EXPERIMENTS FOR RUN: jfgw3io6 (DiffuScene)"
+# log ">>>"
+# log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# log ""
+# 
+# run_experiment "jfgw3io6" "ddpm" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
+# ((exp_counter++))
+# 
+# run_experiment "jfgw3io6" "ddim" "$exp_counter" "scene_diffuser_diffuscene" "DiffuScene"
+# ((exp_counter++))
+
+# # Experiments for run pfksynuz (Continuous MI) - COMMENTED OUT
+# log ""
+# log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# log ">>>"
+# log ">>>  STARTING EXPERIMENTS FOR RUN: pfksynuz (Continuous MI)"
+# log ">>>"
+# log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+# log ""
+# 
+# run_experiment "pfksynuz" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
+# ((exp_counter++))
+# 
+# run_experiment "pfksynuz" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MI"
+# ((exp_counter++))
 
 # Summary
 log ""
@@ -241,16 +229,16 @@ log "Completed at: $(date)"
 log ""
 log "Summary of experiments:"
 log ""
-log "# Run: bgdrozky (Flux Transformer) - COMMENTED OUT"
-log "# Run: juy0jvto (Flux Transformer) - COMMENTED OUT"
-log ""
-log "Run: jfgw3io6 (DiffuScene)"
+log "Run: bgdrozky (Flux Transformer)"
 log "  1. DDPM (1000) + EMA=True"
 log "  2. DDIM (150) + EMA=True"
 log ""
-log "Run: pfksynuz (Continuous MI)"
+log "Run: juy0jvto (Flux Transformer)"
 log "  3. DDPM (1000) + EMA=True"
 log "  4. DDIM (150) + EMA=True"
+log ""
+log "# Run: jfgw3io6 (DiffuScene) - COMMENTED OUT"
+log "# Run: pfksynuz (Continuous MI) - COMMENTED OUT"
 log ""
 log "================================================================================"
 log ""

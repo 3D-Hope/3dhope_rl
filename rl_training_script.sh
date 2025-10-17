@@ -296,7 +296,7 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg_50 \
+PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_tv_reg_50 \
     load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -307,9 +307,6 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=2000000 \
@@ -331,7 +328,11 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_reg
     algorithm.test.num_samples_to_render=0 \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
-    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
+    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom
     
 
 # Check exit status

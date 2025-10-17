@@ -337,10 +337,10 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 
 <!-- Dynamic RL -->
 
-python take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_flux_transformer
+python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_flux_transformer
 
 PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
-    load=bgdrozky \
+    load=qbyilta9 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
@@ -551,6 +551,56 @@ algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
 algorithm.ema.use=True
 
+
+
+
+## dynamic reward sample
+
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    +num_scenes=5 \
+    algorithm=scene_diffuser_flux_transformer \
+    algorithm.trainer=rl_score \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.weight=0 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.custom.loss=true \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    load=qbyilta9 \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.ema.use=True \
+    experiment.test.batch_size=196 \
+    algorithm.classifier_free_guidance.use_floor=False
+
+    
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-16/19-17-30/sampled_scenes_results.pkl
+
+
+
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=1000 \
+algorithm=scene_diffuser_flux_transformer \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.num_additional_tokens_for_sampling=0 \
+algorithm.custom.loss=true \
+algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+algorithm.trainer=ddpo \
+load=qbyilta9 \
+algorithm.noise_schedule.scheduler=ddpm \
+algorithm.ema.use=True \
+experiment.test.batch_size=196 \
+algorithm.classifier_free_guidance.use_floor=False
+
+
+
 diffuscene
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=jfgw3io6 \
@@ -646,3 +696,15 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
 # evals
 edit pkl file path and run
 ./batch_eval.sh
+
+
+
+
+
+--- 
+# test dynamic reward
+
+instruction: design a bedroom for a person who loves watching tv
+
+{   "constraints": [     "the room must contain a bed and a tv_stand",     "the bed should face the tv_stand directly",     "there should be at least 2.0 meters distance between the bed and tv_stand for comfortable viewing"   ] }
+

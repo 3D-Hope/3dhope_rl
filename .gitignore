@@ -165,3 +165,6 @@ data_transport
 *ckpt
 comparisons/
 comparisons.zip
+
+experiment_results*.csv
+logs/

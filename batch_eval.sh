@@ -9,10 +9,10 @@ BASE_DIR="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ste
 
 # Array of pickle files to evaluate
 PKL_FILES=(
-    "$BASE_DIR/outputs/2025-10-16/10-37-29/sampled_scenes_results.pkl"  # DiffuScene, jfgw3io6, ddpm, True, 1000
-    "$BASE_DIR/outputs/2025-10-16/10-43-55/sampled_scenes_results.pkl"  # DiffuScene, jfgw3io6, ddim, True, 150
-    "$BASE_DIR/outputs/2025-10-16/10-45-35/sampled_scenes_results.pkl"  # Continuous MI, pfksynuz, ddpm, True, 1000
-    "$BASE_DIR/outputs/2025-10-16/10-48-55/sampled_scenes_results.pkl"  # Continuous MI, pfksynuz, ddim, True, 150
+    "$BASE_DIR/outputs/2025-10-16/14-19-40/sampled_scenes_results.pkl"  # DiffuScene, jfgw3io6, ddpm, True, 1000
+    "$BASE_DIR/outputs/2025-10-16/14-25-36/sampled_scenes_results.pkl"  # DiffuScene, jfgw3io6, ddim, True, 150
+    "$BASE_DIR/outputs/2025-10-16/14-27-13/sampled_scenes_results.pkl"  # Continuous MI, pfksynuz, ddpm, True, 1000
+    "$BASE_DIR/outputs/2025-10-16/14-33-34/sampled_scenes_results.pkl"  # Continuous MI, pfksynuz, ddim, True, 150
 )
 
 # Get total number of files

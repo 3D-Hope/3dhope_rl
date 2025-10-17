@@ -271,7 +271,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         elif self.cfg.ddpo.dynamic_constraint_rewards.use:
             print(
-                "Using composite reward (gravity + non-penetration + must-have + object count)"
+                "Using dynamic constraint rewards and universal rewards"
             )
             # Get room type from config
             room_type = "bedroom"  # default
@@ -290,16 +290,18 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 get_reward_functions=self.get_reward_functions,
             )
 
-            # Log individual components for analysis
-            if hasattr(self, "log"):
-                for name, values in reward_components.items():
-                    self.log(
-                        f"reward_components/{name}_mean",
-                        values.mean(),
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=False,
-                    )
+            # Log individual components for analysis using log_dict for proper step tracking
+            if hasattr(self, "log_dict") and reward_components:
+                reward_metrics = {
+                    f"reward_components/{name}_mean": values.mean()
+                    for name, values in reward_components.items()
+                }
+                self.log_dict(
+                    reward_metrics,
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=False,
+                )
 
         elif self.cfg.ddpo.use_prompt_following_reward:
             prompts = cond_dict["language_annotation"]
