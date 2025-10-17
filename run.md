@@ -522,12 +522,12 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm algorithm.noise
 
 floor cond flux baseline
 
-PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
 load=eviaimru \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
-+num_scenes=5 \
++num_scenes=16 \
 experiment.test.batch_size=32 \
 algorithm.num_additional_tokens_for_sampling=0 \
 algorithm=scene_diffuser_flux_transformer algorithm.trainer=ddpm algorithm.noise_schedule.scheduler=ddpm  experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.classifier_free_guidance.use_floor=True
@@ -560,7 +560,7 @@ PYTHONPATH=. python scripts/custom_sample_and_render.py \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
-    +num_scenes=5 \
+    +num_scenes=50 \
     algorithm=scene_diffuser_flux_transformer \
     algorithm.trainer=rl_score \
     experiment.find_unused_parameters=True \
@@ -569,14 +569,14 @@ PYTHONPATH=. python scripts/custom_sample_and_render.py \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.custom.loss=true \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    load=qbyilta9 \
+    load=xsbvzdfb \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.ema.use=True \
     experiment.test.batch_size=196 \
     algorithm.classifier_free_guidance.use_floor=False
 
     
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-16/19-17-30/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py 
 
 
 
@@ -626,7 +626,42 @@ algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm algorithm.noise_sche
 
 
 
-
+PYTHONPATH=. python -u main.py +name=universal_reward_continuous_mi \
+    load=pfksynuz \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=True \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=2e6 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=200.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=8 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.use_universal_reward=True \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium
 
 
 

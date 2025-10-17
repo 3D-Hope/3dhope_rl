@@ -8,6 +8,7 @@ from tqdm import tqdm
 from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
 from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
+from universal_constraint_rewards.commons import parse_and_descale_scenes
 
 from .ddpo_helpers import (
     composite_reward,
@@ -19,6 +20,7 @@ from .ddpo_helpers import (
     number_of_physically_feasible_objects_reward,
     object_number_reward,
     prompt_following_reward,
+    universal_reward,
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
@@ -269,6 +271,49 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 scenes=x0, scene_vec_desc=self.scene_vec_desc, cfg=self.cfg
             )
 
+        elif self.cfg.ddpo.use_universal_reward:
+            print("Using universal rewards")
+            
+            # Get room type from config
+            room_type = "bedroom"  # default
+            if hasattr(self.cfg.ddpo, "universal_reward"):
+                room_type = self.cfg.ddpo.universal_reward.get("room_type", "bedroom")
+            
+            # Get importance weights from config if available
+            importance_weights = None
+            if hasattr(self.cfg.ddpo, "universal_reward") and hasattr(
+                self.cfg.ddpo.universal_reward, "importance_weights"
+            ):
+                importance_weights = dict(self.cfg.ddpo.universal_reward.importance_weights)
+            
+            # Get number of classes from config
+            num_classes = self.cfg.custom.num_classes if hasattr(self.cfg, "custom") else 22
+            
+            # Parse and descale scenes
+            parsed_scene = parse_and_descale_scenes(x0, num_classes=num_classes)
+            
+            # Compute universal reward with all physics constraints
+            rewards, reward_components = universal_reward(
+                parsed_scene=parsed_scene,
+                scene_vec_desc=self.scene_vec_desc,
+                cfg=self.cfg,
+                room_type=room_type,
+                importance_weights=importance_weights,
+            )
+            
+            # Log individual components for analysis using log_dict for proper step tracking
+            if hasattr(self, "log_dict") and reward_components:
+                reward_metrics = {
+                    f"reward_components/{name}_mean": values.mean()
+                    for name, values in reward_components.items()
+                }
+                self.log_dict(
+                    reward_metrics,
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=False,
+                )
+            
         elif self.cfg.ddpo.dynamic_constraint_rewards.use:
             print(
                 "Using dynamic constraint rewards and universal rewards"
