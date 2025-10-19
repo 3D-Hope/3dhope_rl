@@ -744,3 +744,7 @@ instruction: design a bedroom for a person who loves watching tv
 
 {   "constraints": [     "the room must contain a bed and a tv_stand",     "the bed should face the tv_stand directly",     "there should be at least 2.0 meters distance between the bed and tv_stand for comfortable viewing"   ] }
 
+
+
+# best flux baseline with rl non pen
+juy0jvto

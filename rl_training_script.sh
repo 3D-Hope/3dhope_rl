@@ -297,7 +297,7 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_tv_reg_50 \
-    load=/scratch/pramish_paudel/model.ckpt \
+    resume=j2m5wxe7 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \

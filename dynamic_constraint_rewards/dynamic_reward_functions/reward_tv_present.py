@@ -11,18 +11,13 @@ def get_reward(parsed_scene, **kwargs):
     is_empty = parsed_scene["is_empty"]
     
     idx_to_labels = kwargs.get("idx_to_labels", {})
-    print(f"idx to labels {idx_to_labels}")
-    print(f"idx_to_labels type: {type(idx_to_labels)}, keys type sample: {type(list(idx_to_labels.keys())[0]) if idx_to_labels else 'empty'}")
     
     # Handle both integer and string keys
     if idx_to_labels and isinstance(list(idx_to_labels.keys())[0], str):
         # Keys are strings, convert to int
         idx_to_labels = {int(k): v for k, v in idx_to_labels.items()}
-        print(f"Converted string keys to int: {idx_to_labels}")
     
     tv_idx = next((k for k, v in idx_to_labels.items() if "tv_stand" in v.lower()), None)
-    print(f"tv idx {tv_idx}")
-    print("object indices ", object_indices)
     if tv_idx is None:
         return torch.zeros(len(object_indices), device=device)
 
@@ -75,7 +70,6 @@ def get_reward(parsed_scene, **kwargs):
             import traceback
             traceback.print_exc()
             continue
-    print("tv present ", rewards)
     return rewards
 
 def test_reward():

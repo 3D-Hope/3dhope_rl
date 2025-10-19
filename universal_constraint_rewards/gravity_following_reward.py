@@ -4,7 +4,7 @@ import torch
 from universal_constraint_rewards.commons import ceiling_objects, idx_to_labels
 
 
-def compute_gravity_following_reward(parsed_scene):
+def compute_gravity_following_reward(parsed_scene, **kwargs):
     """
     Calculate gravity-following reward based on how close objects are to the ground.
 

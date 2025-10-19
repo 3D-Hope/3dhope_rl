@@ -41,12 +41,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # Variable for storing the reward computation cache.
         self.reward_cache = None
         self.cfg = cfg
-        if self.cfg.ddpo.dynamic_constraint_rewards.use:
-            self.dynamic_reward_normalizer = RewardNormalizer(
+        if self.cfg.ddpo.dynamic_constraint_rewards.use or self.cfg.ddpo.use_universal_reward:
+            self.reward_normalizer = RewardNormalizer(
                 self.cfg.ddpo.dynamic_constraint_rewards.stats_path
             )
         else:
-            self.dynamic_reward_normalizer = None
+            self.reward_normalizer = None
 
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
             (
@@ -295,6 +295,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # Compute universal reward with all physics constraints
             rewards, reward_components = universal_reward(
                 parsed_scene=parsed_scene,
+                reward_normalizer=self.reward_normalizer,
                 scene_vec_desc=self.scene_vec_desc,
                 cfg=self.cfg,
                 room_type=room_type,
@@ -331,7 +332,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 scene_vec_desc=self.scene_vec_desc,
                 cfg=self.cfg,
                 room_type=room_type,
-                dynamic_reward_normalizer=self.dynamic_reward_normalizer,
+                reward_normalizer=self.reward_normalizer,
                 get_reward_functions=self.get_reward_functions,
             )
 

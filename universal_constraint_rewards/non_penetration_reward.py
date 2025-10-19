@@ -78,7 +78,7 @@ def compute_aabb_penetration_depth(centers1, sizes1, centers2, sizes2):
     return penetration_depth
 
 
-def compute_non_penetration_reward(parsed_scene):
+def compute_non_penetration_reward(parsed_scene, **kwargs):
     """
     Calculate reward based on non-penetration constraint using penetration depth.
 
@@ -97,6 +97,8 @@ def compute_non_penetration_reward(parsed_scene):
     is_empty = parsed_scene["is_empty"]
     batch_size = positions.shape[0]
     device = positions.device
+    
+    # print(f"Parsed scene: {parsed_scene}")
 
     # Identify ceiling objects (they don't participate in ground-level collisions)
     ceiling_indices = [
@@ -135,7 +137,6 @@ def compute_non_penetration_reward(parsed_scene):
     # Following original authors: reward = sum(distances) where distances are negative
     # Here: reward = -penetration_depth (more penetration = more negative)
     reward = -total_penetration
-    print(f"Non-penetration raw reward (negative total penetration in m): {reward}")
     return reward
 
 

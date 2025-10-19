@@ -7,7 +7,7 @@ import torch
 from universal_constraint_rewards.commons import idx_to_labels
 
 
-def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom"):
+def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom", **kwargs):
     """
     Calculate reward based on whether the scene contains required furniture for the room type.
 

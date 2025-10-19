@@ -620,8 +620,8 @@ def universal_reward(
 
 def composite_reward(
     scenes: torch.Tensor,
-    scene_vec_desc: SceneVecDescription,
-    dynamic_reward_normalizer: Optional[RewardNormalizer],
+    reward_normalizer,
+    scene_vec_desc: SceneVecDescription,  # not used for outs but here for legacy reasons
     cfg: DictConfig,
     get_reward_functions: dict,
     room_type: str = "bedroom",
@@ -673,23 +673,19 @@ def composite_reward(
     # 1. Compute composite reward (general scene quality)
     universal_total, universal_components = get_universal_reward(
         parsed_scene=parsed_scene,
+        reward_normalizer=reward_normalizer,
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
     )
-    
-    # kwargs = {
-    #     "room_type": room_type,
-    #     "idx_to_labels": "x"
-        
-    # }
+
 
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
         num_classes=num_classes,
         dynamic_importance_weights=None,  # TODO: add dynamic importance weights from LLM
         room_type=room_type,
-        dynamic_reward_normalizer=dynamic_reward_normalizer,
+        reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
     )

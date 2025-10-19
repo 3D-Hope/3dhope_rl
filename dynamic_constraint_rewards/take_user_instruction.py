@@ -13,7 +13,7 @@ from omegaconf import DictConfig, OmegaConf
 from scale_raw_rewards import RewardNormalizer
 
 from steerable_scene_generation.utils.omegaconf import register_resolvers
-from universal_constraint_rewards.non_penetration_reward import compute_non_penetration_reward
+from universal_constraint_rewards.commons import get_all_universal_reward_functions
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
@@ -53,22 +53,27 @@ def main(cfg: DictConfig):
         reward_code_dir
     )
 
-    # Add universal non-penetration reward to the existing reward functions
-    get_reward_functions['compute_non_penetration_reward'] = compute_non_penetration_reward
+    # Add all universal reward functions to the existing dynamic reward functions
+    universal_reward_functions = get_all_universal_reward_functions()
+    get_reward_functions.update(universal_reward_functions)
 
     # Test each reward function individually.
     for file in test_reward_functions:
         test_reward_functions[file]()
 
     stats = get_reward_stats_from_baseline(
-        get_reward_functions, num_scenes=10, config=cfg
+        get_reward_functions, num_scenes=1000, config=cfg,
+        algorithm="scene_diffuser_flux_transformer",
+        load="j2m5wxe7",
+        algorithm_classifier_free_guidance_use_floor=False
     )
     print("Stats: ", stats)
-
-    with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json", "w") as f:
+    stats_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
+    
+    with open(stats_path, "w") as f:
         json.dump(stats, f)
 
-    print("Saved stats to /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json")
+    print(f"Saved stats to {stats_path}")
     # Testing normaizer
     # reward_normalizer = RewardNormalizer(stats)
 
