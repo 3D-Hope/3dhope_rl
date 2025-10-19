@@ -97,7 +97,7 @@ def compute_non_penetration_reward(parsed_scene, **kwargs):
     is_empty = parsed_scene["is_empty"]
     batch_size = positions.shape[0]
     device = positions.device
-    
+
     # print(f"Parsed scene: {parsed_scene}")
 
     # Identify ceiling objects (they don't participate in ground-level collisions)

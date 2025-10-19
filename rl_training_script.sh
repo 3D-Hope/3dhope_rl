@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=16:00:00
+#SBATCH --time=23:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -296,8 +296,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_tv_reg_50 \
-    resume=j2m5wxe7 \
+PYTHONPATH=. python -u main.py +name=2_stage_rl_baseline_with_dynamic_constraint_reward_tv_reg_50 \
+    load=juy0jvto \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -333,6 +333,9 @@ PYTHONPATH=. python -u main.py +name=baseline_with_dynamic_constraint_reward_tv_
     algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=2.0 \
+    algorithm.ddpo.dynamic_constraint_rewards.dynamic_weight=1.0 \
     experiment.training.precision=bf16-mixed \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \

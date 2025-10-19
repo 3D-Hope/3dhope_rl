@@ -627,18 +627,21 @@ def composite_reward(
     room_type: str = "bedroom",
 ) -> tuple[torch.Tensor, dict]:
     """
-    Compute composite reward (general scene quality) plus task-specific reward.
+    Compute composite reward combining universal and dynamic rewards.
 
     This combines:
-    - Composite reward: gravity + non-penetration + must-have + object count
-    - Task-specific reward: has_sofa, two_beds, etc.
+    - Universal rewards: must_have_furniture + non_penetration + object_count
+    - Dynamic rewards: LLM-generated task-specific constraints
 
-    Final reward = composite_reward + task_weight * task_reward
+    Final reward = universal_weight * universal_total + dynamic_weight * dynamic_total
 
     Args:
         scenes (torch.Tensor): The scenes to score of shape (B, N, V).
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
         cfg (DictConfig): Configuration object (required for task settings).
+        reward_normalizer: Normalizer to scale rewards to [0, 1] range.
+        get_reward_functions (dict): Dictionary of dynamic reward functions.
+        room_type (str): Type of room for must-have furniture.
 
     Returns:
         tuple: (total_rewards, reward_components)
@@ -653,14 +656,21 @@ def composite_reward(
     task_cfg = cfg.ddpo.dynamic_constraint_rewards
 
     # Get task-specific settings
-    # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
-    # task_weight = task_cfg.get('task_weight', 2.0)
     room_type = task_cfg.get("room_type", "bedroom")
-    importance_weights = task_cfg.get("importance_weights", None)
-
-    # Convert importance_weights from DictConfig to dict if needed
-    if importance_weights is not None:
-        importance_weights = dict(importance_weights)
+    
+    # Get universal importance weights (for individual universal rewards)
+    universal_importance_weights = task_cfg.get("universal_importance_weights", None)
+    if universal_importance_weights is not None:
+        universal_importance_weights = dict(universal_importance_weights)
+    
+    # Get dynamic importance weights (for individual dynamic rewards)
+    dynamic_importance_weights = task_cfg.get("dynamic_importance_weights", None)
+    if dynamic_importance_weights is not None:
+        dynamic_importance_weights = dict(dynamic_importance_weights)
+    
+    # Get overall weights for universal vs dynamic
+    universal_weight = task_cfg.get("universal_weight", 1.0)
+    dynamic_weight = task_cfg.get("dynamic_weight", 1.0)
 
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
@@ -675,24 +685,34 @@ def composite_reward(
         parsed_scene=parsed_scene,
         reward_normalizer=reward_normalizer,
         num_classes=num_classes,
-        importance_weights=importance_weights,
+        universal_importance_weights=universal_importance_weights,
         room_type=room_type,
     )
 
-
+    # 2. Compute dynamic reward (LLM-generated constraints)
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
         num_classes=num_classes,
-        dynamic_importance_weights=None,  # TODO: add dynamic importance weights from LLM
+        dynamic_importance_weights=dynamic_importance_weights,
         room_type=room_type,
         reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
     )
 
-    total_rewards = universal_total + dynamic_total
-    reward_components = universal_components.copy()
-    reward_components.update(dynamic_components)
+    # 3. Combine with weights
+    total_rewards = universal_weight * universal_total + dynamic_weight * dynamic_total
+    
+    # Combine all components for logging
+    reward_components = {
+        'universal_total': universal_total,
+        'dynamic_total': dynamic_total,
+    }
+    reward_components.update({f'universal_{k}': v for k, v in universal_components.items()})
+    reward_components.update({f'dynamic_{k}': v for k, v in dynamic_components.items()})
+
+    print(f"[Ashok] Universal total: {universal_total.mean().item():.4f}, Dynamic total: {dynamic_total.mean().item():.4f}")
+    print(f"[Ashok] Weighted total: {total_rewards.mean().item():.4f}")
 
     return total_rewards, reward_components
 

@@ -370,7 +370,8 @@ PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=2
 
 
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \

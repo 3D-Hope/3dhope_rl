@@ -148,22 +148,28 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False):
 def get_all_universal_reward_functions():
     """
     Returns a dictionary of all universal (hand-designed) reward functions.
-    
+
     This is a centralized place to define which universal rewards exist,
     so they don't need to be listed in multiple places.
-    
+
     Returns:
         Dict mapping reward names to reward functions
     """
     # Import here to avoid circular imports
-    from universal_constraint_rewards.must_have_furniture_reward import compute_must_have_furniture_reward
-    from universal_constraint_rewards.non_penetration_reward import compute_non_penetration_reward
-    from universal_constraint_rewards.object_count_reward import compute_object_count_reward
-    
+    from universal_constraint_rewards.must_have_furniture_reward import (
+        compute_must_have_furniture_reward,
+    )
+    from universal_constraint_rewards.non_penetration_reward import (
+        compute_non_penetration_reward,
+    )
+    from universal_constraint_rewards.object_count_reward import (
+        compute_object_count_reward,
+    )
+
     return {
-        'must_have_furniture': compute_must_have_furniture_reward,
-        'non_penetration': compute_non_penetration_reward,
-        'object_count': compute_object_count_reward,
+        "must_have_furniture": compute_must_have_furniture_reward,
+        "non_penetration": compute_non_penetration_reward,
+        "object_count": compute_object_count_reward,
     }
 
 

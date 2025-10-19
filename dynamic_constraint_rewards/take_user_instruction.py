@@ -21,11 +21,15 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     algorithm_config = cfg.algorithm
-    
+
     # Set default values if the config structure doesn't exist
-    if hasattr(algorithm_config, 'ddpo') and hasattr(algorithm_config.ddpo, 'dynamic_constraint_rewards'):
+    if hasattr(algorithm_config, "ddpo") and hasattr(
+        algorithm_config.ddpo, "dynamic_constraint_rewards"
+    ):
         user_input = algorithm_config.ddpo.dynamic_constraint_rewards.user_query
-        reward_code_dir = algorithm_config.ddpo.dynamic_constraint_rewards.reward_code_dir
+        reward_code_dir = (
+            algorithm_config.ddpo.dynamic_constraint_rewards.reward_code_dir
+        )
         room_type = algorithm_config.ddpo.dynamic_constraint_rewards.room_type
     else:
         raise
@@ -62,14 +66,16 @@ def main(cfg: DictConfig):
         test_reward_functions[file]()
 
     stats = get_reward_stats_from_baseline(
-        get_reward_functions, num_scenes=1000, config=cfg,
+        get_reward_functions,
+        num_scenes=1000,
+        config=cfg,
         algorithm="scene_diffuser_flux_transformer",
         load="j2m5wxe7",
-        algorithm_classifier_free_guidance_use_floor=False
+        algorithm_classifier_free_guidance_use_floor=False,
     )
     print("Stats: ", stats)
     stats_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
-    
+
     with open(stats_path, "w") as f:
         json.dump(stats, f)
 
