@@ -23,20 +23,21 @@ from universal_constraint_rewards.commons import parse_and_descale_scenes
 
 def get_reward_stats_from_baseline(
     reward_functions: Dict[str, Callable],
-    load: str = "bgdrozky",
+    load: str = "rrudae6n",
     dataset: str = "custom_scene",
     config: DictConfig = None,
     dataset_processed_scene_data_path: str = "data/metadatas/custom_scene_metadata.json",
     dataset_max_num_objects_per_scene: int = 12,
-    num_scenes: int = 256,
-    algorithm: str = "scene_diffuser_flux_transformer",
+    num_scenes: int = 1000,
+    algorithm: str = "scene_diffuser_midiffusion",
     algorithm_trainer: str = "ddpm",
     experiment_find_unused_parameters: bool = True,
     algorithm_classifier_free_guidance_use: bool = False,
-    algorithm_classifier_free_guidance_weight: int = 0,
+    algorithm_classifier_free_guidance_use_floor: bool = True,
+    algorithm_classifier_free_guidance_weight: int = 1,
     algorithm_custom_loss: bool = True,
-    algorithm_ema_use: bool = False,
-    algorithm_noise_schedule_scheduler: str = "ddpm",
+    algorithm_ema_use: bool = True,
+    algorithm_noise_schedule_scheduler: str = "ddim",
     algorithm_noise_schedule_ddim_num_inference_timesteps: int = 150,
 ) -> Dict[str, Dict[str, float]]:
     """
@@ -78,6 +79,7 @@ def get_reward_stats_from_baseline(
         f"algorithm.trainer={algorithm_trainer}",
         f"experiment.find_unused_parameters={experiment_find_unused_parameters}",
         f"algorithm.classifier_free_guidance.use={algorithm_classifier_free_guidance_use}",
+        f"algorithm.classifier_free_guidance.use_floor={algorithm_classifier_free_guidance_use_floor}",
         f"algorithm.classifier_free_guidance.weight={algorithm_classifier_free_guidance_weight}",
         f"algorithm.custom.loss={str(algorithm_custom_loss).lower()}",
         f"algorithm.ema.use={algorithm_ema_use}",
@@ -168,7 +170,14 @@ def get_reward_stats_from_baseline(
             "min": float(np.min(rewards_array)),
             "max": float(np.max(rewards_array)),
             "mean": float(np.mean(rewards_array)),
+            "median": float(np.median(rewards_array)),
             "stddev": float(np.std(rewards_array)),
+            "percentile_1": float(np.percentile(rewards_array, 1)),
+            "percentile_5": float(np.percentile(rewards_array, 5)),
+            "percentile_25": float(np.percentile(rewards_array, 25)),
+            "percentile_75": float(np.percentile(rewards_array, 75)),
+            "percentile_95": float(np.percentile(rewards_array, 95)),
+            "percentile_99": float(np.percentile(rewards_array, 99)),
             "num_scenes": len(rewards_array),
         }
 
@@ -176,42 +185,14 @@ def get_reward_stats_from_baseline(
 
         print(f"  Stats for {reward_name}:")
         print(f"    Min: {stats['min']:.4f}")
-        print(f"    Max: {stats['max']:.4f}")
+        print(f"    5th percentile: {stats['percentile_5']:.4f}")
+        print(f"    25th percentile: {stats['percentile_25']:.4f}")
+        print(f"    Median (50th): {stats['median']:.4f}")
         print(f"    Mean: {stats['mean']:.4f}")
+        print(f"    75th percentile: {stats['percentile_75']:.4f}")
+        print(f"    95th percentile: {stats['percentile_95']:.4f}")
+        print(f"    Max: {stats['max']:.4f}")
         print(f"    Stddev: {stats['stddev']:.4f}")
 
     return reward_stats
 
-
-if __name__ == "__main__":
-    # Example usage
-
-    def example_reward_1(scene_params: Dict[str, Any]) -> float:
-        """Example reward: normalized object count."""
-        num_objects = len(scene_params["class_labels"])
-        # Normalize assuming max 12 objects
-        return min(num_objects / 12.0, 1.0)
-
-    def example_reward_2(scene_params: Dict[str, Any]) -> float:
-        """Example reward: average object size."""
-        sizes = scene_params["sizes"]
-        if len(sizes) == 0:
-            return 0.0
-        avg_volume = np.mean(np.prod(sizes, axis=1))
-        # Normalize (this is just an example, adjust based on your data)
-        return min(avg_volume / 10.0, 1.0)
-
-    reward_functions = {
-        "object_count_reward": example_reward_1,
-        "average_size_reward": example_reward_2,
-    }
-
-    stats = get_reward_stats_from_baseline(
-        reward_functions=reward_functions,
-        num_scenes=10,  # Use small number for testing
-    )
-
-    print("\n=== Final Statistics ===")
-    import json
-
-    print(json.dumps(stats, indent=2))

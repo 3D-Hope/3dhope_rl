@@ -44,7 +44,7 @@ def get_dynamic_reward(
     parsed_scene,
     num_classes=22,
     dynamic_importance_weights=None,
-    dynamic_reward_normalizer=None,
+    reward_normarlizer=None,
     get_reward_functions=None,
     config=None,
     **kwargs,
@@ -83,9 +83,9 @@ def get_dynamic_reward(
         print(f"[Ashok] Raw reward for {key}: {reward}")
         rewards[key] = reward
 
-    if dynamic_reward_normalizer is not None:
+    if reward_normarlizer is not None:
         for key, value in rewards.items():
-            rewards[key] = dynamic_reward_normalizer.normalize(key, torch.tensor(value))
+            rewards[key] = reward_normarlizer.normalize(key, torch.tensor(value))
 
     rewards_sum = 0
     if dynamic_importance_weights is None:

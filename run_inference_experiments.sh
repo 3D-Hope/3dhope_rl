@@ -64,6 +64,8 @@ run_experiment() {
     local exp_num=$3
     local algorithm=$4
     local model_name=$5
+    local use_floor=${6:-False}  # Optional parameter, default False
+    local is_rl=${7:-False}  # Optional parameter to indicate RL models
     
     # Set num_timesteps based on scheduler
     local num_timesteps
@@ -71,6 +73,14 @@ run_experiment() {
         num_timesteps=1000
     else
         num_timesteps=150
+    fi
+    
+    # Set trainer based on whether it's RL model
+    local trainer
+    if [ "$is_rl" = "True" ]; then
+        trainer="rl_score"
+    else
+        trainer="ddpm"
     fi
     
     # Always use EMA=True
@@ -82,8 +92,10 @@ run_experiment() {
     log "  - Model: $model_name"
     log "  - load: $run_id"
     log "  - algorithm: $algorithm"
+    log "  - algorithm.trainer: $trainer"
     log "  - algorithm.noise_schedule.scheduler: $scheduler"
     log "  - algorithm.ema.use: $ema (always True)"
+    log "  - algorithm.classifier_free_guidance.use_floor: $use_floor"
     log "  - num_scenes: 256"
     log "  - algorithm.noise_schedule.ddim.num_inference_timesteps: $num_timesteps"
     log ""
@@ -103,12 +115,12 @@ run_experiment() {
         algorithm.num_additional_tokens_for_sampling=0 \
         algorithm.custom.loss=true \
         algorithm.noise_schedule.ddim.num_inference_timesteps=$num_timesteps \
-        algorithm.trainer=ddpm \
+        algorithm.trainer=$trainer \
         load=$run_id \
         algorithm.noise_schedule.scheduler=$scheduler \
         algorithm.ema.use=True \
         experiment.test.batch_size=196 \
-        algorithm.classifier_free_guidance.use_floor=False 2>&1 | tee -a "$LOG_FILE"
+        algorithm.classifier_free_guidance.use_floor=$use_floor 2>&1 | tee -a "$LOG_FILE"
     
     # Find the generated pkl file (most recent sampled_scenes_results.pkl)
     local output_dir=$(find outputs -type f -name "sampled_scenes_results.pkl" -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2- | xargs dirname)
@@ -141,13 +153,12 @@ log "===========================================================================
 log "                    INFERENCE EXPERIMENTS BATCH"
 log "================================================================================"
 log ""
-log "Total experiments to run: 4"
+log "Total experiments to run: 6"
 log ""
 log "Run IDs:"
-log "  1. bgdrozky (Flux Transformer)"
-log "  2. juy0jvto (Flux Transformer)"
-log "  # 3. jfgw3io6 (DiffuScene) - COMMENTED OUT"
-log "  # 4. pfksynuz (Continuous MI) - COMMENTED OUT"
+log "  1. qbyilta9 (Flux Transformer RL)"
+log "  2. qhns5khl (Continuous MiDiffusion RL)"
+log "  3. rrudae6n (Continuous MiDiffusion with Floor)"
 log ""
 log "Schedulers: DDPM (1000 timesteps), DDIM (150 timesteps)"
 log "EMA settings: True (always)"
@@ -158,34 +169,49 @@ log ""
 
 exp_counter=1
 
-# Experiments for run bgdrozky (Flux Transformer)
+# Experiments for run qbyilta9 (Flux Transformer RL)
 log ""
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: bgdrozky (Flux Transformer)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: qbyilta9 (Flux Transformer RL)"
 log ">>>"
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "bgdrozky" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+run_experiment "qbyilta9" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL" "False" "True"
 ((exp_counter++))
 
-run_experiment "bgdrozky" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+run_experiment "qbyilta9" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL" "False" "True"
 ((exp_counter++))
 
-# Experiments for run juy0jvto (Flux Transformer)
+# Experiments for run qhns5khl (Continuous MiDiffusion RL)
 log ""
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: juy0jvto (Flux Transformer)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: qhns5khl (Continuous MiDiffusion RL)"
 log ">>>"
 log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "juy0jvto" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+run_experiment "qhns5khl" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion RL" "False" "True"
 ((exp_counter++))
 
-run_experiment "juy0jvto" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer"
+run_experiment "qhns5khl" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion RL" "False" "True"
+((exp_counter++))
+
+# Experiments for run rrudae6n (Continuous MiDiffusion with Floor)
+log ""
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>"
+log ">>>  STARTING EXPERIMENTS FOR RUN: rrudae6n (Continuous MiDiffusion with Floor)"
+log ">>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ""
+
+run_experiment "rrudae6n" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion Floor" "True" "False"
+((exp_counter++))
+
+run_experiment "rrudae6n" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion Floor" "True" "False"
 ((exp_counter++))
 
 # # Experiments for run jfgw3io6 (DiffuScene) - COMMENTED OUT
@@ -224,21 +250,22 @@ log "===========================================================================
 log "                    ALL EXPERIMENTS COMPLETED"
 log "================================================================================"
 log ""
-log "Total experiments run: 4"
+log "Total experiments run: 6"
 log "Completed at: $(date)"
 log ""
 log "Summary of experiments:"
 log ""
-log "Run: bgdrozky (Flux Transformer)"
+log "Run: qbyilta9 (Flux Transformer RL)"
 log "  1. DDPM (1000) + EMA=True"
 log "  2. DDIM (150) + EMA=True"
 log ""
-log "Run: juy0jvto (Flux Transformer)"
+log "Run: qhns5khl (Continuous MiDiffusion RL)"
 log "  3. DDPM (1000) + EMA=True"
 log "  4. DDIM (150) + EMA=True"
 log ""
-log "# Run: jfgw3io6 (DiffuScene) - COMMENTED OUT"
-log "# Run: pfksynuz (Continuous MI) - COMMENTED OUT"
+log "Run: rrudae6n (Continuous MiDiffusion with Floor)"
+log "  5. DDPM (1000) + EMA=True"
+log "  6. DDIM (150) + EMA=True"
 log ""
 log "================================================================================"
 log ""

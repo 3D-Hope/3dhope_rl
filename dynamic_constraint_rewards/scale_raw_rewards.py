@@ -1,82 +1,86 @@
 import json
-
 import torch
+import numpy as np
 
 
 class RewardNormalizer:
+    """
+    Normalize each to [-1, 1] using robust min–max scaling using EMA-updated percentiles.
+    """
     def __init__(
         self,
         baseline_stats_path: str,
-        alpha: float = 1.0,
         beta: float = 0.99,
         eps: float = 1e-8,
+        low_percentile: float = 1.0,
+        high_percentile: float = 99.0,
     ):
         """
-        Reward normalizer with per-reward statistics and EMA updating.
+        Robust per-reward normalizer with percentile-based scaling and EMA updates.
 
         Args:
-            baseline_stats_path (str): Path to the baseline stats file.
-                {
-                    "gravity": {"min": -1.2, "max": 0.8, "mean": -0.3, "stddev": 0.4},
-                    "non_pen": {"min": -0.05, "max": 0.0, "mean": -0.02, "stddev": 0.01}
-                }
-            alpha (float): tanh sensitivity factor.
-            beta (float): EMA smoothing factor for min/max updates.
-            eps (float): Small value to prevent division by zero.
+            baseline_stats_path (str): Path to baseline stats JSON file.
+            beta (float): EMA smoothing factor for updating min/max.
+            eps (float): Small constant to avoid division by zero.
+            low_percentile (float): Lower percentile for clipping outliers.
+            high_percentile (float): Upper percentile for clipping outliers.
         """
-        self.alpha = alpha
         self.beta = beta
         self.eps = eps
+        self.low_p = low_percentile
+        self.high_p = high_percentile
 
-        # Initialize stats for each reward function
-        self.stats = {}
+        # Load baseline stats
         baseline_stats = json.load(open(baseline_stats_path))
+        self.stats = {}
         for name, s in baseline_stats.items():
+            # Initialize from robust range if available, else use min/max
             self.stats[name] = {
-                "min": torch.tensor(s["min"], dtype=torch.float32),
-                "max": torch.tensor(s["max"], dtype=torch.float32),
+                "min": torch.tensor(s.get("percentile_1", s["min"]), dtype=torch.float32),
+                "max": torch.tensor(s.get("percentile_99", s["max"]), dtype=torch.float32),
             }
 
     def normalize(self, name: str, rewards: torch.Tensor) -> torch.Tensor:
         """
-        Normalize rewards for a specific reward component.
+        Normalize rewards for a specific reward component using robust min–max scaling.
 
         Args:
-            name (str): Reward function name (e.g. "gravity").
-            rewards (torch.Tensor): Tensor of shape [B, 1].
+            name (str): Reward name key from stats.
+            rewards (torch.Tensor): Tensor of shape [B, 1] or [B].
 
         Returns:
-            torch.Tensor: Normalized rewards in [0, 1].
+            torch.Tensor: Normalized rewards in range [-1, 1].
         """
         if name not in self.stats:
-            raise ValueError(
-                f"Unknown reward name '{name}' — initialize first via baseline stats."
-            )
+            raise ValueError(f"Unknown reward name '{name}' — check baseline stats.")
 
         device = rewards.device
         r_min = self.stats[name]["min"].to(device)
         r_max = self.stats[name]["max"].to(device)
 
-        # Step 1: Min-max normalization to [-1, 1]
+        # --- Compute robust batch percentiles to avoid outliers ---
+        batch_np = rewards.detach().cpu().numpy().flatten()
+        batch_low = np.percentile(batch_np, self.low_p)
+        batch_high = np.percentile(batch_np, self.high_p)
+        if batch_high <= batch_low:
+            batch_high = batch_low + self.eps
+
+        # --- EMA update of running min and max ---
+        new_min = torch.tensor(batch_low, dtype=torch.float32, device=device)
+        new_max = torch.tensor(batch_high, dtype=torch.float32, device=device)
+        r_min = self.beta * r_min + (1 - self.beta) * new_min
+        r_max = self.beta * r_max + (1 - self.beta) * new_max
+        self.stats[name]["min"], self.stats[name]["max"] = r_min, r_max
+
+        # --- Robust min–max normalization to [-1, 1] ---
         denom = torch.clamp(r_max - r_min, min=self.eps)
-        scaled = 2 * ((rewards - r_min) / denom) - 1
+        scaled = 2.0 * (rewards - r_min) / denom - 1.0
+        scaled = torch.clamp(scaled, -1.0, 1.0)
 
-        # Step 2: Apply tanh(alpha * x)
-        bounded = torch.tanh(self.alpha * scaled)
-
-        # Step 3: Map (-1, 1) → (0, 1)
-        normalized = (bounded + 1) / 2
-
-        # Step 4: Update EMA stats
-        batch_min = rewards.min()
-        batch_max = rewards.max()
-        self.stats[name]["min"] = self.beta * r_min + (1 - self.beta) * batch_min
-        self.stats[name]["max"] = self.beta * r_max + (1 - self.beta) * batch_max
-
-        return normalized.to(device)
+        return scaled
 
     def get_stats(self) -> dict:
-        """Return current moving stats as a plain dict (for logging or checkpointing)."""
+        """Return current EMA stats for logging or checkpointing."""
         return {
             name: {
                 "min": float(v["min"].cpu().item()),

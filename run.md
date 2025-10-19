@@ -337,7 +337,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 
 <!-- Dynamic RL -->
 
-python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_flux_transformer
+python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_midiffusion
 
 PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     load=qbyilta9 \
@@ -569,14 +569,15 @@ PYTHONPATH=. python scripts/custom_sample_and_render.py \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.custom.loss=true \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    load=xsbvzdfb \
+    load=j2m5wxe7 \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.ema.use=True \
     experiment.test.batch_size=196 \
     algorithm.classifier_free_guidance.use_floor=False
 
     
-python ../ThreedFront/scripts/render_results.py 
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-19/14-10-15/sampled_scenes_results.pkl --no_texture --without_floor
+
 
 
 

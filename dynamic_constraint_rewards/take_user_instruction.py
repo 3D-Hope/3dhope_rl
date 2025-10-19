@@ -13,6 +13,7 @@ from omegaconf import DictConfig, OmegaConf
 from scale_raw_rewards import RewardNormalizer
 
 from steerable_scene_generation.utils.omegaconf import register_resolvers
+from universal_constraint_rewards.non_penetration_reward import compute_non_penetration_reward
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
@@ -20,9 +21,14 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     algorithm_config = cfg.algorithm
-    user_input = algorithm_config.ddpo.dynamic_constraint_rewards.user_query
-    reward_code_dir = algorithm_config.ddpo.dynamic_constraint_rewards.reward_code_dir
-    room_type = algorithm_config.ddpo.dynamic_constraint_rewards.room_type
+    
+    # Set default values if the config structure doesn't exist
+    if hasattr(algorithm_config, 'ddpo') and hasattr(algorithm_config.ddpo, 'dynamic_constraint_rewards'):
+        user_input = algorithm_config.ddpo.dynamic_constraint_rewards.user_query
+        reward_code_dir = algorithm_config.ddpo.dynamic_constraint_rewards.reward_code_dir
+        room_type = algorithm_config.ddpo.dynamic_constraint_rewards.room_type
+    else:
+        raise
     os.makedirs(reward_code_dir, exist_ok=True)
 
     # TODO: Uncomment this when we have the llm working.
@@ -47,18 +53,22 @@ def main(cfg: DictConfig):
         reward_code_dir
     )
 
+    # Add universal non-penetration reward to the existing reward functions
+    get_reward_functions['compute_non_penetration_reward'] = compute_non_penetration_reward
+
     # Test each reward function individually.
     for file in test_reward_functions:
         test_reward_functions[file]()
 
     stats = get_reward_stats_from_baseline(
-        get_reward_functions, num_scenes=162, config=cfg
+        get_reward_functions, num_scenes=10, config=cfg
     )
     print("Stats: ", stats)
 
-    with open("stats.json", "w") as f:
+    with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json", "w") as f:
         json.dump(stats, f)
 
+    print("Saved stats to /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json")
     # Testing normaizer
     # reward_normalizer = RewardNormalizer(stats)
 
