@@ -39,6 +39,8 @@ from .inpainting_helpers import (
     generate_physical_feasibility_inpainting_masks,
 )
 
+import multiprocessing
+num_cpus = multiprocessing.cpu_count()
 
 def ddpm_step_with_logprob(
     scheduler: DDPMScheduler,
@@ -638,12 +640,38 @@ def physcene_reward(
     #     with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl", "wb") as f:
     #         pickle.dump(floor_plan_args, f)
 
-    collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-    layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-    walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-    
-    print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
-    print(f"after scaling - Collision loss: {weight_coll*collision_loss}, Walkability loss: {weight_walk*walkability_loss}, Layout loss: {weight_layout*layout_loss}")
+
+    # If input is batched, parallelize over batch
+    if parsed_scene is not None and isinstance(parsed_scene, dict):
+        batch_size = parsed_scene["positions"].shape[0]
+        # Prepare args for each scene in batch
+        args_list = []
+        for i in range(batch_size):
+            # Slice each key in parsed_scene for scene i
+            scene_i = {k: v[i] if isinstance(v, torch.Tensor) and v.shape[0] == batch_size else v for k, v in parsed_scene.items()}
+            args_list.append((scene_i, floor_plan_args))
+
+        def compute_losses(args):
+            scene_i, floor_plan_args = args
+            coll = collision_constraint(scene_i, floor_plan_args=floor_plan_args)
+            layout = room_layout_constraint(scene_i, floor_plan_args=floor_plan_args)
+            walk = walkability_constraint(scene_i, floor_plan_args=floor_plan_args)
+            return coll, layout, walk
+        print(f"[Ashok] Using {num_cpus} CPUs for physcene reward computation.")
+        with multiprocessing.Pool(num_cpus) as pool:
+            results = pool.map(compute_losses, args_list)
+        collision_losses, layout_losses, walkability_losses = zip(*results)
+        collision_loss = torch.tensor(collision_losses)
+        layout_loss = torch.tensor(layout_losses)
+        walkability_loss = torch.tensor(walkability_losses)
+    else:
+        # Single scene, no batch
+        collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+        layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+        walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+
+    # print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
+    # print(f"after scaling - Collision loss: {weight_coll*collision_loss}, Walkability loss: {weight_walk*walkability_loss}, Layout loss: {weight_layout*layout_loss}")
 
     total_loss = weight_coll*collision_loss + weight_walk*walkability_loss + weight_layout*layout_loss
     rewards = -total_loss  # Negative loss as reward
@@ -665,13 +693,13 @@ def composite_reward(
     room_type: str = "bedroom",
 ) -> tuple[torch.Tensor, dict]:
     """
-    Compute composite reward combining universal and dynamic rewards.
+    Compute composite reward (general scene quality) plus task-specific reward.
 
     This combines:
-    - Universal rewards: must_have_furniture + non_penetration + object_count
-    - Dynamic rewards: LLM-generated task-specific constraints
+    - Composite reward: gravity + non-penetration + must-have + object count
+    - Task-specific reward: has_sofa, two_beds, etc.
 
-    Final reward = universal_weight * universal_total + dynamic_weight * dynamic_total
+    Final reward = composite_reward + task_weight * task_reward
 
     Args:
         scenes (torch.Tensor): The scenes to score of shape (B, N, V).
@@ -694,21 +722,14 @@ def composite_reward(
     task_cfg = cfg.ddpo.dynamic_constraint_rewards
 
     # Get task-specific settings
+    # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
+    # task_weight = task_cfg.get('task_weight', 2.0)
     room_type = task_cfg.get("room_type", "bedroom")
-    
-    # Get universal importance weights (for individual universal rewards)
-    universal_importance_weights = task_cfg.get("universal_importance_weights", None)
-    if universal_importance_weights is not None:
-        universal_importance_weights = dict(universal_importance_weights)
-    
-    # Get dynamic importance weights (for individual dynamic rewards)
-    dynamic_importance_weights = task_cfg.get("dynamic_importance_weights", None)
-    if dynamic_importance_weights is not None:
-        dynamic_importance_weights = dict(dynamic_importance_weights)
-    
-    # Get overall weights for universal vs dynamic
-    universal_weight = task_cfg.get("universal_weight", 1.0)
-    dynamic_weight = task_cfg.get("dynamic_weight", 1.0)
+    importance_weights = task_cfg.get("importance_weights", None)
+
+    # Convert importance_weights from DictConfig to dict if needed
+    if importance_weights is not None:
+        importance_weights = dict(importance_weights)
 
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
@@ -723,34 +744,23 @@ def composite_reward(
         parsed_scene=parsed_scene,
         reward_normalizer=reward_normalizer,
         num_classes=num_classes,
-        universal_importance_weights=universal_importance_weights,
+        importance_weights=importance_weights,
         room_type=room_type,
     )
 
-    # 2. Compute dynamic reward (LLM-generated constraints)
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
         num_classes=num_classes,
-        dynamic_importance_weights=dynamic_importance_weights,
+        dynamic_importance_weights=None,  # TODO: add dynamic importance weights from LLM
         room_type=room_type,
         reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
     )
 
-    # 3. Combine with weights
-    total_rewards = universal_weight * universal_total + dynamic_weight * dynamic_total
-    
-    # Combine all components for logging
-    reward_components = {
-        'universal_total': universal_total,
-        'dynamic_total': dynamic_total,
-    }
-    reward_components.update({f'universal_{k}': v for k, v in universal_components.items()})
-    reward_components.update({f'dynamic_{k}': v for k, v in dynamic_components.items()})
-
-    print(f"[Ashok] Universal total: {universal_total.mean().item():.4f}, Dynamic total: {dynamic_total.mean().item():.4f}")
-    print(f"[Ashok] Weighted total: {total_rewards.mean().item():.4f}")
+    total_rewards = universal_total + dynamic_total
+    reward_components = universal_components.copy()
+    reward_components.update(dynamic_components)
 
     return total_rewards, reward_components
 

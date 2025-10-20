@@ -18,7 +18,7 @@ except:
     from common import (find_shortest_path, draw_2d_gaussian, cal_iou_3d)
 
 def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
-    
+    print("Calculating Walkability Constraint ...")
     positions = parsed_scene["positions"]  # (B, N, 3)
     sizes = parsed_scene["sizes"]  # (B, N, 3) - half-extents
     orientations = parsed_scene["orientations"]  # (B, N, 2) - [cos_theta, sin_theta]

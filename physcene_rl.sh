@@ -2,9 +2,9 @@
 #SBATCH --job-name=physcene_rl_reg_50_cont_mi_floor
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=48G
-#SBATCH --time=23:00:00
+#SBATCH --cpus-per-task=128
+#SBATCH --mem-per-cpu=8G
+#SBATCH --time=48:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
