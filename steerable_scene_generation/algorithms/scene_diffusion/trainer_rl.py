@@ -21,6 +21,7 @@ from .ddpo_helpers import (
     object_number_reward,
     prompt_following_reward,
     universal_reward,
+    physcene_reward,
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
@@ -61,6 +62,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
+            
+        
 
     def generate_trajs_for_ddpo(
         self,
@@ -299,28 +302,62 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # Parse and descale scenes
             parsed_scene = parse_and_descale_scenes(x0, num_classes=num_classes)
 
-            # Compute universal reward with all physics constraints
-            rewards, reward_components = universal_reward(
-                parsed_scene=parsed_scene,
-                reward_normalizer=self.reward_normalizer,
-                scene_vec_desc=self.scene_vec_desc,
-                cfg=self.cfg,
-                room_type=room_type,
-                importance_weights=importance_weights,
-            )
-
-            # Log individual components for analysis using log_dict for proper step tracking
-            if hasattr(self, "log_dict") and reward_components:
-                reward_metrics = {
-                    f"reward_components/{name}_mean": values.mean()
-                    for name, values in reward_components.items()
+            if self.cfg.ddpo.universal_reward.use_physcene_reward:
+                # TODO: Get floor plan args from dataset, how do we get the dataset here? we need get_floor_plan_args from custom dataset here to get the values for each scene in the batch
+                indices = cond_dict["idx"]
+                # Efficiently gather floor plan args for all indices in the batch
+                floor_plan_args_list = [self.dataset.get_floor_plan_args(idx) for idx in indices]
+                # Stack each key across the batch for tensor conversion
+                floor_plan_args = {
+                    key: [args[key] for args in floor_plan_args_list]
+                    for key in ["floor_plan_centroid", "floor_plan_vertices", "floor_plan_faces", "room_outer_box"]
                 }
-                self.log_dict(
-                    reward_metrics,
-                    on_step=True,
-                    on_epoch=False,
-                    prog_bar=False,
+                # Compute physcene reward
+                rewards, reward_components = physcene_reward(
+                    parsed_scene=parsed_scene,
+                    reward_normalizer=self.reward_normalizer,
+                    scene_vec_desc=self.scene_vec_desc,
+                    cfg=self.cfg,
+                    room_type=room_type,
+                    importance_weights=importance_weights,
+                    floor_plan_args=floor_plan_args,
                 )
+
+                # Log individual components for analysis using log_dict for proper step tracking
+                if hasattr(self, "log_dict") and reward_components:
+                    reward_metrics = {
+                        f"reward_components/{name}_mean": values.mean()
+                        for name, values in reward_components.items()
+                    }
+                    self.log_dict(
+                        reward_metrics,
+                        on_step=True,
+                        on_epoch=False,
+                        prog_bar=False,
+                    )
+            else: 
+                # Compute universal reward with all physics constraints
+                rewards, reward_components = universal_reward(
+                    parsed_scene=parsed_scene,
+                    reward_normalizer=self.reward_normalizer,
+                    scene_vec_desc=self.scene_vec_desc,
+                    cfg=self.cfg,
+                    room_type=room_type,
+                    importance_weights=importance_weights,
+                )
+
+                # Log individual components for analysis using log_dict for proper step tracking
+                if hasattr(self, "log_dict") and reward_components:
+                    reward_metrics = {
+                        f"reward_components/{name}_mean": values.mean()
+                        for name, values in reward_components.items()
+                    }
+                    self.log_dict(
+                        reward_metrics,
+                        on_step=True,
+                        on_epoch=False,
+                        prog_bar=False,
+                    )
 
         elif self.cfg.ddpo.dynamic_constraint_rewards.use:
             # print("Using dynamic constraint rewards and universal rewards")

@@ -9,6 +9,7 @@ import torch
 from call_agent import ConstraintGenerator, RewardGenerator
 from commons import import_dynamic_reward_functions
 from get_reward_stats_from_baseline import get_reward_stats_from_baseline
+from get_reward_stats_from_dataset import get_reward_stats_from_dataset
 from omegaconf import DictConfig, OmegaConf
 from scale_raw_rewards import RewardNormalizer
 
@@ -65,6 +66,10 @@ def main(cfg: DictConfig):
     for file in test_reward_functions:
         test_reward_functions[file]()
 
+    # Get stats from baseline model
+    print("\n" + "=" * 80)
+    print("Computing reward statistics from BASELINE MODEL")
+    print("=" * 80)
     stats = get_reward_stats_from_baseline(
         get_reward_functions,
         num_scenes=1000,
@@ -73,14 +78,31 @@ def main(cfg: DictConfig):
         load="j2m5wxe7",
         algorithm_classifier_free_guidance_use_floor=False,
     )
-    print("Stats: ", stats)
+    print("Baseline Stats: ", stats)
     stats_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
 
     with open(stats_path, "w") as f:
-        json.dump(stats, f)
+        json.dump(stats, f, indent=2)
 
-    print(f"Saved stats to {stats_path}")
-    # Testing normaizer
+    print(f"Saved baseline stats to {stats_path}")
+
+    # Get statistics from ground truth dataset
+    print("\n" + "=" * 80)
+    print("Computing statistics from GROUND TRUTH DATASET")
+    print("=" * 80)
+    dataset_stats = get_reward_stats_from_dataset(
+        reward_functions=get_reward_functions,
+        config=cfg,
+        num_scenes=1000,
+    )
+
+    # Save dataset stats
+    dataset_stats_path = os.path.join(reward_code_dir, "dataset_stats.json")
+    with open(dataset_stats_path, "w") as f:
+        json.dump(dataset_stats, f, indent=2)
+    print(f"\nDataset statistics saved to: {dataset_stats_path}")
+
+    # Testing normalizer (commented out for now)
     # reward_normalizer = RewardNormalizer(stats)
 
     # for key, value in get_reward_functions.items():

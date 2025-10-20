@@ -337,7 +337,7 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 
 <!-- Dynamic RL -->
 
-python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_midiffusion
+python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_flux_transformer
 
 PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     load=qbyilta9 \
@@ -749,3 +749,48 @@ instruction: design a bedroom for a person who loves watching tv
 
 # best flux baseline with rl non pen
 juy0jvto
+
+
+all info from boxes.npz
+['uids', 'jids', 'scene_id', 'scene_uid', 'scene_type', 'json_path', 'room_layout', 'floor_plan_vertices', 'floor_plan_faces', 'floor_plan_centroid', 'class_labels', 'translations', 'sizes', 'angles', 'floor_plan_ordered_corners', 'floor_plan_boundary_points_normals']
+
+
+
+
+
+PYTHONPATH=. python -u main.py +name=test_physcene_rl \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion\
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=False \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=2e6 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=4 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    experiment.training.precision=bf16-mixed \
+    algorithm.ddpo.use_universal_reward=True \
+    algorithm.ddpo.universal_reward.use_physcene_reward=True \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=1.0 \
+    load=rrudae6n

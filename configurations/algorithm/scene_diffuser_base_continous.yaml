@@ -68,6 +68,7 @@ ddpo:
   # Used when `use_universal_reward` is True.
   # Composite reward combines multiple physics-based rewards with importance weighting.
   universal_reward:
+    use_physcene_reward: False
     # Room type for must-have furniture reward ('bedroom', 'living_room', etc.)
     room_type: 'bedroom'
     

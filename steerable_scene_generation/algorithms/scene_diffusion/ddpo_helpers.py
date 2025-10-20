@@ -32,6 +32,8 @@ from universal_constraint_rewards.commons import (
     parse_and_descale_scenes,
 )
 
+from universal_constraint_rewards.physcene import room_layout_constraint, walkability_constraint, collision_constraint
+
 from .inpainting_helpers import (
     generate_empty_object_inpainting_masks,
     generate_physical_feasibility_inpainting_masks,
@@ -617,6 +619,39 @@ def universal_reward(
 
     return total_rewards, reward_components
 
+def physcene_reward(
+    parsed_scene: torch.Tensor,
+    scene_vec_desc: SceneVecDescription,
+    floor_plan_args,
+    cfg=None,
+    room_type: str = "bedroom",
+    **kwargs
+) -> torch.Tensor:
+    
+    # Temporary code to test with fixed floor plan args
+    # import os
+    # import pickle
+    # if not os.path.exists("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl"):
+    #     with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl", "wb") as f:
+    #         pickle.dump(floor_plan_args, f)
+
+    collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    
+    print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
+    print(f"after scaling - Collision loss: {2*collision_loss}, Walkability loss: {100*walkability_loss}, Layout loss: {300000*layout_loss}")
+    
+    total_loss = 2*collision_loss + 100*walkability_loss + 300000*layout_loss
+    rewards = -total_loss  # Negative loss as reward
+
+    print(f"[Ashok] Physcene rewards: {rewards}")
+    reward_components = {
+        'collision_loss': collision_loss,
+        'layout_loss': layout_loss,
+        'walkability_loss': walkability_loss,
+    }
+    return rewards, reward_components
 
 def composite_reward(
     scenes: torch.Tensor,

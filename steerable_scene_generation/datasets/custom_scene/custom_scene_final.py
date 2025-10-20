@@ -336,43 +336,63 @@ class CustomDataset(BaseDataset):
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
+        # print(f"[Ashok] keys: {raw_item.keys()}")
+        # for key in raw_item.keys():
+        #     try:
+        #         print(f"[Ashok] shape of {key}: {raw_item[key].shape}")
+        #     except Exception as e:
+        #         pass
+        # import sys; sys.exit();
         # print(f"[Ashok] raw_item: {raw_item}")
         scene_tensor = self._to_scene_tensor(raw_item)
 
-        item: dict[str, Any] = {"scenes": scene_tensor, "idx": idx, "fpbpn": raw_item["fpbpn"]}
+        item: dict[str, Any] = {
+            "scenes": scene_tensor, 
+            "idx": idx, 
+            "fpbpn": raw_item["fpbpn"],
+            }
 
         # if self.cfg.use_permutation_augmentation:
         #     perm = torch.randperm(len(scene_tensor))
         #     item["scenes"] = scene_tensor[perm]
 
-        # Optional text handling only if configured with static prompts
-        if (
-            (self.tokenizer is not None or self.tokenizer_coarse is not None)
-            and getattr(self.cfg, "static_subdataset_prompts", None)
-            and self.cfg.static_subdataset_prompts.use
-            and hasattr(self, "_tokenized_prompts_cache")
-        ):
-            # Fall back to a single prompt if provided; otherwise skip
-            prompts = list(self.cfg.static_subdataset_prompts.name_to_prompt.values())
-            if len(prompts) > 0:
-                prompt = prompts[0]
-                if self.tokenizer is not None:
-                    if random.random() >= self.masking_prop:
-                        item["text_cond"] = self._tokenized_prompts_cache[prompt][
-                            "regular"
-                        ]
-                    else:
-                        item["text_cond"] = self._empty_encoding
-                if self.tokenizer_coarse is not None:
-                    if random.random() >= self.masking_prop_coarse:
-                        item["text_cond_coarse"] = self._tokenized_prompts_cache[
-                            prompt
-                        ]["coarse"]
-                    else:
-                        item["text_cond_coarse"] = self._empty_encoding_coarse
+        # # Optional text handling only if configured with static prompts
+        # if (
+        #     (self.tokenizer is not None or self.tokenizer_coarse is not None)
+        #     and getattr(self.cfg, "static_subdataset_prompts", None)
+        #     and self.cfg.static_subdataset_prompts.use
+        #     and hasattr(self, "_tokenized_prompts_cache")
+        # ):
+        #     # Fall back to a single prompt if provided; otherwise skip
+        #     prompts = list(self.cfg.static_subdataset_prompts.name_to_prompt.values())
+        #     if len(prompts) > 0:
+        #         prompt = prompts[0]
+        #         if self.tokenizer is not None:
+        #             if random.random() >= self.masking_prop:
+        #                 item["text_cond"] = self._tokenized_prompts_cache[prompt][
+        #                     "regular"
+        #                 ]
+        #             else:
+        #                 item["text_cond"] = self._empty_encoding
+        #         if self.tokenizer_coarse is not None:
+        #             if random.random() >= self.masking_prop_coarse:
+        #                 item["text_cond_coarse"] = self._tokenized_prompts_cache[
+        #                     prompt
+        #                 ]["coarse"]
+        #             else:
+        #                 item["text_cond_coarse"] = self._empty_encoding_coarse
         
         return item
 
+    def get_floor_plan_args(self, idx: int) -> dict[str, torch.Tensor]:
+        raw_item = self._get_item(idx)
+        return {
+            "floor_plan_centroid": raw_item["floor_plan_centroid"],
+            "floor_plan_faces": raw_item["floor_plan_faces"],
+            "floor_plan_vertices": raw_item["floor_plan_vertices"],
+            "room_outer_box": raw_item["room_outer_box"],            
+        }
+        
     def _to_scene_tensor(self, item: dict) -> torch.Tensor:
         """
         Convert a ThreedFront-encoded sample dict to a scene tensor of shape (N, O).
