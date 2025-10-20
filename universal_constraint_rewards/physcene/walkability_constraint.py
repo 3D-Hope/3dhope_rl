@@ -12,7 +12,10 @@ import cv2
 from typing import Dict, Optional, Tuple, List
 from tqdm import trange
 
-from .common import (find_shortest_path, draw_2d_gaussian, cal_iou_3d)
+try:
+    from .common import (find_shortest_path, draw_2d_gaussian, cal_iou_3d)
+except:
+    from common import (find_shortest_path, draw_2d_gaussian, cal_iou_3d)
 
 def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
     
@@ -41,8 +44,8 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
     objectness = (~is_empty).unsqueeze(-1)
     class_labels = one_hot
     loss_walkable = torch.zeros(len(bbox), device=device)
-    robot_width_real = robot_width_real = 0.5
-    robot_hight_real = robot_hight_real = 0.5
+    robot_width_real = 0.2
+    robot_height_real = 1.5
     
     floor_plan_vertices = floor_plan_args["floor_plan_vertices"]
     floor_plan_faces = floor_plan_args["floor_plan_faces"]
@@ -61,14 +64,13 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
         vertices = vertices[:, 0::2]
         scale = np.abs(vertices).max()+0.2
         # remove objects in a high level, such as ceiling lamp
-        bbox_floor = bbox_cur[0, bbox_cur[0, :, 2] < robot_hight_real]  
-        class_labels_cur = class_labels_cur[0, bbox_cur[0, :, 2] < robot_hight_real]
+        bbox_floor = bbox_cur[0, bbox_cur[0, :, 2] < robot_height_real]  
+        class_labels_cur = class_labels_cur[0, bbox_cur[0, :, 2] < robot_height_real]
 
         image_size = 256
         image = np.zeros((image_size, image_size, 3), dtype=np.uint8)
 
         robot_width = int(robot_width_real / scale * image_size/2)
-
         def map_to_image_coordinate(point):
             x, y = point
             x_image = int(x / scale * image_size/2)+image_size/2
@@ -82,7 +84,7 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
             return x_map, y_map
 
         # draw floor plan
-        for face in faces:
+        for face in faces:    
             face_vertices = vertices[face]
             face_vertices_image = [map_to_image_coordinate(v) for v in face_vertices]
             pts = np.array(face_vertices_image, np.int32)
@@ -140,8 +142,8 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
         # visual
         box_wall_heat_map_image = cv2.normalize(box_wall_heat_map, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1)
         box_wall_heat_map_image = cv2.applyColorMap(box_wall_heat_map_image,cv2.COLORMAP_JET)
-        # cv2.imwrite("mesh_image_with_boxes2.png", box_wall_heat_map_image)
-        # cv2.imwrite("mesh_image_with_boxes1.png", image)
+        cv2.imwrite("mesh_image_with_boxes2.png", box_wall_heat_map_image)
+        cv2.imwrite("mesh_image_with_boxes1.png", image)
 
         walkable_map = image[:, :, 0].copy()
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
@@ -170,7 +172,7 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
                 #draw circle for start and end point
                 cv2.circle(shortest_path_image, [minimum_area_1_position[1],minimum_area_1_position[0]], 2, (255, 255, 255), -1)
                 cv2.circle(shortest_path_image, [minimum_area_2_position[1],minimum_area_2_position[0]], 2, (255, 255, 255), -1)
-                # cv2.imwrite('walkable_map.png', shortest_path_image)
+                cv2.imwrite('walkable_map.png', shortest_path_image)
                 shortest_path = find_shortest_path(box_wall_heat_map, (minimum_area_1_position[0],minimum_area_1_position[1]),
                                 (minimum_area_2_position[0],minimum_area_2_position[1]),)
                 if shortest_path == None:
@@ -178,8 +180,8 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
                 for r, c in shortest_path:
                     shortest_path_image[r, c] = (255, 255, 255)  # white
 
-                # cv2.imwrite('shortest_path_image.png', shortest_path_image)
-                loss_walkable[i] += calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_hight_real,
+                cv2.imwrite('shortest_path_image.png', shortest_path_image)
+                loss_walkable[i] += calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_height_real,
                                                         map_to_image_coordinate, image_to_map_coordinate,
                                                         scale,image_size,bbox,bbox_floor)
 
@@ -211,14 +213,14 @@ def walkability_constraint(parsed_scene, floor_plan_args, **kwargs):
                         continue
                     for r, c in shortest_path:
                         shortest_path_image[r, c] = (255, 255, 255)  # white
-                    loss_walkable[i] += calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_hight_real, 
+                    loss_walkable[i] += calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_height_real, 
                                                             map_to_image_coordinate, image_to_map_coordinate, 
                                                             scale,image_size,bbox,bbox_floor)
-            # cv2.imwrite('shortest_path_image.png', shortest_path_image)
+            cv2.imwrite('shortest_path_image.png', shortest_path_image)
 
     return loss_walkable
 
-def calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_hight_real,
+def calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_height_real,
                         map_to_image_coordinate, image_to_map_coordinate,
                         scale,image_size,bbox,bbox_floor):
     loss_walkable = 0.0
@@ -231,7 +233,7 @@ def calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_hig
                 
                 center_map = image_to_map_coordinate((shortest_path[i][1], shortest_path[i][0]))
                 angle = 0.
-                box = np.array([*center_map, 0, robot_width_real, robot_width_real, robot_hight_real, angle])
+                box = np.array([*center_map, 0, robot_width_real, robot_width_real, robot_height_real, angle])
                 bbox_path.append(box)
             
             path_count+=1
@@ -250,7 +252,7 @@ def calc_loss_on_path(image,shortest_path,robot_width,robot_width_real,robot_hig
 
         cv2.drawContours(image, [box_points], 0,
                         (0, 255, 255), robot_width)  # Yellow
-    # cv2.imwrite("shortest_path_box_image.png", image)
+    cv2.imwrite("shortest_path_box_image.png", image)
     bbox_path = np.expand_dims(np.stack(bbox_path, 0),0)
 
     #xyz
@@ -336,28 +338,23 @@ def test_reachability_constraint():
 
     # Parse scenes
     parsed = parse_and_descale_scenes(scenes, num_classes=num_classes)
-
-    # Compute reachability loss for each scene (will use auto-generated floor plan)
-    losses = []
-    for i in range(scenes.shape[0]):
-        parsed_single = {k: v[i:i+1] if isinstance(v, torch.Tensor) and v.dim() > 0 else v 
-                        for k, v in parsed.items()}
-        loss = walkability_constraint(parsed_single, robot_width=0.3, robot_height=1.5, weight=1.0)
-        losses.append(loss)
     
-    losses = torch.tensor(losses)
-
-    print(f"\nResults:")
-    print(f"Scene 1 (clear paths): {losses[0]:.4f} (expected: low)")
-    print(f"Scene 2 (dense packing): {losses[1]:.4f} (expected: higher)")
-    print(f"Scene 3 (sparse layout): {losses[2]:.4f} (expected: low)")
-
-    # Verify
-    assert all(l >= 0 for l in losses), "Reachability loss should be non-negative"
-    assert losses[2] >= 0, "Sparse layout should have non-negative loss"
-
-    print("\n✓ All reachability constraint tests passed!")
-    print("=" * 70)
+    import pickle
+    with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl", "rb") as f:
+        floor_plan_args = pickle.load(f)
+        
+    print(f"Floor plan args: {floor_plan_args.keys()}")
+    print(f"Floor plan vertices: {len(floor_plan_args['floor_plan_vertices'])}")
+    print(f"Floor plan vertices: {floor_plan_args['floor_plan_vertices'][0].shape}")
+    print(f"Floor plan faces: {len(floor_plan_args['floor_plan_faces'])}")
+    print(f"Floor plan faces: {floor_plan_args['floor_plan_faces'][0].shape}")
+    print(f"Floor plan centroid: {len(floor_plan_args['floor_plan_centroid'])}")
+    print(f"Floor plan centroid: {floor_plan_args['floor_plan_centroid'][0].shape}")
+    print(f"Room outer box: {len(floor_plan_args['room_outer_box'])}")
+    print(f"Room outer box: {floor_plan_args['room_outer_box'][0].shape}")
+    
+    walkability_loss = walkability_constraint(parsed, floor_plan_args=floor_plan_args)
+    print(f"Walkability loss: {walkability_loss}")
 
 
 if __name__ == "__main__":

@@ -625,6 +625,9 @@ def physcene_reward(
     floor_plan_args,
     cfg=None,
     room_type: str = "bedroom",
+    weight_coll=2.0,
+    weight_walk=100.0,
+    weight_layout=300000.0,
     **kwargs
 ) -> torch.Tensor:
     
@@ -640,16 +643,16 @@ def physcene_reward(
     walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
     
     print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
-    print(f"after scaling - Collision loss: {2*collision_loss}, Walkability loss: {100*walkability_loss}, Layout loss: {300000*layout_loss}")
-    
-    total_loss = 2*collision_loss + 100*walkability_loss + 300000*layout_loss
+    print(f"after scaling - Collision loss: {weight_coll*collision_loss}, Walkability loss: {weight_walk*walkability_loss}, Layout loss: {weight_layout*layout_loss}")
+
+    total_loss = weight_coll*collision_loss + weight_walk*walkability_loss + weight_layout*layout_loss
     rewards = -total_loss  # Negative loss as reward
 
     print(f"[Ashok] Physcene rewards: {rewards}")
     reward_components = {
-        'collision_loss': collision_loss,
-        'layout_loss': layout_loss,
-        'walkability_loss': walkability_loss,
+        'collision_reward': -weight_coll*collision_loss,
+        'layout_reward': -weight_layout*layout_loss,
+        'walkability_reward': -weight_walk*walkability_loss,
     }
     return rewards, reward_components
 
