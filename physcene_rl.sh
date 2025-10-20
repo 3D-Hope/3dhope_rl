@@ -333,6 +333,7 @@ PYTHONPATH=. python -u main.py +name=physcene_rl_reg_50_cont_mi_floor \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.ddpo.use_universal_reward=True \
     algorithm.ddpo.universal_reward.use_physcene_reward=True \
     algorithm.classifier_free_guidance.use_floor=True \
