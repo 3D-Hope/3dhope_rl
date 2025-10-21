@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=rl_training
+#SBATCH --job-name=1stage_rl_training
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
