@@ -641,34 +641,9 @@ def physcene_reward(
     #         pickle.dump(floor_plan_args, f)
 
 
-    # If input is batched, parallelize over batch
-    if parsed_scene is not None and isinstance(parsed_scene, dict):
-        batch_size = parsed_scene["positions"].shape[0]
-        # Prepare args for each scene in batch
-        args_list = []
-        for i in range(batch_size):
-            # Slice each key in parsed_scene for scene i
-            scene_i = {k: v[i] if isinstance(v, torch.Tensor) and v.shape[0] == batch_size else v for k, v in parsed_scene.items()}
-            args_list.append((scene_i, floor_plan_args))
-
-        def compute_losses(args):
-            scene_i, floor_plan_args = args
-            coll = collision_constraint(scene_i, floor_plan_args=floor_plan_args)
-            layout = room_layout_constraint(scene_i, floor_plan_args=floor_plan_args)
-            walk = walkability_constraint(scene_i, floor_plan_args=floor_plan_args)
-            return coll, layout, walk
-        print(f"[Ashok] Using {num_cpus} CPUs for physcene reward computation.")
-        with multiprocessing.Pool(num_cpus) as pool:
-            results = pool.map(compute_losses, args_list)
-        collision_losses, layout_losses, walkability_losses = zip(*results)
-        collision_loss = torch.tensor(collision_losses)
-        layout_loss = torch.tensor(layout_losses)
-        walkability_loss = torch.tensor(walkability_losses)
-    else:
-        # Single scene, no batch
-        collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-        layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-        walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
 
     # print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
     # print(f"after scaling - Collision loss: {weight_coll*collision_loss}, Walkability loss: {weight_walk*walkability_loss}, Layout loss: {weight_layout*layout_loss}")

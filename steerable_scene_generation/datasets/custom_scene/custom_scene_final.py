@@ -383,7 +383,11 @@ class CustomDataset(BaseDataset):
         #                 item["text_cond_coarse"] = self._empty_encoding_coarse
         
         return item
-
+    
+    def get_floor_polygon_points(self, idx: int) -> torch.Tensor:
+        raw_item = self._get_item(idx)
+        return raw_item["floor_polygon_points"]
+    
     def get_floor_plan_args(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
         return {

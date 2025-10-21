@@ -165,11 +165,16 @@ def get_all_universal_reward_functions():
     from universal_constraint_rewards.object_count_reward import (
         compute_object_count_reward,
     )
+    
+    # from universal_constraint_rewards.not_out_of_bound_reward import (
+        # compute_not_out_of_bound_reward,
+    # )
 
     return {
         "must_have_furniture": compute_must_have_furniture_reward,
         "non_penetration": compute_non_penetration_reward,
         "object_count": compute_object_count_reward,
+        # "not_out_of_bound": compute_not_out_of_bound_reward,
     }
 
 
