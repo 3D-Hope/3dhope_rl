@@ -169,12 +169,17 @@ def get_all_universal_reward_functions():
     from universal_constraint_rewards.not_out_of_bound_reward import (
         compute_boundary_violation_reward,
     )
+    
+    from universal_constraint_rewards.gravity_following_reward import (
+        compute_gravity_following_reward,
+    )
 
     return {
         "must_have_furniture": compute_must_have_furniture_reward,
         "non_penetration": compute_non_penetration_reward,
         "object_count": compute_object_count_reward,
         "not_out_of_bound": compute_boundary_violation_reward,
+        "gravity_following": compute_gravity_following_reward,
     }
 
 
