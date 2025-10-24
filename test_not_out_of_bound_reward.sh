@@ -59,7 +59,7 @@ if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
         echo "❌ Failed to copy SDF cache"
         exit 1
     }
-    unzip -q /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/sdf_cache/ || {
+    unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/sdf_cache/ || {
         echo "❌ Failed to extract SDF cache"
         exit 1
     }
@@ -69,6 +69,7 @@ else
     echo "✅ SDF cache already exists in scratch"
 fi
 echo ""
+ls /scratch/pramish_paudel/sdf_cache
 
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 2: Copy and extract dataset
