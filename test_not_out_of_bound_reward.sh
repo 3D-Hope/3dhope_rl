@@ -51,8 +51,9 @@ echo ""
 # echo ""
 
 # Move SDF cache
+rm -rf /scratch/pramish_paudel/sdf_cache
 echo "Checking SDF cache..."
-if [ ! -f "/scratch/pramish_paudel/sdf_cache.zip" ]; then
+if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
     echo "Copying SDF cache..."
     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/sdf_cache.zip /scratch/pramish_paudel/ || {
         echo "❌ Failed to copy SDF cache"
@@ -335,7 +336,7 @@ PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=2 \
+    algorithm.ddpo.batch_size=256 \
     experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \

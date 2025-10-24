@@ -234,7 +234,7 @@ def get_universal_reward(
     # Set default importance weights
     if universal_importance_weights is None:
         universal_importance_weights = {key: 1.0 for key in rewards.keys()}
-    print(f"[Ashok] importance weights: {universal_importance_weights}")
+    # print(f"[Ashok] importance weights: {universal_importance_weights}")
     # Combine rewards with importance weights
     rewards_sum = 0
 

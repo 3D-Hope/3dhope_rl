@@ -46,7 +46,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         self.cfg = cfg
         if (
             self.cfg.ddpo.dynamic_constraint_rewards.use
-            or self.cfg.ddpo.use_universal_reward
+            or self.cfg.ddpo.use_universal_reward and not self.cfg.ddpo.universal_reward.use_physcene_reward
         ):
             self.reward_normalizer = RewardNormalizer(
                 self.cfg.ddpo.dynamic_constraint_rewards.stats_path
