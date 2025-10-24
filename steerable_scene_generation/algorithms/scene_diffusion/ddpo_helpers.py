@@ -646,20 +646,21 @@ def physcene_reward(
 
 
     collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-    layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
-    walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    # layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
+    # walkability_loss = walkability_constraint(parsed_scene, floor_plan_args=floor_plan_args)
 
     # print(f"before scaling - Collision loss: {collision_loss}, Walkability loss: {walkability_loss}, Layout loss: {layout_loss}")
     # print(f"after scaling - Collision loss: {weight_coll*collision_loss}, Walkability loss: {weight_walk*walkability_loss}, Layout loss: {weight_layout*layout_loss}")
 
-    total_loss = weight_coll*collision_loss + weight_walk*walkability_loss + weight_layout*layout_loss
+    # total_loss = weight_coll*collision_loss + weight_walk*walkability_loss + weight_layout*layout_loss
+    total_loss = collision_loss
     rewards = -total_loss  # Negative loss as reward
 
     print(f"[Ashok] Physcene rewards: {rewards}")
     reward_components = {
         'collision_reward': -weight_coll*collision_loss,
-        'layout_reward': -weight_layout*layout_loss,
-        'walkability_reward': -weight_walk*walkability_loss,
+        # 'layout_reward': -weight_layout*layout_loss,
+        # 'walkability_reward': -weight_walk*walkability_loss,
     }
     return rewards, reward_components
 

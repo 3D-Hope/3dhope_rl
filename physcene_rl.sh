@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=physcene_rl_reg_50_cont_mi_floor
+#SBATCH --job-name=physcene_collision_reward_rl_reg_50
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=128
@@ -296,14 +296,14 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=physcene_rl_reg_50_cont_mi_floor \
-    load=rrudae6n \
+PYTHONPATH=. python -u main.py +name=physcene_collision_reward_rl_reg_50 \
+    load=/scratch/pramish_paudel/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_midiffusion \
+    algorithm=scene_diffuser_flux_transformer\
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
@@ -336,8 +336,8 @@ PYTHONPATH=. python -u main.py +name=physcene_rl_reg_50_cont_mi_floor \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.ddpo.use_universal_reward=True \
     algorithm.ddpo.universal_reward.use_physcene_reward=True \
-    algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.classifier_free_guidance.weight=1.0 \
+    algorithm.classifier_free_guidance.use_floor=False \
+    algorithm.classifier_free_guidance.weight=0.0
 
 
     
