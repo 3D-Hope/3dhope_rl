@@ -1,9 +1,9 @@
 PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
-    load=qbyilta9 \
+    load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_flux_transformer \
+    algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
@@ -29,9 +29,10 @@ PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.use_universal_reward=True \
     experiment.training.precision=bf16-mixed \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
-    dataset.sdf_cache_dir=./sdf_cache/ 
+    dataset.sdf_cache_dir=./sdf_cache/ \
+    algorithm.classifier_free_guidance.use_floor=True

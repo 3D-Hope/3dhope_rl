@@ -153,12 +153,11 @@ log "===========================================================================
 log "                    INFERENCE EXPERIMENTS BATCH"
 log "================================================================================"
 log ""
-log "Total experiments to run: 6"
+log "Total experiments to run: 4"
 log ""
 log "Run IDs:"
-log "  1. qbyilta9 (Flux Transformer RL)"
-log "  2. qhns5khl (Continuous MiDiffusion RL)"
-log "  3. rrudae6n (Continuous MiDiffusion with Floor)"
+log "  1. xn1h20rz (Flux Transformer RL, 2-stage)"
+log "  2. f6vipupt (Flux Transformer RL, 1-stage)"
 log ""
 log "Schedulers: DDPM (1000 timesteps), DDIM (150 timesteps)"
 log "EMA settings: True (always)"
@@ -169,49 +168,34 @@ log ""
 
 exp_counter=1
 
-# Experiments for run qbyilta9 (Flux Transformer RL)
+# Experiments for run xn1h20rz (Flux Transformer RL, 2-stage)
 log ""
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: qbyilta9 (Flux Transformer RL)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: xn1h20rz (Flux Transformer RL, 2-stage)"
 log ">>>"
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "qbyilta9" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL" "False" "True"
+run_experiment "xn1h20rz" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL (2-stage)" "False" "True"
 ((exp_counter++))
 
-run_experiment "qbyilta9" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL" "False" "True"
+run_experiment "xn1h20rz" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL (2-stage)" "False" "True"
 ((exp_counter++))
 
-# Experiments for run qhns5khl (Continuous MiDiffusion RL)
+# Experiments for run f6vipupt (Flux Transformer RL, 1-stage)
 log ""
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: qhns5khl (Continuous MiDiffusion RL)"
+log ">>>  STARTING EXPERIMENTS FOR RUN: f6vipupt (Flux Transformer RL, 1-stage)"
 log ">>>"
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 log ""
 
-run_experiment "qhns5khl" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion RL" "False" "True"
+run_experiment "f6vipupt" "ddpm" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL (1-stage)" "False" "True"
 ((exp_counter++))
 
-run_experiment "qhns5khl" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion RL" "False" "True"
-((exp_counter++))
-
-# Experiments for run rrudae6n (Continuous MiDiffusion with Floor)
-log ""
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-log ">>>"
-log ">>>  STARTING EXPERIMENTS FOR RUN: rrudae6n (Continuous MiDiffusion with Floor)"
-log ">>>"
-log ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-log ""
-
-run_experiment "rrudae6n" "ddpm" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion Floor" "True" "False"
-((exp_counter++))
-
-run_experiment "rrudae6n" "ddim" "$exp_counter" "scene_diffuser_midiffusion" "Continuous MiDiffusion Floor" "True" "False"
+run_experiment "f6vipupt" "ddim" "$exp_counter" "scene_diffuser_flux_transformer" "Flux Transformer RL (1-stage)" "False" "True"
 ((exp_counter++))
 
 # # Experiments for run jfgw3io6 (DiffuScene) - COMMENTED OUT
@@ -250,22 +234,18 @@ log "===========================================================================
 log "                    ALL EXPERIMENTS COMPLETED"
 log "================================================================================"
 log ""
-log "Total experiments run: 6"
+log "Total experiments run: 4"
 log "Completed at: $(date)"
 log ""
 log "Summary of experiments:"
 log ""
-log "Run: qbyilta9 (Flux Transformer RL)"
+log "Run: xn1h20rz (Flux Transformer RL, 2-stage)"
 log "  1. DDPM (1000) + EMA=True"
 log "  2. DDIM (150) + EMA=True"
 log ""
-log "Run: qhns5khl (Continuous MiDiffusion RL)"
+log "Run: f6vipupt (Flux Transformer RL, 1-stage)"
 log "  3. DDPM (1000) + EMA=True"
 log "  4. DDIM (150) + EMA=True"
-log ""
-log "Run: rrudae6n (Continuous MiDiffusion with Floor)"
-log "  5. DDPM (1000) + EMA=True"
-log "  6. DDIM (150) + EMA=True"
 log ""
 log "================================================================================"
 log ""

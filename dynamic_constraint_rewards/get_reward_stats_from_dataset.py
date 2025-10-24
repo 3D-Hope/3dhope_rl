@@ -18,6 +18,7 @@ from omegaconf import DictConfig
 
 from steerable_scene_generation.datasets.custom_scene import CustomDataset
 from universal_constraint_rewards.commons import parse_and_descale_scenes
+from universal_constraint_rewards.not_out_of_bound_reward import precompute_sdf_cache, SDFCache
 
 
 def get_reward_stats_from_dataset(
@@ -58,7 +59,7 @@ def get_reward_stats_from_dataset(
     total_scenes = len(custom_dataset)
     if num_scenes is None or num_scenes > total_scenes:
         num_scenes = total_scenes
-
+    indices = list(range(num_scenes))
     print(f"Loading {num_scenes} scenes from dataset (total available: {total_scenes})")
 
     # Load scenes from dataset
@@ -94,7 +95,7 @@ def get_reward_stats_from_dataset(
     idx_to_labels = all_rooms_info[room_type]["unique_values"]
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes"]
-
+    sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
     reward_stats = {}
 
     # Compute rewards for each function
@@ -106,6 +107,10 @@ def get_reward_stats_from_dataset(
             room_type=room_type,
             max_objects=max_objects,
             num_classes=num_classes,
+            floor_polygons=[torch.tensor(custom_dataset.get_floor_polygon_points(idx), device=parsed_scenes["device"]) for idx in indices],
+            indices=indices,
+            is_val=True,
+            sdf_cache=sdf_cache,
         )
 
         # Convert to numpy array

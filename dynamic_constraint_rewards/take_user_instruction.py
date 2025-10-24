@@ -72,11 +72,11 @@ def main(cfg: DictConfig):
     print("=" * 80)
     stats = get_reward_stats_from_baseline(
         get_reward_functions,
-        num_scenes=1000,
+        num_scenes=10,
         config=cfg,
-        algorithm="scene_diffuser_flux_transformer",
-        load="j2m5wxe7",
-        algorithm_classifier_free_guidance_use_floor=False,
+        # algorithm="scene_diffuser_flux_transformer",
+        # load="f6vipupt",
+        # algorithm_classifier_free_guidance_use_floor=False,
     )
     print("Baseline Stats: ", stats)
     stats_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"

@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Tuple
 
 import torch
-
+import os
 from diffusers import DDIMScheduler, DDPMScheduler
 from tqdm import tqdm
 
@@ -9,6 +9,8 @@ from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
 from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 from universal_constraint_rewards.commons import parse_and_descale_scenes
+
+from universal_constraint_rewards.not_out_of_bound_reward import precompute_sdf_cache, SDFCache
 
 from .ddpo_helpers import (
     composite_reward,
@@ -49,6 +51,22 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             self.reward_normalizer = RewardNormalizer(
                 self.cfg.ddpo.dynamic_constraint_rewards.stats_path
             )
+            if not hasattr(self.cfg.dataset, "sdf_cache_dir") or not os.path.exists(
+                self.cfg.dataset.sdf_cache_dir
+            ):
+                print(
+                    f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}..."
+                )
+                precompute_sdf_cache(
+                    config=self.cfg, num_workers=16,
+                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                )
+            else:
+                print(
+                    f"SDF cache directory {self.cfg.dataset.sdf_cache_dir} already exists. Skipping SDF precomputation."
+                )
+            self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
+            self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
         else:
             self.reward_normalizer = None
 
@@ -279,7 +297,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         elif self.cfg.ddpo.use_universal_reward:
             print("Using universal rewards")
-
+            
+            is_val = len(self.dataset) <= 200
+            print(f"[Ashok] is_val: {is_val}")
             # Get room type from config
             room_type = "bedroom"  # default
             if hasattr(self.cfg.ddpo, "universal_reward"):
@@ -344,6 +364,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     cfg=self.cfg,
                     room_type=room_type,
                     importance_weights=importance_weights,
+                    floor_polygons=[self.dataset.get_floor_polygon_points(idx) for idx in cond_dict["idx"]],
+                    indices=cond_dict["idx"],
+                    is_val=is_val,
+                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                    sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
                 )
 
                 # Log individual components for analysis using log_dict for proper step tracking
@@ -363,12 +388,14 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # print("Using dynamic constraint rewards and universal rewards")
             # Get room type from config
             room_type = "bedroom"  # default
+
             if hasattr(self.cfg.ddpo, "dynamic_constraint_rewards"):
                 room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
                     "room_type", "bedroom"
                 )
 
             # Compute composite reward with all physics constraints
+            is_val = len(self.dataset) <= 200
             rewards, reward_components = composite_reward(
                 scenes=x0,
                 scene_vec_desc=self.scene_vec_desc,
@@ -376,6 +403,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 room_type=room_type,
                 reward_normalizer=self.reward_normalizer,
                 get_reward_functions=self.get_reward_functions,
+                floor_polygons=[self.dataset.get_floor_polygon_points(idx) for idx in cond_dict["idx"]],
+                indices=cond_dict["idx"],
+                is_val=is_val,
+                # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
             )
 
             # Log individual components for analysis using log_dict for proper step tracking

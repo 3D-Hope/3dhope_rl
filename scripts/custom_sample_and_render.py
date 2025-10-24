@@ -87,7 +87,7 @@ def main(cfg: DictConfig) -> None:
     cfg.algorithm.predict.do_sample_scenes_with_k_closest_training_examples = False
     cfg.algorithm.predict.do_rearrange = False
     cfg.algorithm.predict.do_complete = False
-
+    # print(f"[DEBUG] Predict config: {cfg}")
     # Get yaml names.
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     cfg_choice = OmegaConf.to_container(hydra_cfg.runtime.choices)
@@ -122,12 +122,16 @@ def main(cfg: DictConfig) -> None:
         # Download the checkpoint from wandb.
         run_path = f"{cfg.wandb.entity}/{cfg.wandb.project}/{load_id}"
         download_dir = output_dir / "checkpoints"
-        version = cfg.get("checkpoint_version", None)
+        version = cfg["checkpoint_version"]
+        print(f"[Ashok] checkpoint version from cfg: {version}")
         if version is not None and isinstance(version, int):
+            print(f"[Ashok] downloading checkpoint version: {version}")
             checkpoint_path = download_version_checkpoint(
                 run_path=run_path, version=version, download_dir=download_dir
             )
+            
         else:
+            print(f"[Ashok] no checkpoint version specified, using_best {cfg.get('use_best', False)}")
             checkpoint_path = download_latest_or_best_checkpoint(
                 run_path=run_path,
                 download_dir=download_dir,
@@ -278,18 +282,25 @@ def main(cfg: DictConfig) -> None:
             )
         # print("bbox param list", bbox_params_list)
         print(f"[Ashok] type of dataset {type(encoded_dataset)}")
+
+        # Only collect successful indices and layouts
         layout_list = []
-        for bbox_params_dict in bbox_params_list:
-            boxes = encoded_dataset.post_process(bbox_params_dict)
-            bbox_params = {k: v[0] for k, v in boxes.items()}
-            layout_list.append(bbox_params)
+        successful_indices = []
+        for idx, bbox_params_dict in enumerate(bbox_params_list):
+            try:
+                boxes = encoded_dataset.post_process(bbox_params_dict)
+                bbox_params = {k: v[0] for k, v in boxes.items()}
+                layout_list.append(bbox_params)
+                successful_indices.append(sampled_indices[idx])
+            except Exception as e:
+                print(f"[WARNING] Skipping scene {idx} due to post_process error: {e}")
+                continue
 
         # print("final output: ", layout_list)
         # layout_list [{"class_labels":[], "translations":[1,2,3], "sizes": [1,2,3,], "angles": [1]}, ...]
         threed_front_results = ThreedFrontResults(
-            raw_train_dataset, raw_dataset, config, sampled_indices, layout_list
+            raw_train_dataset, raw_dataset, config, successful_indices, layout_list
         )
-
         pickle.dump(threed_front_results, open(path_to_results, "wb"))
         print("Saved result to:", path_to_results)
 

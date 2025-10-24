@@ -166,15 +166,15 @@ def get_all_universal_reward_functions():
         compute_object_count_reward,
     )
     
-    # from universal_constraint_rewards.not_out_of_bound_reward import (
-        # compute_not_out_of_bound_reward,
-    # )
+    from universal_constraint_rewards.not_out_of_bound_reward import (
+        compute_boundary_violation_reward,
+    )
 
     return {
         "must_have_furniture": compute_must_have_furniture_reward,
         "non_penetration": compute_non_penetration_reward,
         "object_count": compute_object_count_reward,
-        # "not_out_of_bound": compute_not_out_of_bound_reward,
+        "not_out_of_bound": compute_boundary_violation_reward,
     }
 
 
@@ -224,7 +224,7 @@ def get_universal_reward(
     # Set default importance weights
     if universal_importance_weights is None:
         universal_importance_weights = {key: 1.0 for key in rewards.keys()}
-
+    print(f"[Ashok] importance weights: {universal_importance_weights}")
     # Combine rewards with importance weights
     rewards_sum = 0
     reward_components = {}

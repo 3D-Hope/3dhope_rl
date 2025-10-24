@@ -106,3 +106,5 @@ logger:
         activate: 'GELU'
         timestep_type: 'adalayernorm_abs'
         mlp_ratio: 4
+
+sdf_cache_dir: ./sdf_cache/

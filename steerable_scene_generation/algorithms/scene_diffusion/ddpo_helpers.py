@@ -567,9 +567,11 @@ def has_sofa_reward(
 def universal_reward(
     parsed_scene: dict,
     scene_vec_desc: SceneVecDescription,
+    indices,
     cfg=None,
     room_type: str = "bedroom",
     importance_weights: dict = None,
+    **kwargs,
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward using multiple physics-based constraints.
@@ -612,6 +614,8 @@ def universal_reward(
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
+        indices=indices,
+        **kwargs,
     )
 
     print(f"[Ashok] Universal reward components:")
@@ -666,6 +670,7 @@ def composite_reward(
     cfg: DictConfig,
     get_reward_functions: dict,
     room_type: str = "bedroom",
+    **kwargs
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward (general scene quality) plus task-specific reward.
@@ -721,6 +726,7 @@ def composite_reward(
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
+        **kwargs
     )
 
     dynamic_total, dynamic_components = get_dynamic_reward(
@@ -731,6 +737,7 @@ def composite_reward(
         reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
+        **kwargs
     )
 
     total_rewards = universal_total + dynamic_total

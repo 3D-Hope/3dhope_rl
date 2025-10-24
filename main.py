@@ -232,10 +232,12 @@ def run(cfg: DictConfig):
     if load_id and "_on_compute_node" not in cfg:
         run_path = f"{cfg.wandb.entity}/{cfg.wandb.project}/{load_id}"
         if cfg.checkpoint_version is not None:
+            print(f"[Ashok] checkpoint version {cfg.checkpoint_version}")
             download_version_checkpoint(
                 run_path, Path("outputs/downloaded"), cfg.checkpoint_version
             )
         else:
+            print(f"[Ashok] no checkpoint version specified, using_best {cfg.use_best}")
             download_latest_or_best_checkpoint(
                 run_path, Path("outputs/downloaded"), cfg.use_best
             )

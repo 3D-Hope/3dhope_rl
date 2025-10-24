@@ -19,6 +19,8 @@ import torch
 from omegaconf import DictConfig
 
 from universal_constraint_rewards.commons import parse_and_descale_scenes
+from steerable_scene_generation.datasets.custom_scene import CustomDataset
+from universal_constraint_rewards.not_out_of_bound_reward import precompute_sdf_cache, SDFCache
 
 
 def get_reward_stats_from_baseline(
@@ -65,7 +67,15 @@ def get_reward_stats_from_baseline(
         Dict mapping reward function names to statistics:
         {"reward_function_name": {"min": float, "max": float, "mean": float, "stddev": float}}
     """
-
+    try:
+        custom_dataset = CustomDataset(
+            cfg=config.dataset,
+            split=config.dataset.validation.get("splits", ["test"]),
+            ckpt_path=None,
+        )
+    except Exception as e:
+        print(f"Error creating CustomDataset: {e}")
+        raise
     # Build command to run custom_sample_and_render.py
     cmd = [
         "python",
@@ -135,7 +145,9 @@ def get_reward_stats_from_baseline(
     with open(pkl_path, "rb") as f:
         raw_results = pickle.load(f)
 
-    # print(f"[SAUGAT] Raw results: {raw_results}")
+    dataset_size = len(custom_dataset) 
+    indices = [i % dataset_size for i in range(num_scenes)]
+    # print(f"[Ashok] Raw results: {raw_results}")
     raw_results = torch.tensor(raw_results)
     parsed_scenes = parse_and_descale_scenes(raw_results)
 
@@ -150,9 +162,8 @@ def get_reward_stats_from_baseline(
     idx_to_labels = all_rooms_info[room_type]["unique_values"]
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes"]
-
+    sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
     reward_stats = {}
-
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
         rewards = reward_func(
@@ -161,6 +172,10 @@ def get_reward_stats_from_baseline(
             room_type=room_type,
             max_objects=max_objects,
             num_classes=num_classes,
+            floor_polygons=[torch.tensor(custom_dataset.get_floor_polygon_points(idx), device=parsed_scenes["device"]) for idx in indices],
+            indices=indices,
+            is_val=True,
+            sdf_cache=sdf_cache,
         )
 
         # Compute statistics
