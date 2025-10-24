@@ -319,6 +319,8 @@ PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward \
     load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
+    dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
