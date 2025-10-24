@@ -217,21 +217,24 @@ def get_universal_reward(
         print(f"[Ashok] Raw reward for {key}: {reward}")
         rewards[key] = reward
     # Normalize rewards if normalizer is provided
+    reward_components = {}
     if reward_normalizer is not None:
         for key, value in rewards.items():
+            reward_components[key] = value # viz raw values to avoid weird normalized values in curves
             rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
-
+    else:
+        for key, value in rewards.items():
+            reward_components[key] = value
     # Set default importance weights
     if universal_importance_weights is None:
         universal_importance_weights = {key: 1.0 for key in rewards.keys()}
     print(f"[Ashok] importance weights: {universal_importance_weights}")
     # Combine rewards with importance weights
     rewards_sum = 0
-    reward_components = {}
 
     for key, value in rewards.items():
         importance = universal_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
-        reward_components[key] = value
+        
 
     return rewards_sum / sum(universal_importance_weights.values()), reward_components

@@ -83,19 +83,22 @@ def get_dynamic_reward(
         print(f"[Ashok] Raw reward for {key}: {reward}")
         rewards[key] = reward
 
+    reward_components = {}
     if reward_normalizer is not None:
         for key, value in rewards.items():
+            reward_components[key] = value
             rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
-
+    else:
+        for key, value in rewards.items():
+            reward_components[key] = value
     rewards_sum = 0
     if dynamic_importance_weights is None:
         dynamic_importance_weights = {key: 1.0 for key in rewards.keys()}
 
-    reward_components = {}
 
     for key, value in rewards.items():
         importance = dynamic_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
-        reward_components[key] = value
+        
 
     return rewards_sum / sum(dynamic_importance_weights.values()), reward_components
