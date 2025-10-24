@@ -59,7 +59,7 @@ if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
         echo "❌ Failed to copy SDF cache"
         exit 1
     }
-    unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/sdf_cache/ || {
+    unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/ || {
         echo "❌ Failed to extract SDF cache"
         exit 1
     }
