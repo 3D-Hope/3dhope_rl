@@ -37,18 +37,18 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 1: Copy model checkpoint
 # ═══════════════════════════════════════════════════════════════════════════════════
-echo "STAGE 1: Checking model checkpoint..."
-if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
-    echo "Copying model checkpoint..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy model checkpoint"
-        exit 1
-    }
-    echo "✅ Model checkpoint copied"
-else
-    echo "✅ Model checkpoint already exists in scratch"
-fi
-echo ""
+# echo "STAGE 1: Checking model checkpoint..."
+# if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
+#     echo "Copying model checkpoint..."
+#     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/ || {
+#         echo "❌ Failed to copy model checkpoint"
+#         exit 1
+#     }
+#     echo "✅ Model checkpoint copied"
+# else
+#     echo "✅ Model checkpoint already exists in scratch"
+# fi
+# echo ""
 
 # Move SDF cache
 echo "Checking SDF cache..."
@@ -354,8 +354,9 @@ PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/sdf_cache/ \
-    algorithm.classifier_free_guidance.use_floor=True
-
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json
 
 
 # Check exit status
