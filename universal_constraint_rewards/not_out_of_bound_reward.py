@@ -14,7 +14,7 @@ def compute_boundary_violation_reward(
     is_val: bool,
     indices: List[int],  # (B,) - indices to lookup cached SDFs
     sdf_cache,
-    grid_resolution: float = 0.1,
+    grid_resolution: float = 0.05,
     # sdf_cache_dir: str = "./sdf_cache",
     **kwargs #
 ) -> torch.Tensor:
@@ -116,7 +116,7 @@ def _compute_single_sdf(args):
 def precompute_sdf_cache(
     config,
     sdf_cache_dir: str = "./sdf_cache",
-    grid_resolution: float = 0.1,
+    grid_resolution: float = 0.05,
     verbose: bool = True,
     validate: bool = False,
     num_workers: int = None,  # None = use all available CPUs
@@ -296,7 +296,7 @@ def _precompute_split(
 class SDFCache:
     """Manages loading/saving of cached SDF grids with split awareness. Loads all data into RAM on init."""
 
-    def __init__(self, cache_dir: str, grid_resolution: float = 0.1, split: str = "train_val"):
+    def __init__(self, cache_dir: str, grid_resolution: float = 0.05, split: str = "train_val"):
         """
         Args:
             cache_dir: Base cache directory (e.g., "./sdf_cache")
@@ -378,7 +378,7 @@ class SDFCache:
 class SDFBoundaryChecker:
     """Lightweight SDF checker with caching support."""
     
-    def __init__(self, floor_vertices, grid_resolution=0.1):
+    def __init__(self, floor_vertices, grid_resolution=0.05):
         self.floor_vertices = np.array(floor_vertices, dtype=np.float32)
         self.grid_resolution = grid_resolution
         
@@ -591,7 +591,7 @@ def visualize_sdf_grid(scene_idx: int, sdf_cache_dir: str = "./sdf_cache", split
         print("matplotlib required for visualization")
         return
     
-    cache = SDFCache(sdf_cache_dir, grid_resolution=0.1, split=split)
+    cache = SDFCache(sdf_cache_dir, grid_resolution=0.05, split=split)
     sdf_data = cache.load(scene_idx)
     
     if sdf_data is None:

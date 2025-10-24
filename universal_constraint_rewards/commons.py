@@ -175,11 +175,11 @@ def get_all_universal_reward_functions():
     )
 
     return {
-        "must_have_furniture": compute_must_have_furniture_reward,
-        "non_penetration": compute_non_penetration_reward,
-        "object_count": compute_object_count_reward,
+        # "must_have_furniture": compute_must_have_furniture_reward,
+        # "non_penetration": compute_non_penetration_reward,
+        # "object_count": compute_object_count_reward,
         "not_out_of_bound": compute_boundary_violation_reward,
-        "gravity_following": compute_gravity_following_reward,
+        # "gravity_following": compute_gravity_following_reward,
     }
 
 
@@ -222,6 +222,7 @@ def get_universal_reward(
         print(f"[Ashok] Raw reward for {key}: {reward}")
         rewards[key] = reward
     # Normalize rewards if normalizer is provided
+    reward_normalizer = None
     reward_components = {}
     if reward_normalizer is not None:
         for key, value in rewards.items():
