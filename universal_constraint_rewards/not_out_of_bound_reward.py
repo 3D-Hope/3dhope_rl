@@ -94,7 +94,8 @@ def compute_boundary_violation_reward(
             for corner in corners:
                 violation = sdf_checker.check_violation(corner)
                 max_violation = max(max_violation, violation)
-            
+            max_violation = min(max_violation, 5.0)  # Cap at 5 meters
+
             rewards[b] -= max_violation
     
     return rewards

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=test_not_out_of_bound_reward
+#SBATCH --job-name=test_not_out_of_bound_reward_clip_5m
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
@@ -317,7 +317,7 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward \
+PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward_clip_5m \
     load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
