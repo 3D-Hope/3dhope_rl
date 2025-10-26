@@ -296,20 +296,23 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=physcene_collision_reward_rl_reg_50 \
-    load=/scratch/pramish_paudel/model.ckpt \
+
+    
+
+PYTHONPATH=. python -u main.py +name=test_not_out_of_bound_reward_iou \
+    load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_flux_transformer\
+    algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2000000 \
+    experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=50.0 \
@@ -321,7 +324,7 @@ PYTHONPATH=. python -u main.py +name=physcene_collision_reward_rl_reg_50 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
-    algorithm.custom.loss=true \
+    algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
     algorithm.validation.num_samples_to_visualize=0 \
     algorithm.validation.num_directives_to_generate=0 \
@@ -329,18 +332,18 @@ PYTHONPATH=. python -u main.py +name=physcene_collision_reward_rl_reg_50 \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.use_universal_reward=True \
     experiment.training.precision=bf16-mixed \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
+    dataset.sdf_cache_dir=/scratch/pramish_paudel/sdf_cache/ \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
-    algorithm.ddpo.use_universal_reward=True \
-    algorithm.ddpo.universal_reward.use_physcene_reward=True \
-    algorithm.classifier_free_guidance.use_floor=False \
-    algorithm.classifier_free_guidance.weight=0.0
+    algorithm.ddpo.universal_reward.use_physcene_reward=True
 
 
-    
 
 # Check exit status
 echo ""
