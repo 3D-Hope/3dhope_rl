@@ -163,7 +163,28 @@ def get_reward_stats_from_baseline(
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes"]
     sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
+    
+    floor_plan_args_list = [custom_dataset.get_floor_plan_args(idx) for idx in indices]
+    # Stack each key across the batch for tensor conversion
+    floor_plan_args = {
+        key: [args[key] for args in floor_plan_args_list]
+        for key in ["floor_plan_centroid", "floor_plan_vertices", "floor_plan_faces", "room_outer_box"]
+    }
     reward_stats = {}
+    reward_args = {
+        "parsed_scenes": parsed_scenes,
+        "idx_to_labels": idx_to_labels,
+        "room_type": room_type,
+        "max_objects": max_objects,
+        "num_classes": num_classes,
+        "floor_polygons": [torch.tensor(custom_dataset.get_floor_polygon_points(idx), device=parsed_scenes["device"]) for idx in indices],
+        "indices": indices,
+        "is_val": True,
+        "sdf_cache": sdf_cache,
+        "floor_plan_args": floor_plan_args,
+    }
+        # Save arguments to npy file (use pickle for objects that are not arrays)
+    np.save(f"reward_func_args_for_first_10_scenes.npy", reward_args, allow_pickle=True)
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
         rewards = reward_func(
@@ -176,10 +197,14 @@ def get_reward_stats_from_baseline(
             indices=indices,
             is_val=True,
             sdf_cache=sdf_cache,
+            floor_plan_args=floor_plan_args,
         )
 
         # Compute statistics
         rewards_array = np.array(rewards)
+        if reward_name == "room_layout_constraint":
+            np.save("room_layout_rewards.npy", rewards_array)
+            print("Saved room layout rewards to room_layout_rewards.npy")
 
         stats = {
             "min": float(np.min(rewards_array)),

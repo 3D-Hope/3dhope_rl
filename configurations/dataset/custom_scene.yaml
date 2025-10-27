@@ -9,7 +9,7 @@ translation_vec_len: 3
 rotation_parametrization: procrustes
 
 data:
-    path_to_processed_data: "/mnt/sv-share/MiData/"
+    path_to_processed_data: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData"
     path_to_dataset_files: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files"
     dataset_directory: "bedroom"
     dataset_type: "cached_threedfront"
@@ -108,3 +108,4 @@ logger:
         mlp_ratio: 4
 
 sdf_cache_dir: ./sdf_cache/
+accessibility_cache_dir: ./accessibility_cache/

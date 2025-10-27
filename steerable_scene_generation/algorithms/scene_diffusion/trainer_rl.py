@@ -11,7 +11,7 @@ from steerable_scene_generation.datasets.scene.scene import SceneDataset
 from universal_constraint_rewards.commons import parse_and_descale_scenes
 
 from universal_constraint_rewards.not_out_of_bound_reward import precompute_sdf_cache, SDFCache
-
+from universal_constraint_rewards.accessibility_reward import precompute_accessibility_cache, AccessibilityCache
 from .ddpo_helpers import (
     composite_reward,
     ddim_step_with_logprob,
@@ -57,16 +57,35 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 print(
                     f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}..."
                 )
-                precompute_sdf_cache(
+                # precompute_sdf_cache(
+                #     config=self.cfg, num_workers=16,
+                #     sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                # )
+                
+                precompute_accessibility_cache(
                     config=self.cfg, num_workers=16,
-                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                    accessibility_cache_dir=self.cfg.dataset.accessibility_cache_dir,
                 )
             else:
                 print(
                     f"SDF cache directory {self.cfg.dataset.sdf_cache_dir} already exists. Skipping SDF precomputation."
                 )
-            self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
-            self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
+            if not os.path.exists(self.cfg.dataset.accessibility_cache_dir):
+                print(
+                    f"Precomputing Accessibility cache at {self.cfg.dataset.accessibility_cache_dir}..."
+                )
+                precompute_accessibility_cache(
+                    config=self.cfg, num_workers=16,
+                    accessibility_cache_dir=self.cfg.dataset.accessibility_cache_dir,
+                )
+            else:
+                print(
+                    f"Accessibility cache directory {self.cfg.dataset.accessibility_cache_dir} already exists. Skipping Accessibility precomputation."
+                )
+            # self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
+            # self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
+            self.train_accessibility_cache = AccessibilityCache(self.cfg.dataset.accessibility_cache_dir, split="train_val")
+            self.val_accessibility_cache = AccessibilityCache(self.cfg.dataset.accessibility_cache_dir, split="test")
         else:
             self.reward_normalizer = None
 
@@ -367,8 +386,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     floor_polygons=[self.dataset.get_floor_polygon_points(idx) for idx in cond_dict["idx"]],
                     indices=cond_dict["idx"],
                     is_val=is_val,
-                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                    sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                    # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                    # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                    accessibility_cache=self.train_accessibility_cache if not is_val else self.val_accessibility_cache
                 )
 
                 # Log individual components for analysis using log_dict for proper step tracking
@@ -407,7 +427,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 indices=cond_dict["idx"],
                 is_val=is_val,
                 # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                accessibility_cache=self.train_accessibility_cache if not is_val else self.val_accessibility_cache
             )
 
             # Log individual components for analysis using log_dict for proper step tracking

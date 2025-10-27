@@ -246,9 +246,9 @@ custom:
 <!-- /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-09-25/06-05-07/sampled_scenes_results.pkl -->
 
 <!--  Render Results -->
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-14/11-08-41/sampled_scenes_results.pkl --no_texture --without_floor
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-57-19/sampled_scenes_results.pkl --no_texture --without_floor
 
-python ../ThreedFront/scripts/render_results.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-14/13-32-38/sampled_scenes_results.pkl --no_texture
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-08-42/sampled_scenes_results.pkl --no_texture
 
 
 
@@ -260,6 +260,7 @@ rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/s
 
 
 
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/accessibility_cache.zip insait:/home/pramish_paudel/3dhope_data/accessibility_cache.zip
 
 ---
 {0: 'armchair', 1: 'bookshelf', 2: 'cabinet', 3: 'ceiling_lamp', 4: 'chair', 5: 'children_cabinet', 6: 'coffee_table', 7: 'desk', 8: 'double_bed', 9: 'dressing_chair', 10: 'dressing_table', 11: 'kids_bed', 12: 'nightstand', 13: 'pendant_lamp', 14: 'shelf', 15: 'single_bed', 16: 'sofa', 17: 'stool', 18: 'table', 19: 'tv_stand', 20: 'wardrobe'}
@@ -276,8 +277,8 @@ after rl finetuning
 
 
 
-PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
-load=jfgw3io6 \
+PYTHONPATH=. python scripts/custom_sample_and_render.py \
+load=ykwgctpr \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=14 \
@@ -386,11 +387,12 @@ algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.n
 baseline with composite reward
 
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
-load=juy0jvto \
+load=ykwgctpr \
 dataset=custom_scene \
+algorithm.trainer=rl_score \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
-+num_scenes=256 \
++num_scenes=100 \
 algorithm.num_additional_tokens_for_sampling=0 \
 algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True 
 
@@ -556,6 +558,16 @@ algorithm.ema.use=True
 
 
 ## dynamic reward sample
+
+PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
+load=ykwgctpr \
+dataset=custom_scene \
+algorithm.trainer=rl_score \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
++num_scenes=100 \
+algorithm.num_additional_tokens_for_sampling=0 \
+algorithm=scene_diffuser_flux_transformer algorithm.trainer=rl_score algorithm.noise_schedule.scheduler=ddpm algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.ddpo.n_timesteps_to_sample=100 experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True experiment.test.batch_size=196 algorithm.ema.use=False
 
 PYTHONPATH=. python scripts/custom_sample_and_render.py \
     dataset=custom_scene \
@@ -799,4 +811,4 @@ PYTHONPATH=. python -u main.py +name=test_physcene_rl \
 
 
     <!-- Physcene Metrics -->
-python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-18/08-41-48/sampled_scenes_results.pkl
+python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-08-42/sampled_scenes_results.pkl

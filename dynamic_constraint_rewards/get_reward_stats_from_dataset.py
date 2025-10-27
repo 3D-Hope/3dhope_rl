@@ -97,7 +97,12 @@ def get_reward_stats_from_dataset(
     num_classes = all_rooms_info[room_type]["num_classes"]
     sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
     reward_stats = {}
-
+    floor_plan_args_list = [custom_dataset.get_floor_plan_args(idx) for idx in indices]
+    # Stack each key across the batch for tensor conversion
+    floor_plan_args = {
+        key: [args[key] for args in floor_plan_args_list]
+        for key in ["floor_plan_centroid", "floor_plan_vertices", "floor_plan_faces", "room_outer_box"]
+    }
     # Compute rewards for each function
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
@@ -111,6 +116,7 @@ def get_reward_stats_from_dataset(
             indices=indices,
             is_val=True,
             sdf_cache=sdf_cache,
+            floor_plan_args=floor_plan_args,
         )
 
         # Convert to numpy array
