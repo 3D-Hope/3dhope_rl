@@ -337,7 +337,8 @@ PYTHONPATH=. python -u main.py +name=physcene_collision_reward_rl_reg_50 \
     algorithm.ddpo.use_universal_reward=True \
     algorithm.ddpo.universal_reward.use_physcene_reward=True \
     algorithm.classifier_free_guidance.use_floor=False \
-    algorithm.classifier_free_guidance.weight=0.0
+    algorithm.classifier_free_guidance.weight=0.0 \
+    dataset.sdf_cache_dir=/scratch/pramish_paudel/sdf_cache/
 
 
     
