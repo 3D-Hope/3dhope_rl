@@ -720,6 +720,4 @@ if __name__ == "__main__":
     result = compute_accessibility_reward(**args.item(), 
         # save_viz=True, viz_dir="./viz"
     )
-    for key, value in result.items():
-        result[key] = value[start:end]
-    print(result)
+    print(result[start:end])

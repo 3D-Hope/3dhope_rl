@@ -4,180 +4,30 @@ from scipy.ndimage import binary_dilation
 import argparse
 import numpy as np
 import pickle
+from tqdm import tqdm
+import open3d as o3d
+import torch
+from kaolin.ops.mesh import check_sign
 from threed_front.evaluation import ThreedFrontResults
 from steerable_scene_generation.datasets.custom_scene.threed_front_encoding import get_dataset_raw_and_encoded
 from steerable_scene_generation.datasets.custom_scene.custom_scene_final import update_data_file_paths
+from physcene_utils import get_textured_objects, bbox_overlap, map_to_image_coordinate, calc_bbox_masks, cal_walkable_metric
+from threed_front.datasets.threed_future_dataset import ThreedFutureDataset
+from threed_front.utils import PATH_TO_PICKLED_3D_FUTURE_MODEL
 # from threed_front.evaluation.utils import count_out_of_boundary, compute_bbox_iou
 import os
 """Script for calculating physcene metrics. """
 
-def map_to_image_coordinate(point, scale, image_size):
-        x, y = point
-        x_image = int(x / scale * image_size/2)+image_size/2
-        y_image = int(y / scale * image_size/2)+image_size/2
-        return x_image, y_image
-    
-def calc_bbox_masks(bbox,class_labels,image,image_size,scale,robot_width,floor_plan_mask, box_wall_count): 
-    """
-    type: ["bbox","front_line", "front_center"]
-    """
-    save_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/tmp"
-    os.makedirs(save_path, exist_ok=True)
-    box_masks = []
-    handle_points = []
-    for box,class_label in zip(bbox,class_labels):
-        box_mask = np.zeros((image_size, image_size, 3), dtype=np.uint8)
-        box_wall_mask = np.zeros((image_size, image_size, 3), dtype=np.uint8)
-        center = map_to_image_coordinate(box[:3][0::2], scale, image_size)
-        size = (int(box[3] / scale * image_size / 2) * 2,
-                int(box[5] / scale * image_size / 2) * 2)
-        angle = box[-1]
-        w, h = size
-        open_size = 0
-        rot_center = center
-        handle = np.array([0, h/2+open_size+robot_width/2+1])
-        bbox = np.array([[-w/2, -h/2],
-                        [-w/2, h/2+open_size],
-                        [w/2, h/2+open_size],
-                        [w/2, -h/2],
-                        ])
-        
-        R = np.array([[np.cos(angle), -np.sin(angle)],[np.sin(angle), np.cos(angle)]])
 
-        box_points = bbox.dot(R) + rot_center
-        handle_point = handle.dot(R) + rot_center
-        handle_points.append(handle_point)
-        box_points = np.intp(box_points)
-        # box wall collision
-        cv2.fillPoly(box_wall_mask, [box_points], (0, 255, 0))
-        #cv2.imwrite(os.path.join(save_path, "debug3.png"), box_wall_mask)
-        box_wall_mask = box_wall_mask[:,:,1]==255
-
-        if (box_wall_mask*(255-floor_plan_mask)).sum()>0:
-            box_wall_count+=1
-        #cv2.imwrite(os.path.join(save_path, "debug4.png"), floor_plan_mask)
-
-        #image connected region
-        cv2.drawContours(image, [box_points], 0,
-                        (0, 255, 0), robot_width)  # Green (BGR)
-        cv2.fillPoly(image, [box_points], (0, 255, 0))
-        
-        # per box mask
-        cv2.drawContours(box_mask, [box_points], 0,
-                        (0, 255, 0), robot_width)  # Green (BGR)
-        cv2.fillPoly(box_mask, [box_points], (0, 255, 0))
-        st_element = np.ones((3, 3), dtype=bool)
-        box_mask = binary_dilation((box_mask[:, :, 1].copy()==255).astype(image.dtype), st_element)
-        box_masks.append(box_mask)
-    return box_masks, handle_points, box_wall_count, image
-
-def cal_walkable_metric(floor_plan_vertices, floor_plan_faces, floor_plan_centroid, bboxes, robot_width=0.01, calc_object_area=False):
-    save_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/tmp"
-    os.makedirs(save_path, exist_ok=True)
-    vertices, faces = floor_plan_vertices, floor_plan_faces
-    vertices = vertices - floor_plan_centroid
-    vertices = vertices[:, 0::2]
-    scale = np.abs(vertices).max()+0.2
-    bboxes = bboxes[bboxes[:, 1] < 1.5]
-
-    image_size = 256
-    image = np.zeros((image_size, image_size, 3), dtype=np.uint8)
-
-    robot_width = int(robot_width / scale * image_size/2)
-
-
-    # draw face
-    for face in faces:
-        face_vertices = vertices[face]
-        face_vertices_image = [
-            map_to_image_coordinate(v, scale, image_size) for v in face_vertices]
-
-        pts = np.array(face_vertices_image, np.int32)
-        pts = pts.reshape(-1, 1, 2)
-        color = (255, 0, 0)  # Blue (BGR)
-        cv2.fillPoly(image, [pts], color)
-
-    kernel = np.ones((robot_width, robot_width))
-    image[:, :, 0] = cv2.erode(image[:, :, 0], kernel, iterations=1)
-    # draw bboxes
-    #cv2.imwrite(os.path.join(save_path, "image1.png"), image)
-    for box in bboxes:
-        center = map_to_image_coordinate(box[:3][0::2], scale, image_size)
-        size = (int(box[3] / scale * image_size / 2) * 2,
-                int(box[5] / scale * image_size / 2) * 2)
-        angle = box[-1]
-
-        # calculate box vertices
-        box_points = cv2.boxPoints(
-            ((center[0], center[1]), size, -angle/np.pi*180))
-        box_points = np.intp(box_points)
-
-        cv2.drawContours(image, [box_points], 0,
-                         (0, 255, 0), robot_width)  # Green (BGR)
-        cv2.fillPoly(image, [box_points], (0, 255, 0))
-
-    #cv2.imwrite(os.path.join(save_path, "image2.png"), image)
-
-    if calc_object_area:
-        green_cnt = 0
-        blue_cnt = 0
-        for i in range(image.shape[0]):
-            for j in range(image.shape[1]):
-                if list(image[i][j]) == [0, 255, 0]:
-                    green_cnt += 1
-                elif list(image[i][j]) == [255, 0, 0]:
-                    blue_cnt += 1
-        object_area_ratio = green_cnt/(blue_cnt+green_cnt)
-        
-    walkable_map = image[:, :, 0].copy()
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-        walkable_map, connectivity=8)
-
-
-    walkable_map_max = np.zeros_like(walkable_map)
-    for label in range(1, num_labels):
-        mask = np.zeros_like(walkable_map)
-        mask[labels == label] = 255
-
-        if mask.sum() > walkable_map_max.sum():
-            # room connected component with door
-            walkable_map_max = mask.copy()
-
-        # print("walkable_rate:", walkable_map_max.sum()/walkable_map.sum())
-        if calc_object_area:
-            return walkable_map_max.sum()/walkable_map.sum(), object_area_ratio
-        else:
-            return walkable_map_max.sum()/walkable_map.sum()
-    if calc_object_area:    
-        return 0.,object_area_ratio
-    else:
-        return 0.
     
 def calc_wall_overlap(threed_front_results, raw_dataset, encoded_dataset, cfg, robot_real_width=0.3,calc_object_area=False,classes=None):
-    save_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/tmp"
-    os.makedirs(save_path, exist_ok=True)
-    # print(f"Scene layout: {scene_layout}, GT scene layout: {gt_scene_layout}")
-    # print(f"BBox: {bbox}, Class Labels: {class_labels}")
-    # print(f"Floor Plan Vertices: {floor_plan_vertices}, Floor Plan Faces: {floor_plan_faces}, Floor Plan Centroid: {floor_plan_centroid}")
-    # import sys
-    # sys.exit()
     
     box_wall_count = 0
     accessable_count = 0
     box_count = 0
     walkable_metric_list = []
     accessable_rate_list = []
-    # from tqdm import tqdm
-    
-        # for scene_idx, scene_layout in threed_front_results:
-    
-    
-    # print(f"Scene {scene_idx} - Floor Plan Vertices: {floor_plan_vertices}, Floor Plan Faces: {floor_plan_faces}, Floor Plan Centroid: {floor_plan_centroid}")
-    # print(f"Scene {scene_idx} - Class Labels: {class_labels}, BBox: {bbox}")
-    # break
 
-    # for i in tqdm(range(len(synthesized_scenes))):
-    from tqdm import tqdm
     for scene_idx, scene_layout in tqdm(threed_front_results):
         raw_item = encoded_dataset[scene_idx]
         # print(f"Scene {scene_idx} - Raw Item: {raw_item.keys()}")
@@ -270,6 +120,124 @@ def calc_wall_overlap(threed_front_results, raw_dataset, encoded_dataset, cfg, r
     else:
         return walkable_average_rate, accessable_rate, box_wall_rate
 
+
+def calc_overlap(threed_front_results, raw_dataset, encoded_dataset, cfg, visualize_overlap = False):
+    # Get classes here
+    classes = raw_dataset.class_labels[:-1] # Removing the empty class (end)
+    print("classes:", classes)
+    print("classes shape:", len(list(classes)))
+    device = 'cuda'
+    # class_num = classes.shape[0]-1
+    a = 0
+    overlap_cnt_total = 0
+    obj_cnt_total = 0
+    overlap_scene = 0
+    scene_cnt = 0
+
+    overlap_area = 0
+    overlap_area_max = 0
+    obj_overlap_cnt = 0
+    
+    
+    path_to_pickled_3d_future_models = PATH_TO_PICKLED_3D_FUTURE_MODEL.format(cfg.data.room_type)
+    objects_dataset = ThreedFutureDataset.from_pickled_dataset(path_to_pickled_3d_future_models)
+    print("Loaded {} 3D-FUTURE models".format(len(objects_dataset)))
+
+    cnt = min(100,len(threed_front_results))
+    for scene_idx, scene_layout in tqdm(threed_front_results):
+        # raw_item = encoded_dataset[scene_idx]
+        a += 1
+        print("visualizing scene ", a ,"/",cnt)
+        boxes = scene_layout
+        bbox_params = np.concatenate([
+            boxes["class_labels"],
+            boxes["translations"],
+            boxes["sizes"],
+            boxes["angles"],
+        ], axis=-1)[None,:,:]
+
+        renderables, _,_, renderables_remesh,_ = get_textured_objects(
+            bbox_params, objects_dataset, classes, cfg
+        )
+        obj_cnt = len(renderables)
+        
+        overlap_flag = np.zeros(obj_cnt)
+        overlap_depths = np.zeros(obj_cnt)
+        for i in range(obj_cnt):
+            try:
+                points,faces = renderables_remesh[i].to_points_and_faces()
+            except:
+                mesh_cnt = len(renderables_remesh[i].renderables)
+                points = []
+                faces = []
+                point_cnt = 0
+
+            
+                for s in range(mesh_cnt):
+                    p,f = renderables_remesh[i].renderables[s].to_points_and_faces()
+                    points.append(p)
+                    faces.append(f+point_cnt)
+                    point_cnt += p.shape[0]
+                points = np.concatenate(points,axis=0)
+                faces = np.concatenate(faces,axis=0)
+        
+            if visualize_overlap:
+                mesh = o3d.geometry.TriangleMesh()
+                mesh.vertices = o3d.utility.Vector3dVector(points)
+                mesh.triangles = o3d.utility.Vector3iVector(faces)
+                mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+
+                pcd0 = o3d.geometry.PointCloud()
+                pcd0.points = o3d.utility.Vector3dVector(points)
+                pcd0.colors = o3d.utility.Vector3dVector([[0,1,0]])
+
+
+            verts = torch.tensor(points,device = device).unsqueeze(0)
+            faces = torch.tensor(faces,device = device).long()
+            for j in range(i+1,obj_cnt):
+                if overlap_flag[i] and overlap_flag[j]:
+                    continue    
+                #obj2
+                if not bbox_overlap(renderables_remesh[i],renderables[j]):
+                    continue
+                try:
+                    points = renderables[j].to_points_and_faces()[0][None,:,:]
+                except:
+                    mesh_cnt = len(renderables[j].renderables)
+                    points = [renderables[j].renderables[s].to_points_and_faces()[0] for s in range(mesh_cnt)]
+                    points = np.concatenate(points,axis=0)[None,:,:]
+                pointscuda = torch.tensor(points,device = device)
+                occupancy = check_sign(verts,faces,pointscuda)
+                
+                if occupancy.max()>0:
+                    overlap_flag[i] = 1
+                    overlap_flag[j] = 1
+
+        print(overlap_flag)
+        print(overlap_depths)
+        overlap_cnt_total += overlap_flag.sum()
+        obj_cnt_total += obj_cnt
+
+        overlap_scene += overlap_flag.sum()>0
+        scene_cnt += 1
+
+        overlap_area += overlap_depths.sum()
+        overlap_area_max += overlap_depths.max()
+        
+        obj_overlap_cnt += sum(overlap_depths>0)
+        
+        # if visualize_overlap:
+        #     show_renderables(renderables)
+    overlap_ratio = overlap_cnt_total/obj_cnt_total 
+    print("overlap object: ",overlap_ratio, "cnt ",overlap_cnt_total,"/",obj_cnt_total)  
+    overlap_scene_rate = overlap_scene/scene_cnt  
+    print( "overlap scene rate: ",overlap_scene_rate)
+    print( "overlap_area_mean: ",overlap_area/obj_cnt_total)
+    print( "overlap_area_max : ",overlap_area_max/scene_cnt)
+    print( "overlap_area_mean_only_overlaped : ",overlap_area/obj_overlap_cnt)
+   
+    return overlap_ratio,overlap_scene_rate
+
 def main(argv):
     parser = argparse.ArgumentParser(
         description=("Compute the FID scores between the real and the "
@@ -299,9 +267,18 @@ def main(argv):
     
     
     walkable_average_rate, accessable_rate, box_wall_rate = calc_wall_overlap(threed_front_results, raw_dataset, encoded_dataset, config, robot_real_width=0.3,calc_object_area=False,classes=None)
+    print("walkable_average_rate:", walkable_average_rate)
+    print("accessable_rate:", accessable_rate)
+    print("box_wall_rate:", box_wall_rate)
+    overlap_ratio, overlap_scene_rate = calc_overlap(threed_front_results, raw_dataset, encoded_dataset, cfg=config, visualize_overlap=False)
+    print("overlap_ratio, Colobj:", overlap_ratio)
+    print("overlap_scene_rate, Colscene:", overlap_scene_rate)
 
 # Walkable Average Rate(walkable_average_rate): Path exists in the scene for the robot to walk through
 # Accessable Rate(accessable_rate): The robot can access every object in the scene
 # Box Wall Rate(box_wall_rate): Objects in scene are going out of bounds or not
+# Overlap Ratio(overlap_ratio) (Col Object): The ratio of the number of overlapping objects to the total number of objects
+# Overlap Scene Rate(overlap_scene_rate) (Col Scene): The ratio of the number of scenes with overlapping objects to the total number of scenes
 if __name__ == "__main__":
     main(None)
+    
