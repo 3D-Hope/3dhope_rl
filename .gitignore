@@ -169,3 +169,6 @@ comparisons.zip
 experiment_results*.csv
 logs/
 tmp/
+MiData/
+*.zip
+viz/

@@ -1,4 +1,4 @@
-PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
+PYTHONPATH=. python -u main.py +name=test_accessibility_reward \
     load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -21,7 +21,7 @@ PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
-    algorithm.custom.loss=true \
+    algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
     algorithm.validation.num_samples_to_visualize=0 \
     algorithm.validation.num_directives_to_generate=0 \
@@ -34,5 +34,5 @@ PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
-    dataset.sdf_cache_dir=./sdf_cache/ \
+    dataset.accessibility_cache_dir=./accessibility_cache/ \
     algorithm.classifier_free_guidance.use_floor=True

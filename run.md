@@ -340,6 +340,20 @@ PYTHONPATH=. python -u main.py +name=first_rl \
 
 python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene algorithm=scene_diffuser_midiffusion
 
+<!-- SAUGAT DO THIS -->
+python scripts/custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
+
+
+
+
+python scripts/custom_sample_and_render.py load=z708k43v dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
+
+
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-28/11-54-27/sampled_scenes_results.pkl --no_texture
+
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-28/11-56-31/sampled_scenes_results.pkl
+
+
 PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     load=qbyilta9 \
     dataset=custom_scene \
@@ -811,4 +825,33 @@ PYTHONPATH=. python -u main.py +name=test_physcene_rl \
 
 
     <!-- Physcene Metrics -->
-python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-08-42/sampled_scenes_results.pkl
+python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-28/17-/sampled_scenes_results.pkl
+
+
+<!-- LIVING ROOM -->
+
+<!-- Training Midiffusion -->
+
+PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset._name=custom_scene \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=0 \
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    dataset.data.dataset_directory=livingroom \
+    dataset.data.room_type=livingroom \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.annotation_file=livingroom_threed_front_splits.csv

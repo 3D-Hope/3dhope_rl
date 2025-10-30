@@ -10,11 +10,12 @@ BASE_DIR="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ste
 # Array of pickle files to evaluate with floor conditioning info
 # Format: "pkl_file|use_floor"
 PKL_FILES_WITH_FLAGS=(
-    "$BASE_DIR/outputs/2025-10-22/11-12-45/sampled_scenes_results.pkl|no_floor"  # 45
-    "$BASE_DIR/outputs/2025-10-22/11-20-15/sampled_scenes_results.pkl|no_floor"   #50
-    "$BASE_DIR/outputs/2025-10-22/11-25-41/sampled_scenes_results.pkl|no_floor"   #55
-    "$BASE_DIR/outputs/2025-10-22/11-25-09/sampled_scenes_results.pkl|no_floor"   #35
-    "$BASE_DIR/outputs/2025-10-22/11-35-42/sampled_scenes_results.pkl|no_floor"   #40
+    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/13-04-43/sampled_scenes_results.pkl|with_floor" # Newest rl with floor
+    # "$BASE_DIR/outputs/2025-10-22/11-12-45/sampled_scenes_results.pkl|no_floor"  # 45
+    # "$BASE_DIR/outputs/2025-10-22/11-20-15/sampled_scenes_results.pkl|no_floor"   #50
+    # "$BASE_DIR/outputs/2025-10-22/11-25-41/sampled_scenes_results.pkl|no_floor"   #55
+    # "$BASE_DIR/outputs/2025-10-22/11-25-09/sampled_scenes_results.pkl|no_floor"   #35
+    # "$BASE_DIR/outputs/2025-10-22/11-35-42/sampled_scenes_results.pkl|no_floor"   #40
     # "$BASE_DIR/outputs/2025-10-22/04-42-33/sampled_scenes_results.pkl|no_floor"   # 3. 1 stage
     # "$BASE_DIR/outputs/2025-10-22/04-45-30/sampled_scenes_results.pkl|no_floor"   # 4. 1 stage
     # "$BASE_DIR/outputs/2025-10-18/08-37-12/sampled_scenes_results.pkl|with_floor" # 5. Continuous MiDiffusion Floor, rrudae6n, ddpm, True, 1000

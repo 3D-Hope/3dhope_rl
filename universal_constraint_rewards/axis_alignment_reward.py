@@ -14,6 +14,7 @@ AXIS_ALIGNED_OBJECTS = {
     "desk",
     "dressing_table",
     "tv_stand",
+    "table"
 }
 
 
@@ -43,8 +44,8 @@ def compute_axis_alignment_reward(parsed_scenes, **kwargs):
 
     # Convert [cos, sin] to angles in radians
     axis_aligned_indices = [
-        idx for idx, label in idx_to_labels.items()
-        # if label in AXIS_ALIGNED_OBJECTS
+        int(idx) for idx, label in idx_to_labels.items()
+        if label in AXIS_ALIGNED_OBJECTS
     ]
 
     # Create mask for objects that should be axis-aligned

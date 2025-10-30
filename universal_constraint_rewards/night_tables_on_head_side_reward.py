@@ -1,568 +1,306 @@
-"""
-Night Tables on Head Side Reward - Ensures nightstands are placed correctly relative to beds.
-
-Bed orientation convention (same as chair_accessibility_reward.py):
-- Forward direction = direction you'd look when sitting behind headboard
-- For θ=0: Forward is +Z (foot of bed), so head is at -Z (behind headboard)
-- Nightstands should be on the HEAD side (opposite of forward direction)
-
-Reward cases:
-1. Single nightstand on head side: +0.5
-2. Two nightstands on both sides of head: +1.0 (bonus for symmetry)
-3. Nightstand on foot side (wrong): -0.5
-
-FIXED ISSUES:
-- Now properly checks lateral distance (nightstands can be farther to the sides)
-- Ensures nightstands are actually on LEFT or RIGHT, not centered
-- Fixed symmetric bonus to require nightstands on DIFFERENT sides
-"""
-
 import torch
-import torch.nn.functional as F
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Polygon as MplPolygon
 
-
-def compute_facing_direction(theta):
+def compute_nightstand_placement_reward(parsed_scenes, floor_polygons, idx_to_labels, **kwargs):
     """
-    Compute forward direction vector from orientation angle.
-
-    For beds: forward = foot direction (where you'd look when sitting behind headboard)
-    Head direction = -forward
+    Penalizes scenes where:
+      - Both nightstands are placed on the same side of the bed.
+      - A nightstand is at the foot side of the bed (soft penalty based on distance).
+    
+    For each bed-nightstand pair:
+    1. Find headboard position of bed (same logic as wall proximity)
+    2. Determine which side of bed each nightstand is on (left/right relative to headboard)
+    3. Compute how far toward foot side it is; apply distance-based penalty
+    4. Penalize if both nightstands on same side or too far from head side
 
     Args:
-        theta: (B, N) tensor of orientation angles in radians
+        parsed_scenes: Dict with keys:
+            - 'positions': (B, N, 3) - object positions (x, y, z)
+            - 'orientations': (B, N, 2) - [cos_theta, sin_theta]
+            - 'sizes': (B, N, 3) - object half-extents (already halved)
+            - 'object_indices': (B, N) - object class indices
+            - 'is_empty': (B, N) - mask for empty slots
+        floor_polygons: List of length B (not used but kept for signature compatibility)
+        idx_to_labels: Dict mapping indices to object class names
 
     Returns:
-        forward: (B, N, 2) tensor of unit vectors in XZ plane [dx, dz]
+        rewards: (B,) - nightstand placement reward per scene (negative penalty)
     """
-    dx = -torch.sin(theta)  # X component
-    dz = torch.cos(theta)  # Z component
+    positions = parsed_scenes["positions"]  # (B, N, 3)
+    orientations = parsed_scenes["orientations"]  # (B, N, 2)
+    sizes = parsed_scenes["sizes"]  # (B, N, 3)
+    object_indices = parsed_scenes["object_indices"]  # (B, N)
+    is_empty = parsed_scenes["is_empty"]  # (B, N)
 
-    forward = torch.stack([dx, dz], dim=-1)  # (B, N, 2)
-    return forward
-
-
-def get_bed_head_foot_sides(bed_positions, bed_sizes, bed_orientations):
-    """
-    Determine the head and foot side regions of beds.
-
-    For a bed at position (x, z) with orientation θ:
-    - Forward (foot) direction: [dx, dz] = [-sin(θ), cos(θ)]
-    - Head direction: -[dx, dz]
-    - Left/right perpendicular: [-dz, dx] (90° rotation)
-
-    Head side region: bed_center - forward * (bed_length/2)
-    Foot side region: bed_center + forward * (bed_length/2)
-
-    Args:
-        bed_positions: (N_beds, 3) positions [x, y, z]
-        bed_sizes: (N_beds, 3) half-extents [sx, sy, sz]
-        bed_orientations: (N_beds,) angles in radians
-
-    Returns:
-        dict with:
-            - head_centers: (N_beds, 2) XZ positions of head side centers
-            - foot_centers: (N_beds, 2) XZ positions of foot side centers
-            - left_dirs: (N_beds, 2) left perpendicular directions
-            - right_dirs: (N_beds, 2) right perpendicular directions
-            - bed_widths: (N_beds,) half-width of beds
-            - bed_half_lengths: (N_beds,) half-length of beds
-    """
-    N_beds = bed_positions.shape[0]
-    device = bed_positions.device
-
-    if N_beds == 0:
-        return {
-            "head_centers": torch.zeros(0, 2, device=device),
-            "foot_centers": torch.zeros(0, 2, device=device),
-            "left_dirs": torch.zeros(0, 2, device=device),
-            "right_dirs": torch.zeros(0, 2, device=device),
-            "bed_widths": torch.zeros(0, device=device),
-            "bed_half_lengths": torch.zeros(0, device=device),
-            "forward_dirs": torch.zeros(0, 2, device=device),
-            "head_dirs": torch.zeros(0, 2, device=device),
-        }
-
-    # Get forward directions (foot direction)
-    forward_dirs = compute_facing_direction(bed_orientations)  # (N_beds, 2)
-
-    # Head direction is opposite of forward
-    head_dirs = -forward_dirs
-
-    # Perpendicular directions (left/right when looking at foot from head)
-    # Left = rotate forward 90° CCW: [dx, dz] -> [-dz, dx]
-    left_dirs = torch.stack([-forward_dirs[:, 1], forward_dirs[:, 0]], dim=-1)
-    right_dirs = -left_dirs
-
-    # Extract XZ positions
-    bed_xz = bed_positions[:, [0, 2]]  # (N_beds, 2)
-
-    # Bed dimensions in XZ plane
-    # Assume bed length is along Z-axis before rotation (typically beds are longer than wide)
-    # After rotation, the half-length along the forward direction
-    # For simplicity, use max(sx, sz) as half-length
-    bed_half_lengths = torch.max(bed_sizes[:, 0], bed_sizes[:, 2])  # (N_beds,)
-    bed_widths = torch.min(bed_sizes[:, 0], bed_sizes[:, 2])  # (N_beds,)
-
-    # Head and foot centers
-    head_centers = bed_xz + head_dirs * bed_half_lengths.unsqueeze(-1)  # (N_beds, 2)
-    foot_centers = bed_xz + forward_dirs * bed_half_lengths.unsqueeze(-1)  # (N_beds, 2)
-
-    return {
-        "head_centers": head_centers,
-        "foot_centers": foot_centers,
-        "left_dirs": left_dirs,
-        "right_dirs": right_dirs,
-        "bed_widths": bed_widths,
-        "bed_half_lengths": bed_half_lengths,
-        "forward_dirs": forward_dirs,
-        "head_dirs": head_dirs,
-    }
-
-
-def check_nightstand_placement(
-    nightstand_positions,
-    bed_info,
-    bed_positions,
-    proximity_threshold=1.5,
-    lateral_threshold=2.0,
-    debug=False,
-):
-    """
-    Check if nightstands are correctly placed on the head side of beds.
-
-    A nightstand is correctly placed if:
-    1. It's on the HEAD side (not foot side)
-    2. It's within proximity_threshold along the head-foot axis
-    3. It's on the left or right SIDE (not centered, with lateral distance check)
-    4. It's within lateral_threshold distance to the sides
-
-    Args:
-        nightstand_positions: (N_nightstands, 3) positions
-        bed_info: dict from get_bed_head_foot_sides()
-        bed_positions: (N_beds, 3) original bed positions
-        proximity_threshold: Maximum distance along head-foot axis (default 1.5m)
-        lateral_threshold: Maximum lateral distance to sides (default 2.0m)
-        debug: Print debug information
-
-    Returns:
-        dict with:
-            - on_head_side: (N_nightstands, N_beds) boolean mask
-            - on_foot_side: (N_nightstands, N_beds) boolean mask
-            - on_left_side: (N_nightstands, N_beds) boolean mask
-            - on_right_side: (N_nightstands, N_beds) boolean mask
-            - distances: (N_nightstands, N_beds) distances to bed centers
-    """
-    N_nightstands = nightstand_positions.shape[0]
-    N_beds = bed_positions.shape[0]
-    device = nightstand_positions.device
-
-    if N_nightstands == 0 or N_beds == 0:
-        return {
-            "on_head_side": torch.zeros(
-                N_nightstands, N_beds, dtype=torch.bool, device=device
-            ),
-            "on_foot_side": torch.zeros(
-                N_nightstands, N_beds, dtype=torch.bool, device=device
-            ),
-            "on_left_side": torch.zeros(
-                N_nightstands, N_beds, dtype=torch.bool, device=device
-            ),
-            "on_right_side": torch.zeros(
-                N_nightstands, N_beds, dtype=torch.bool, device=device
-            ),
-            "distances": torch.full(
-                (N_nightstands, N_beds), float("inf"), device=device
-            ),
-        }
-
-    # Extract XZ coordinates
-    nightstand_xz = nightstand_positions[:, [0, 2]]  # (N_nightstands, 2)
-    bed_xz = bed_positions[:, [0, 2]]  # (N_beds, 2)
-
-    # Compute vectors from bed centers to nightstands
-    # (N_nightstands, 1, 2) - (1, N_beds, 2) -> (N_nightstands, N_beds, 2)
-    bed_to_nightstand = nightstand_xz.unsqueeze(1) - bed_xz.unsqueeze(0)
-
-    # Total distances
-    distances = torch.norm(bed_to_nightstand, dim=-1)  # (N_nightstands, N_beds)
-
-    # Normalize vectors
-    bed_to_nightstand_norm = F.normalize(bed_to_nightstand, dim=-1, eps=1e-8)
-
-    # Expand bed directions for broadcasting
-    head_dirs = bed_info["head_dirs"].unsqueeze(0)  # (1, N_beds, 2)
-    forward_dirs = bed_info["forward_dirs"].unsqueeze(0)  # (1, N_beds, 2)
-    left_dirs = bed_info["left_dirs"].unsqueeze(0)  # (1, N_beds, 2)
-    right_dirs = bed_info["right_dirs"].unsqueeze(0)  # (1, N_beds, 2)
-    bed_half_lengths = bed_info["bed_half_lengths"].unsqueeze(0)  # (1, N_beds)
-    bed_widths = bed_info["bed_widths"].unsqueeze(0)  # (1, N_beds)
-
-    # Dot products with each direction
-    dot_head = (bed_to_nightstand_norm * head_dirs).sum(
-        dim=-1
-    )  # (N_nightstands, N_beds)
-    dot_foot = (bed_to_nightstand_norm * forward_dirs).sum(dim=-1)
-    dot_left = (bed_to_nightstand_norm * left_dirs).sum(dim=-1)
-    dot_right = (bed_to_nightstand_norm * right_dirs).sum(dim=-1)
-
-    # Calculate distances along bed axes
-    # Distance along head-foot axis (forward direction)
-    dist_along_head_foot = torch.abs(
-        (bed_to_nightstand * forward_dirs).sum(dim=-1)
-    )  # (N_nightstands, N_beds)
-
-    # Distance along lateral axis (left-right direction)
-    dist_lateral = torch.abs(
-        (bed_to_nightstand * left_dirs).sum(dim=-1)
-    )  # (N_nightstands, N_beds)
-
-    if debug:
-        for i in range(N_nightstands):
-            for j in range(N_beds):
-                print(f"      Nightstand {i} -> Bed {j}:")
-                print(f"        Total dist={distances[i,j]:.2f}m")
-                print(f"        Dist along head-foot={dist_along_head_foot[i,j]:.2f}m")
-                print(f"        Dist lateral={dist_lateral[i,j]:.2f}m")
-                print(
-                    f"        dot_head={dot_head[i,j]:.2f}, dot_foot={dot_foot[i,j]:.2f}"
-                )
-                print(
-                    f"        dot_left={dot_left[i,j]:.2f}, dot_right={dot_right[i,j]:.2f}"
-                )
-
-    # Nightstand is on head side if:
-    # 1. Points toward head (dot_head > 0.3)
-    # 2. Within proximity threshold along head-foot axis
-    # 3. Has significant lateral distance (not centered)
-    # 4. Within lateral threshold
-    on_head_side = (
-        (dot_head > 0.3)
-        & (dist_along_head_foot < proximity_threshold + bed_half_lengths)
-        & (dist_lateral > bed_widths * 0.3)
-        & (dist_lateral < lateral_threshold)  # Must be to the side, not center
-    )
-
-    # Nightstand is on foot side if pointing toward foot
-    on_foot_side = (
-        (dot_foot > 0.3)
-        & (dist_along_head_foot < proximity_threshold + bed_half_lengths)
-        & (dist_lateral < lateral_threshold)
-    )
-
-    # Left/right side determination (only if on head side)
-    on_left_side = (dot_left > 0.5) & on_head_side
-    on_right_side = (dot_right > 0.5) & on_head_side
-
-    return {
-        "on_head_side": on_head_side,
-        "on_foot_side": on_foot_side,
-        "on_left_side": on_left_side,
-        "on_right_side": on_right_side,
-        "distances": distances,
-        "dot_head": dot_head,
-        "dot_left": dot_left,
-        "dot_right": dot_right,
-        "dist_along_head_foot": dist_along_head_foot,
-        "dist_lateral": dist_lateral,
-    }
-
-
-def compute_night_tables_reward(
-    parsed_scene,
-    head_side_bonus=0.5,
-    both_sides_bonus=1.0,
-    wrong_side_penalty=-0.5,
-    debug=False,
-    **kwargs,
-):
-    """
-    Calculate reward for nightstand placement relative to beds.
-
-    Rewards:
-    - Nightstand on head side: +head_side_bonus (default +0.5)
-    - Two nightstands on both sides of head: +both_sides_bonus (default +1.0)
-
-    Penalties:
-    - Nightstand on foot side: +wrong_side_penalty (default -0.5)
-
-    Args:
-        parsed_scene: Dict from parse_and_descale_scenes()
-        head_side_bonus: Reward for nightstand on head side
-        both_sides_bonus: Bonus for symmetric placement
-        wrong_side_penalty: Penalty for nightstand on wrong side
-        debug: Print debug information
-        **kwargs: Additional arguments
-
-    Returns:
-        rewards: (B,) tensor with per-scene rewards
-    """
-    positions = parsed_scene["positions"]  # (B, N, 3)
-    sizes = parsed_scene["sizes"]  # (B, N, 3) - HALF-EXTENTS
-    orientations_cos_sin = parsed_scene["orientations"]  # (B, N, 2)
-    object_indices = parsed_scene["object_indices"]  # (B, N)
-    is_empty = parsed_scene["is_empty"]  # (B, N)
-
-    B, N = positions.shape[:2]
+    batch_size, num_objects = positions.shape[0], positions.shape[1]
     device = positions.device
 
-    # Convert cos/sin to radians
-    cos_theta = orientations_cos_sin[:, :, 0]
-    sin_theta = orientations_cos_sin[:, :, 1]
-    orientations = torch.atan2(sin_theta, cos_theta)  # (B, N)
+    # Identify bed and nightstand indices
+    bed_indices = [int(idx) for idx, label in idx_to_labels.items() if 'bed' in label.lower()]
+    nightstand_indices = [int(idx) for idx, label in idx_to_labels.items() if 'nightstand' in label.lower() or 'night_stand' in label.lower()]
 
-    # Identify beds (single_bed=15, double_bed=8, kids_bed=11)
-    bed_classes = [8, 11, 15]
-    is_bed = torch.zeros(B, N, dtype=torch.bool, device=device)
-    for cls_id in bed_classes:
-        is_bed |= object_indices == cls_id
-    is_bed = is_bed & (~is_empty)
+    rewards = torch.zeros(batch_size, device=device)
 
-    # Identify nightstands (nightstand=12)
-    nightstand_class = 12
-    is_nightstand = (object_indices == nightstand_class) & (~is_empty)
+    for b in range(batch_size):
+        beds, nightstands = [], []
 
-    # Compute rewards per scene
-    rewards = torch.zeros(B, device=device)
+        for n in range(num_objects):
+            if is_empty[b, n]:
+                continue
+            obj_idx = object_indices[b, n].item()
+            if obj_idx in bed_indices:
+                beds.append(n)
+            elif obj_idx in nightstand_indices:
+                nightstands.append(n)
 
-    for b in range(B):
-        bed_mask = is_bed[b]
-        nightstand_mask = is_nightstand[b]
-
-        n_beds = bed_mask.sum().item()
-        n_nightstands = nightstand_mask.sum().item()
-
-        if debug:
-            print(f"\nScene {b}: {n_beds} beds, {n_nightstands} nightstands")
-
-        if n_beds == 0 or n_nightstands == 0:
-            # No beds or no nightstands - neutral reward
+        if len(beds) == 0 or len(nightstands) == 0:
             continue
 
-        # Extract bed and nightstand data
-        bed_positions_b = positions[b, bed_mask]  # (n_beds, 3)
-        bed_sizes_b = sizes[b, bed_mask]  # (n_beds, 3)
-        bed_orientations_b = orientations[b, bed_mask]  # (n_beds,)
+        for bed_n in beds:
+            pos_x = positions[b, bed_n, 0]
+            pos_z = positions[b, bed_n, 2]
+            size_x = sizes[b, bed_n, 0]
+            size_z = sizes[b, bed_n, 2]
+            cos_theta = orientations[b, bed_n, 0]
+            sin_theta = orientations[b, bed_n, 1]
 
-        nightstand_positions_b = positions[b, nightstand_mask]  # (n_nightstands, 3)
+            angle_rad = torch.atan2(sin_theta, cos_theta)
+            angle_deg = (angle_rad * 180 / torch.pi).item()
+            rounded_angle = round(angle_deg / 90) * 90
+            normalized_angle = ((rounded_angle % 360) + 360) % 360
 
-        # Get bed geometry
-        bed_info = get_bed_head_foot_sides(
-            bed_positions_b, bed_sizes_b, bed_orientations_b
-        )
+            if normalized_angle == 0:
+                perp_x, perp_z = 1.0, 0.0
+                foot_dir_x, foot_dir_z = 0.0, 1.0
+            elif normalized_angle == 90:
+                perp_x, perp_z = 0.0, 1.0
+                foot_dir_x, foot_dir_z = 1.0, 0.0
+            elif normalized_angle == 180:
+                perp_x, perp_z = 1.0, 0.0
+                foot_dir_x, foot_dir_z = 0.0, -1.0
+            else:  # 270
+                perp_x, perp_z = 0.0, 1.0
+                foot_dir_x, foot_dir_z = -1.0, 0.0
 
-        if debug:
-            for i in range(n_beds):
-                print(
-                    f"  Bed {i}: pos=({bed_positions_b[i,0]:.2f}, {bed_positions_b[i,2]:.2f}), "
-                    f"size=({bed_sizes_b[i,0]:.2f}, {bed_sizes_b[i,2]:.2f}), "
-                    f"θ={bed_orientations_b[i]*180/3.14159:.1f}°"
-                )
-                print(
-                    f"    Head center: ({bed_info['head_centers'][i,0]:.2f}, {bed_info['head_centers'][i,1]:.2f})"
-                )
-                print(
-                    f"    Foot center: ({bed_info['foot_centers'][i,0]:.2f}, {bed_info['foot_centers'][i,1]:.2f})"
-                )
-                print(
-                    f"    Forward dir: ({bed_info['forward_dirs'][i,0]:.2f}, {bed_info['forward_dirs'][i,1]:.2f})"
-                )
+            nightstand_sides = []
 
-        # Check nightstand placements
-        placement = check_nightstand_placement(
-            nightstand_positions_b, bed_info, bed_positions_b, debug=debug
-        )
+            for ns_n in nightstands:
+                ns_x = positions[b, ns_n, 0]
+                ns_z = positions[b, ns_n, 2]
 
-        # Count correct and incorrect placements
-        # A nightstand is "correct" if it's on the head side of at least one bed
-        correct_placements = placement["on_head_side"].any(dim=1)  # (n_nightstands,)
-        wrong_placements = placement["on_foot_side"].any(dim=1) & (~correct_placements)
+                dx = ns_x - pos_x
+                dz = ns_z - pos_z
 
-        n_correct = correct_placements.sum().float()
-        n_wrong = wrong_placements.sum().float()
+                side_projection = dx.item() * perp_x + dz.item() * perp_z
+                foot_projection = dx.item() * foot_dir_x + dz.item() * foot_dir_z
 
-        # Check for symmetric placement (both left and right)
-        # For each bed, check if it has nightstands on both left AND right sides
-        # FIXED: Ensure nightstands are on DIFFERENT sides, not both on same side
-        n_symmetric = 0
-        for bed_idx in range(n_beds):
-            # Check which nightstands are on left/right for this bed
-            ns_on_left = (
-                placement["on_left_side"][:, bed_idx]
-                & placement["on_head_side"][:, bed_idx]
-            )
-            ns_on_right = (
-                placement["on_right_side"][:, bed_idx]
-                & placement["on_head_side"][:, bed_idx]
-            )
+                bed_length = size_z if normalized_angle in [0, 180] else size_x
 
-            has_left = ns_on_left.any()
-            has_right = ns_on_right.any()
+                # --- Soft distance-based penalty ---
+                # Normalize distance: negative = head side, positive = foot side
+                # Ideal region: slightly negative (near headboard)
+                # Penalty grows smoothly as you move toward foot
+                dist_ratio = foot_projection / (bed_length + 1e-6)
+                if dist_ratio > 0:
+                    # Smooth penalty increases with distance toward foot
+                    penalty = 10.0 * torch.tanh(torch.tensor(dist_ratio * 2.0, device=device))
+                    rewards[b] -= penalty.item()
+                    nightstand_sides.append('foot')
+                else:
+                    # Closer to headboard side → small bonus based on proximity
+                    # proximity_score = torch.exp(-((dist_ratio + 0.3) ** 2) * 10.0)
+                    # rewards[b] += proximity_score.item()
+                    if side_projection > 0:
+                        nightstand_sides.append('right')
+                    else:
+                        nightstand_sides.append('left')
 
-            if has_left and has_right:
-                n_symmetric += 1
-
-        if debug:
-            print(f"  Correct placements: {n_correct.item()}")
-            print(f"  Wrong placements: {n_wrong.item()}")
-            print(f"  Symmetric beds: {n_symmetric}")
-            for i, night_pos in enumerate(nightstand_positions_b):
-                for j, bed_pos in enumerate(bed_positions_b):
-                    if placement["on_head_side"][i, j]:
-                        side = (
-                            "LEFT"
-                            if placement["on_left_side"][i, j]
-                            else "RIGHT"
-                            if placement["on_right_side"][i, j]
-                            else "CENTER"
-                        )
-                        print(f"    Nightstand {i} -> Bed {j}: HEAD side, {side}")
-                        print(
-                            f"      dist_total={placement['distances'][i,j]:.2f}m, "
-                            f"dist_head_foot={placement['dist_along_head_foot'][i,j]:.2f}m, "
-                            f"dist_lateral={placement['dist_lateral'][i,j]:.2f}m"
-                        )
-                    elif placement["on_foot_side"][i, j]:
-                        print(f"    Nightstand {i} -> Bed {j}: FOOT side (wrong!)")
-
-        # Compute reward
-        reward = (
-            n_correct * head_side_bonus
-            + n_wrong * wrong_side_penalty
-            + n_symmetric * both_sides_bonus
-        )
-
-        # Normalize by number of nightstands
-        if n_nightstands > 0:
-            rewards[b] = reward / n_nightstands
+            if len(nightstand_sides) >= 2:
+                non_foot_sides = [s for s in nightstand_sides if s != 'foot']
+                if len(non_foot_sides) >= 2:
+                    if all(s == 'left' for s in non_foot_sides) or all(s == 'right' for s in non_foot_sides):
+                        rewards[b] -= 5.0
 
     return rewards
 
 
-def test_night_tables_reward():
-    """Test cases for nightstand placement reward."""
-    print("\n" + "=" * 70)
-    print("Testing Night Tables Reward (FIXED VERSION)")
-    print("=" * 70)
 
-    device = "cpu"
-    num_classes = 22
-    num_objects = 12
+def visualize_nightstand_placement(idx, positions, sizes, orientations, object_indices, 
+                                   is_empty, beds, nightstands, bed_indices, nightstand_indices, reward, scene_name=""):
+    """Visualize bed and nightstand placement"""
+    fig, ax = plt.subplots(figsize=(10, 10))
+    
+    # Draw beds
+    for bed_n in beds:
+        x = positions[idx, bed_n, 0].item()
+        z = positions[idx, bed_n, 2].item()
+        width = sizes[idx, bed_n, 0].item() * 2
+        depth = sizes[idx, bed_n, 2].item() * 2
+        
+        angle_rad = torch.atan2(orientations[idx, bed_n, 1], orientations[idx, bed_n, 0]).item()
+        angle_deg = np.degrees(angle_rad)
+        
+        bed_rect = Rectangle((x - width/2, z - depth/2), width, depth, 
+                            angle=angle_deg, facecolor='purple', alpha=0.7, 
+                            edgecolor='black', linewidth=2, label='Bed')
+        ax.add_patch(bed_rect)
+        
+        # Mark headboard
+        rounded_angle = round(angle_deg / 90) * 90
+        normalized_angle = ((rounded_angle % 360) + 360) % 360
+        
+        if normalized_angle == 0:
+            hb_x, hb_z = x, z - sizes[idx, bed_n, 2].item()
+        elif normalized_angle == 90:
+            hb_x, hb_z = x - sizes[idx, bed_n, 0].item(), z
+        elif normalized_angle == 180:
+            hb_x, hb_z = x, z + sizes[idx, bed_n, 2].item()
+        else:  # 270
+            hb_x, hb_z = x + sizes[idx, bed_n, 0].item(), z
+        
+        ax.plot(hb_x, hb_z, 'go', markersize=15, label='Headboard', zorder=5)
+        ax.text(x, z, 'BED', ha='center', va='center', fontsize=12, fontweight='bold')
+    
+    # Draw nightstands
+    for ns_n in nightstands:
+        x = positions[idx, ns_n, 0].item()
+        z = positions[idx, ns_n, 2].item()
+        width = sizes[idx, ns_n, 0].item() * 2
+        depth = sizes[idx, ns_n, 2].item() * 2
+        
+        angle_rad = torch.atan2(orientations[idx, ns_n, 1], orientations[idx, ns_n, 0]).item()
+        angle_deg = np.degrees(angle_rad)
+        
+        ns_rect = Rectangle((x - width/2, z - depth/2), width, depth,
+                           angle=angle_deg, facecolor='orange', alpha=0.7,
+                           edgecolor='black', linewidth=2, label='Nightstand')
+        ax.add_patch(ns_rect)
+        ax.plot(x, z, 'ro', markersize=8, zorder=5)
+        ax.text(x, z, 'NS', ha='center', va='center', fontsize=10, fontweight='bold')
+    
+    ax.set_aspect('equal')
+    ax.grid(True, alpha=0.3)
+    title = f"Scene {idx}" + (f" - {scene_name}" if scene_name else "") + f" - Reward: {reward:.2f}"
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    
+    # Remove duplicate labels
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(by_label.values(), by_label.keys(), loc='upper right')
+    
+    plt.tight_layout()
+    filename = f'nightstand_placement_scene_{idx}' + (f'_{scene_name.replace(" ", "_").replace(":", "")}' if scene_name else '') + '.png'
+    plt.show()
+    # plt.savefig(filename, dpi=150, bbox_inches='tight')
+    # plt.close(fig)
+    # print(f"  Saved visualization: {filename}")
 
-    from universal_constraint_rewards.commons import parse_and_descale_scenes
 
-    # Room bounds for normalization
-    x_min, x_max = -2.7625005, 2.7784417
-    z_min, z_max = -2.75275, 2.8185427
-    y_min, y_max = 0.045, 3.6248395
+# Test scenarios
+def create_test_scenarios():
+    """Create test scenarios with different nightstand placements"""
+    device = 'cpu'
+    
+    # Scenario parameters: (bed_angle, ns1_offset, ns2_offset, description)
+    # Offsets are (dx, dz) relative to bed center
+    scenarios = [
+        # Good placements
+        (0, (-2, -1.5), (2, -1.5), "Good: Both nightstands at head, different sides"),
+        (90, (-1.5, -2), (-1.5, 2), "Good: Bed rotated 90°, correct placement"),
+        (0, (-2, -1.5), None, "Good: Single nightstand at head"),
+        
+        # Bad placements - same side
+        (0, (-2, -1.5), (-2.5, -1.5), "Bad: Both nightstands on same side (left)"),
+        (0, (2, -1.5), (2.5, -1.5), "Bad: Both nightstands on same side (right)"),
+        
+        # Bad placements - at foot
+        (0, (0, 2), None, "Bad: Nightstand at foot"),
+        (0, (-2, -1.5), (2, 2), "Bad: One at head, one at foot"),
+        (0, (-1, 2), (1, 2), "Bad: Both at foot, different sides"),
+    ]
+    
+    results = []
+    
+    # Mock idx_to_labels
+    idx_to_labels = {0: 'bed', 1: 'nightstand'}
+    
+    for scene_idx, (bed_angle, ns1_offset, ns2_offset, description) in enumerate(scenarios):
+        # Create scene - always use 3 objects for consistency
+        num_objects = 3
+        positions = torch.zeros((1, num_objects, 3), device=device)
+        orientations = torch.zeros((1, num_objects, 2), device=device)
+        sizes = torch.zeros((1, num_objects, 3), device=device)
+        object_indices = torch.zeros((1, num_objects), dtype=torch.long, device=device)
+        is_empty = torch.zeros((1, num_objects), dtype=torch.bool, device=device)
+        
+        # Bed at origin
+        positions[0, 0] = torch.tensor([5.0, 0.0, 5.0])
+        sizes[0, 0] = torch.tensor([1.5, 0.5, 2.0])  # Half-extents: wider in Z
+        angle_rad = np.radians(bed_angle)
+        orientations[0, 0] = torch.tensor([np.cos(angle_rad), np.sin(angle_rad)])
+        object_indices[0, 0] = 0
+        
+        # Nightstand 1
+        positions[0, 1] = torch.tensor([5.0 + ns1_offset[0], 0.0, 5.0 + ns1_offset[1]])
+        sizes[0, 1] = torch.tensor([0.4, 0.4, 0.4])
+        orientations[0, 1] = torch.tensor([1.0, 0.0])
+        object_indices[0, 1] = 1
+        
+        # Nightstand 2 (if exists)
+        if ns2_offset:
+            positions[0, 2] = torch.tensor([5.0 + ns2_offset[0], 0.0, 5.0 + ns2_offset[1]])
+            sizes[0, 2] = torch.tensor([0.4, 0.4, 0.4])
+            orientations[0, 2] = torch.tensor([1.0, 0.0])
+            object_indices[0, 2] = 1
+        else:
+            is_empty[0, 2] = True
+        
+        parsed_scenes = {
+            'positions': positions,
+            'orientations': orientations,
+            'sizes': sizes,
+            'object_indices': object_indices,
+            'is_empty': is_empty
+        }
+        
+        # Compute reward
+        reward = compute_nightstand_placement_reward(
+            parsed_scenes, [None], idx_to_labels, viz_batch_idx=None
+        )
+        
+        # Manually call visualization for each scene
+        beds = [0]  # Bed is always at index 0
+        nightstands = [1] if not ns2_offset else [1, 2]
+        visualize_nightstand_placement(
+            0, positions, sizes, orientations, object_indices,
+            is_empty, beds, nightstands, [0], [1],
+            reward[0].item()
+        )
+        
+        results.append((description, reward[0].item()))
+        print(f"Scene {scene_idx}: {description}")
+        print(f"  Reward: {reward[0].item():.2f}\n")
+    
+    return results
 
-    def normalize_coord(val, min_val, max_val):
-        return 2 * (val - min_val) / (max_val - min_val) - 1
 
-    def create_scene(bed_config, nightstand_configs):
-        """Create scene with bed and nightstands."""
-        scene = torch.zeros(num_objects, 30, device=device)
-        idx = 0
-
-        # Add bed
-        x, z, theta_deg = bed_config
-        theta_rad = torch.tensor(theta_deg * 3.14159 / 180.0, device=device)
-        scene[idx, 8] = 1.0  # Double bed (class=8)
-        x_norm = normalize_coord(x, x_min, x_max)
-        z_norm = normalize_coord(z, z_min, z_max)
-        y_norm = normalize_coord(0.5, y_min, y_max)
-        scene[idx, 22:25] = torch.tensor([x_norm, y_norm, z_norm], device=device)
-        # Bed size: ~2m long, ~1.5m wide (half-extents: 1.0, 0.3, 0.75)
-        size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
-        size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
-        sx_norm = normalize_coord(0.75, size_min[0], size_max[0])
-        sy_norm = normalize_coord(0.3, size_min[1], size_max[1])
-        sz_norm = normalize_coord(1.0, size_min[2], size_max[2])
-        scene[idx, 25:28] = torch.tensor([sx_norm, sy_norm, sz_norm], device=device)
-        scene[idx, 28] = torch.cos(theta_rad)
-        scene[idx, 29] = torch.sin(theta_rad)
-        print(f"  Bed at ({x:.2f}, {z:.2f}), θ={theta_deg}° (head at -forward)")
-        idx += 1
-
-        # Add nightstands
-        for ns_x, ns_z in nightstand_configs:
-            scene[idx, 12] = 1.0  # Nightstand (class=12)
-            x_norm = normalize_coord(ns_x, x_min, x_max)
-            z_norm = normalize_coord(ns_z, z_min, z_max)
-            y_norm = normalize_coord(0.5, y_min, y_max)
-            scene[idx, 22:25] = torch.tensor([x_norm, y_norm, z_norm], device=device)
-            sx_norm = normalize_coord(0.25, size_min[0], size_max[0])
-            sy_norm = normalize_coord(0.4, size_min[1], size_max[1])
-            sz_norm = normalize_coord(0.25, size_min[2], size_max[2])
-            scene[idx, 25:28] = torch.tensor([sx_norm, sy_norm, sz_norm], device=device)
-            scene[idx, 28:30] = torch.tensor([1.0, 0.0], device=device)
-            print(f"  Nightstand at ({ns_x:.2f}, {ns_z:.2f})")
-            idx += 1
-
-        # Fill empty slots
-        for i in range(idx, num_objects):
-            scene[i, 21] = 1.0
-
-        return scene
-
-    # Test 1: Single nightstand on head side (good)
-    print("\nTest 1: Single nightstand on head side (left)")
-    print("-" * 70)
-    scene1 = create_scene(
-        bed_config=(0.0, 0.0, 0.0),  # Bed at origin, θ=0 (head at -Z, foot at +Z)
-        nightstand_configs=[(-0.9, -1.2)],  # Left side of head
-    )
-    parsed1 = parse_and_descale_scenes(scene1.unsqueeze(0), num_classes)
-    reward1 = compute_night_tables_reward(parsed1, debug=True)
-    print(f"Reward: {reward1[0].item():.4f} (should be ~+0.5)")
-
-    # Test 2: Two nightstands on both sides of head (excellent)
-    print("\nTest 2: Two nightstands on both sides of head (symmetric)")
-    print("-" * 70)
-    scene2 = create_scene(
-        bed_config=(0.0, 0.0, 0.0),
-        nightstand_configs=[(-0.9, -1.2), (0.9, -1.2)],  # Left and right of head
-    )
-    parsed2 = parse_and_descale_scenes(scene2.unsqueeze(0), num_classes)
-    reward2 = compute_night_tables_reward(parsed2, debug=True)
-    print(f"Reward: {reward2[0].item():.4f} (should be ~+1.0)")
-
-    # Test 3: Nightstand on foot side (bad)
-    print("\nTest 3: Nightstand on foot side")
-    print("-" * 70)
-    scene3 = create_scene(
-        bed_config=(0.0, 0.0, 0.0),
-        nightstand_configs=[(0.9, 1.2)],  # Right side of FOOT (wrong!)
-    )
-    parsed3 = parse_and_descale_scenes(scene3.unsqueeze(0), num_classes)
-    reward3 = compute_night_tables_reward(parsed3, debug=True)
-    print(f"Reward: {reward3[0].item():.4f} (should be ~-0.5)")
-
-    # Test 4: FIXED - Two nightstands on SAME side (should NOT get symmetric bonus)
-    print("\nTest 4: Two nightstands on SAME side (both left - no symmetric bonus)")
-    print("-" * 70)
-    scene4 = create_scene(
-        bed_config=(0.0, 0.0, 0.0),
-        nightstand_configs=[(-0.9, -1.2), (-1.2, -1.3)],  # Both on left side
-    )
-    parsed4 = parse_and_descale_scenes(scene4.unsqueeze(0), num_classes)
-    reward4 = compute_night_tables_reward(parsed4, debug=True)
-    print(f"Reward: {reward4[0].item():.4f} (should be ~+0.5, NOT +1.0)")
-
-    # Test 5: FIXED - Nightstand far to the side (should still work)
-    print("\nTest 5: Nightstand far laterally but at head (should work)")
-    print("-" * 70)
-    scene5 = create_scene(
-        bed_config=(0.0, 0.0, 0.0),
-        nightstand_configs=[(-1.5, -1.0)],  # Far to the left at head
-    )
-    parsed5 = parse_and_descale_scenes(scene5.unsqueeze(0), num_classes)
-    reward5 = compute_night_tables_reward(parsed5, debug=True)
-    print(f"Reward: {reward5[0].item():.4f} (should be ~+0.5)")
-
-    print("\n" + "=" * 70)
-    print("✓ All night table tests completed!")
-    print("=" * 70)
 
 
 if __name__ == "__main__":
-    test_night_tables_reward()
+    # print("Testing Nightstand Placement Reward Function\n")
+    # print("=" * 60)
+    # results = create_test_scenarios()
+    # print("=" * 60)
+    # print("\nSummary:")
+    # for desc, reward in results:
+    #     status = "✓" if reward == 0 else "✗"
+    #     print(f"{status} {desc}: {reward:.2f}")
+    args = np.load("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/reward_func_args_for_first_10_scenes.npy", allow_pickle=True)
+    # print("loaded ", args)
+    # only take start to end scenes
+    start = 40
+    end = 55
+    
+    print(compute_nightstand_placement_reward(**args.item()))

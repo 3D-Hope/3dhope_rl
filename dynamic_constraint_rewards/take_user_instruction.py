@@ -62,6 +62,10 @@ def main(cfg: DictConfig):
     universal_reward_functions = get_all_universal_reward_functions()
     get_reward_functions.update(universal_reward_functions)
 
+    from universal_constraint_rewards.physcene.room_layout_constraint import (
+        room_layout_constraint,
+    )
+    get_reward_functions["room_layout_constraint"] = room_layout_constraint
     # Test each reward function individually.
     for file in test_reward_functions:
         test_reward_functions[file]()
@@ -72,10 +76,10 @@ def main(cfg: DictConfig):
     print("=" * 80)
     stats = get_reward_stats_from_baseline(
         get_reward_functions,
-        num_scenes=10,
+        num_scenes=1000,
         config=cfg,
         # algorithm="scene_diffuser_flux_transformer",
-        # load="f6vipupt",
+        load="9xplsx0a",
         # algorithm_classifier_free_guidance_use_floor=False,
     )
     print("Baseline Stats: ", stats)

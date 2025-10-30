@@ -211,6 +211,8 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
     # Reward is negative of total distance
     reward = -total_distances
     return reward
+
+
 def visualize_bed_placement():
     """
     Visualize bed at different rotations, both close and far from walls.
