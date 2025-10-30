@@ -15,6 +15,9 @@ class Diffusion(DatasetDecoratorBase):
     def __init__(self, dataset, max_length=None):
         super().__init__(dataset)
 
+        print(f"Max length: {max_length}    ")
+        print(f"Dataset max length: {dataset.max_length}")
+        # import sys; sys.exit();
         if max_length is None:
             self._max_length = dataset.max_length
         else:

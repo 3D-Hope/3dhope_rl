@@ -71,7 +71,7 @@ def create_scene_diffuser_midiffusion(
                 self.txt_encoder = None
                 self.floor_encoder = None
                 context_dim = 0
-
+                
             network_dim = {
                 "objectness_dim": 0,  # Not used by our scene representation
                 "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
@@ -80,6 +80,7 @@ def create_scene_diffuser_midiffusion(
                 "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
                 "objfeat_dim": 0,  # Not used by our scene representation
             }
+            
             self.model = MIDiffusionContinuous(
                 network_dim=network_dim,
                 seperate_all=self.cfg.model.seperate_all,
@@ -127,6 +128,9 @@ def create_scene_diffuser_midiffusion(
             """
             assert not (use_ema and not self.cfg.ema.use)
             model = self.ema.model if use_ema else self.model
+            
+            # print(f"[Ashok] noisy_scenes.shape: {noisy_scenes.shape}")
+            # import sys; sys.exit();
 
             # Process different timestep input formats.
             if not torch.is_tensor(timesteps):

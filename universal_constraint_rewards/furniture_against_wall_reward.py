@@ -67,52 +67,51 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
     # Compute distances for each scene
     total_distances = torch.zeros(batch_size, device=device)
 
-    def visualize_bed_against_wall(idx, positions, sizes, orientations, polygon, valid_mask, min_distances, headboard_xs, headboard_zs, nearest_wall_points):
-        import matplotlib.pyplot as plt
-        from matplotlib.patches import Rectangle, Polygon as MplPolygon
-        fig, ax = plt.subplots(figsize=(8, 8))
-        # Draw floor polygon
-        poly_np = polygon.cpu().numpy() if hasattr(polygon, 'cpu') else np.array(polygon)
-        room_patch = MplPolygon(poly_np, fill=True, facecolor='lightgray', edgecolor='black', linewidth=2)
-        ax.add_patch(room_patch)
-        # Flip z axis for bed objects (but not for floor polygon)
-        z_min, z_max = poly_np[:,1].min(), poly_np[:,1].max()
-        for n in range(positions.shape[1]):
-            if not valid_mask[idx, n]:
-                continue
-            x = positions[idx, n, 0].item()
-            z = positions[idx, n, 2].item()
-            flipped_z = z_max - (z - z_min)
-            width = sizes[idx, n, 0].item() * 2
-            depth = sizes[idx, n, 2].item() * 2
-            angle_rad = torch.atan2(orientations[idx, n, 1], orientations[idx, n, 0]).item()
-            angle_deg = np.degrees(angle_rad)
-            # Rectangle position: flip z for y coordinate
-            bed_rect = Rectangle((x - width/2, flipped_z - depth/2), width, depth, angle=angle_deg, facecolor='purple', alpha=0.7, edgecolor='black', linewidth=2)
-            ax.add_patch(bed_rect)
-            # Mark headboard
-            flipped_headboard_z = z_max - (headboard_zs[n] - z_min) if headboard_zs[n] is not None else None
-            ax.plot(headboard_xs[n], flipped_headboard_z, 'go', markersize=10, label='Headboard' if n==0 else None, zorder=5)
-            # Draw line to wall
-            if nearest_wall_points[n] is not None:
-                flipped_wall_z = z_max - (nearest_wall_points[n][1] - z_min)
-                ax.plot([headboard_xs[n], nearest_wall_points[n][0]], [flipped_headboard_z, flipped_wall_z], 'b--', linewidth=2, label='Distance to wall' if n==0 else None)
-                ax.plot(nearest_wall_points[n][0], flipped_wall_z, 'rx', markersize=12, markeredgewidth=3, zorder=5)
-            ax.text(x, flipped_z, f"d={min_distances[n]:.2f}", color='blue', fontsize=10)
-        ax.set_xlim(poly_np[:,0].min()-1, poly_np[:,0].max()+1)
-        ax.set_ylim(poly_np[:,1].min()-1, poly_np[:,1].max()+1)
-        ax.invert_yaxis()  # Flip z axis so higher z is at the top
-        ax.set_aspect('equal')
-        ax.set_title(f"Beds against wall (Scene {idx})")
-        ax.legend()
-        plt.savefig(f'bed_against_wall_scene_{idx}.png', dpi=150, bbox_inches='tight')
-        plt.close(fig)
+    # def visualize_bed_against_wall(idx, positions, sizes, orientations, polygon, valid_mask, min_distances, headboard_xs, headboard_zs, nearest_wall_points):
+    #     import matplotlib.pyplot as plt
+    #     from matplotlib.patches import Rectangle, Polygon as MplPolygon
+    #     fig, ax = plt.subplots(figsize=(8, 8))
+    #     # Draw floor polygon
+    #     poly_np = polygon.cpu().numpy() if hasattr(polygon, 'cpu') else np.array(polygon)
+    #     room_patch = MplPolygon(poly_np, fill=True, facecolor='lightgray', edgecolor='black', linewidth=2)
+    #     ax.add_patch(room_patch)
+    #     # Flip z axis for bed objects (but not for floor polygon)
+    #     z_min, z_max = poly_np[:,1].min(), poly_np[:,1].max()
+    #     for n in range(positions.shape[1]):
+    #         if not valid_mask[idx, n]:
+    #             continue
+    #         x = positions[idx, n, 0].item()
+    #         z = positions[idx, n, 2].item()
+    #         flipped_z = z_max - (z - z_min)
+    #         width = sizes[idx, n, 0].item() * 2
+    #         depth = sizes[idx, n, 2].item() * 2
+    #         angle_rad = torch.atan2(orientations[idx, n, 1], orientations[idx, n, 0]).item()
+    #         angle_deg = np.degrees(angle_rad)
+    #         # Rectangle position: flip z for y coordinate
+    #         bed_rect = Rectangle((x - width/2, flipped_z - depth/2), width, depth, angle=angle_deg, facecolor='purple', alpha=0.7, edgecolor='black', linewidth=2)
+    #         ax.add_patch(bed_rect)
+    #         # Mark headboard
+    #         flipped_headboard_z = z_max - (headboard_zs[n] - z_min) if headboard_zs[n] is not None else None
+    #         ax.plot(headboard_xs[n], flipped_headboard_z, 'go', markersize=10, label='Headboard' if n==0 else None, zorder=5)
+    #         # Draw line to wall
+    #         if nearest_wall_points[n] is not None:
+    #             flipped_wall_z = z_max - (nearest_wall_points[n][1] - z_min)
+    #             ax.plot([headboard_xs[n], nearest_wall_points[n][0]], [flipped_headboard_z, flipped_wall_z], 'b--', linewidth=2, label='Distance to wall' if n==0 else None)
+    #             ax.plot(nearest_wall_points[n][0], flipped_wall_z, 'rx', markersize=12, markeredgewidth=3, zorder=5)
+    #         ax.text(x, flipped_z, f"d={min_distances[n]:.2f}", color='blue', fontsize=10)
+    #     ax.set_xlim(poly_np[:,0].min()-1, poly_np[:,0].max()+1)
+    #     ax.set_ylim(poly_np[:,1].min()-1, poly_np[:,1].max()+1)
+    #     ax.invert_yaxis()  # Flip z axis so higher z is at the top
+    #     ax.set_aspect('equal')
+    #     ax.set_title(f"Beds against wall (Scene {idx})")
+    #     ax.legend()
+    #     plt.savefig(f'bed_against_wall_scene_{idx}.png', dpi=150, bbox_inches='tight')
+    #     plt.close(fig)
 
-    # Get batch index to visualize, if provided
-    viz_batch_idx = kwargs.get('viz_batch_idx', 29)
+    # # Get batch index to visualize, if provided
+    # viz_batch_idx = kwargs.get('viz_batch_idx', 29)
 
     for b in range(batch_size):
-        print(b)
         if floor_polygons[b] is None or len(floor_polygons[b]) == 0:
             continue
         polygon = floor_polygons[b]  # (M, 2) - [x, z] coordinates
@@ -204,9 +203,9 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
                 headboard_zs.append(headboard_z.item())
                 nearest_wall_points.append(None)
         # Visualization for requested batch index
-        if viz_batch_idx is not None and b == viz_batch_idx:
-            # print("polygon of idx:", b, polygon)
-            visualize_bed_against_wall(b, positions, sizes, orientations, polygon, valid_mask, min_distances, headboard_xs, headboard_zs, nearest_wall_points)
+        # if viz_batch_idx is not None and b == viz_batch_idx:
+        #     # print("polygon of idx:", b, polygon)
+        #     visualize_bed_against_wall(b, positions, sizes, orientations, polygon, valid_mask, min_distances, headboard_xs, headboard_zs, nearest_wall_points)
 
     # Reward is negative of total distance
     reward = -total_distances

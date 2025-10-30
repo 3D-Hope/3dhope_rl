@@ -82,12 +82,15 @@ class CustomDataset(BaseDataset):
             split_names = split
         else:
             split_names = [split]
+            
+        # print(f"[Ashok] max_num_objects_per_scene: {cfg.max_num_objects_per_scene}")
+        # import sys; sys.exit();
 
         # Load ThreedFront raw and encoded datasets
         self.raw_dataset, self.encoded_dataset = get_dataset_raw_and_encoded(
             update_data_file_paths(data_cfg, cfg),
             split=split_names,
-            max_length=network_cfg["sample_num_points"],
+            max_length=cfg.max_num_objects_per_scene,
             include_room_mask=network_cfg.get("room_mask_condition", True),
         )
 
@@ -337,6 +340,7 @@ class CustomDataset(BaseDataset):
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
         # print(f"[Ashok] keys: {raw_item.keys()}")
+        # import sys; sys.exit();
         # for key in raw_item.keys():
         #     try:
         #         print(f"[Ashok] shape of {key}: {raw_item[key].shape}")
@@ -407,12 +411,12 @@ class CustomDataset(BaseDataset):
             item["class_labels"],
             item["translations"],
             item["sizes"],
-            item["angles"],
+            item["angles"],  
         ]
-        # if "objfeats_32" in item:
-        #     components.append(item["objfeats_32"])  # prefer 32-dim if available
-        # elif "objfeats" in item:
-        #     components.append(item["objfeats"])  # fallback 64-dim
+        if "objfeats_32" in item:
+            components.append(item["objfeats_32"])  # prefer 32-dim if available
+        elif "objfeats" in item:
+            components.append(item["objfeats"])  # fallback 64-dim
 
         if isinstance(components[0], torch.Tensor):
             concat = torch.cat(components, dim=1)
