@@ -35,6 +35,9 @@
 #         )
 
 #     return exp_registry[cfg.experiment._name](cfg, logger, ckpt_path)
+from steerable_scene_generation.experiments.scene_diffusion import SceneDiffusionExperiment
+
+
 import pathlib
 
 from typing import Optional, Union
@@ -48,7 +51,7 @@ from .scene_diffusion import SceneDiffusionExperiment
 
 # each key has to be a yaml file under '[project_root]/configurations/experiment'
 # without .yaml suffix
-exp_registry = dict(
+exp_registry = dict[str, type[SceneDiffusionExperiment]](
     scene_diffusion=SceneDiffusionExperiment,
     custom_scene_diffusion=CustomSceneDiffusionExperiment,  # Add the custom experiment
 )

@@ -71,7 +71,7 @@ def create_scene_diffuser_midiffusion(
                 self.txt_encoder = None
                 self.floor_encoder = None
                 context_dim = 0
-                
+
             network_dim = {
                 "objectness_dim": 0,  # Not used by our scene representation
                 "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
@@ -80,6 +80,15 @@ def create_scene_diffuser_midiffusion(
                 "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
                 "objfeat_dim": 0,  # Not used by our scene representation
             }
+            if self.cfg.custom.loss:
+                network_dim = {
+                    "objectness_dim": 0,  # Not used by our scene representation
+                    "class_dim": self.cfg.custom.num_classes,
+                    "translation_dim": self.cfg.custom.translation_dim,
+                    "size_dim": self.cfg.custom.size_dim,  # Not used by our scene representation
+                    "angle_dim": self.cfg.custom.angle_dim,
+                    "objfeat_dim": self.cfg.custom.objfeat_dim,  # Not used by our scene representation
+                }
             
             self.model = MIDiffusionContinuous(
                 network_dim=network_dim,
@@ -126,9 +135,11 @@ def create_scene_diffuser_midiffusion(
             Returns:
                 torch.Tensor: Output of same shape as the input.
             """
+            # for key in cond_dict:
+                # print(f"[Ashok] pred noise, {key}: {cond_dict[key].shape}")
             assert not (use_ema and not self.cfg.ema.use)
             model = self.ema.model if use_ema else self.model
-            
+            # print(f"[Ashok] in predict noise ema {use_ema}, cond dict {cond_dict.keys()}")
             # print(f"[Ashok] noisy_scenes.shape: {noisy_scenes.shape}")
             # import sys; sys.exit();
 
@@ -179,7 +190,7 @@ def create_scene_diffuser_midiffusion(
                 context = floor_cond.unsqueeze(1).expand(
                     -1, noisy_scenes.size(1), -1
                 )  # Shape (B, N, 64)
-
+            # print(f"[Ashok] context at predict noise floor {context.shape}")
             # Predict the noise.
             predicted_noise = model(
                 noisy_scenes, time=timesteps, context=context, context_cross=None

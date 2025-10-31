@@ -149,6 +149,7 @@ predict:
   do_rearrange: False
   do_complete: False
   do_inference_time_search: False
+  do_inpainting: False
   do_sample_scenes_with_k_closest_training_examples: False
 
   inference_time_search:
@@ -184,3 +185,7 @@ custom:
   obj_diff_vec_len: 30
   save_pickle: true
   num_classes: 22
+  translation_dim: 3
+  size_dim: 3
+  angle_dim: 2
+  objfeat_dim: 32

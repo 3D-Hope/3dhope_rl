@@ -136,10 +136,11 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             loss_components: Dictionary of individual loss components
         """
         # Define indices for your representation components
+        # print(f"[Ashok] custom loss shape of target noise {noise.shape}, pred noise {predicted_noise.shape}")
         num_classes = self.cfg.custom.num_classes
         class_indices = list(range(0, num_classes))
         pos_indices = list(
-            range(len(class_indices), len(class_indices) + 3)
+            range(len(class_indices), len(class_indices) + 3)#TODO: USE cfg.algorithm.custom.num_classes and so on for these all
         )  # Next 3 dimensions for position
         size_indices = list(
             range(
@@ -153,29 +154,39 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
                 len(class_indices) + len(pos_indices) + len(size_indices) + 2,
             )
         )  # Next 2 dimensions for rotation
-
+        # 22+3+3+2+32
+        objfeat_32_indices = list[int](
+            range(
+                len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices),
+                len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices) + 32
+            )
+        )
         # Extract components from your representation using your custom indices
         pred_pos = predicted_noise[..., pos_indices]
         pred_size = predicted_noise[..., size_indices]
         pred_rot = predicted_noise[..., rot_indices]
         pred_class = predicted_noise[..., class_indices]
+        pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
 
         target_pos = noise[..., pos_indices]
         target_size = noise[..., size_indices]
         target_rot = noise[..., rot_indices]
         target_class = noise[..., class_indices]
+        target_objfeat_32 = noise[..., objfeat_32_indices]
 
         # Calculate your custom losses
         pos_loss = F.mse_loss(pred_pos, target_pos)
         size_loss = F.mse_loss(pred_size, target_size)
         rot_loss = F.mse_loss(pred_rot, target_rot)
         class_loss = F.mse_loss(pred_class, target_class)
+        objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
 
         # Weight the losses as needed (you can make these configurable)
         pos_weight = 1.0
         size_weight = 1.0
         rot_weight = 1.0
         class_weight = 1.0
+        objfeat_32_weight = 1.0
 
         # Initialize losses dictionary
         losses_dict = {
@@ -183,6 +194,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             "size_loss": size_loss.item(),
             "rot_loss": rot_loss.item(),
             "class_loss": class_loss.item(),
+            "objfeat_32_loss": objfeat_32_loss.item(),
         }
 
         # Calculate base loss
@@ -191,35 +203,36 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             + size_weight * size_loss
             + rot_weight * rot_loss
             + class_weight * class_loss
+            + objfeat_32_weight * objfeat_32_loss
         )
 
         # Apply IoU regularization if enabled
-        if hasattr(self.cfg, "loss") and getattr(
-            self.cfg.loss, "use_iou_regularization", False
-        ):
-            # If timesteps not provided, use a dummy value (middle of diffusion process)
-            if timesteps is None:
-                # device = predicted_noise.device
-                # timesteps = torch.ones(predicted_noise.shape[0], dtype=torch.long, device=device) * (self.noise_scheduler.config.num_train_timesteps // 2)
-                raise ValueError("Timesteps must be provided for IoU regularization.")
-            # Get the reconstructed data (denoise predicted_noise)
-            # In actual implementation, you'll need to denoise or use the appropriate
-            # representation for bbox calculation
-            recon_data = (
-                predicted_noise  # For simplicity, using predicted noise directly
-            )
+        # if hasattr(self.cfg, "loss") and getattr(
+        #     self.cfg.loss, "use_iou_regularization", False
+        # ):
+        #     # If timesteps not provided, use a dummy value (middle of diffusion process)
+        #     if timesteps is None:
+        #         # device = predicted_noise.device
+        #         # timesteps = torch.ones(predicted_noise.shape[0], dtype=torch.long, device=device) * (self.noise_scheduler.config.num_train_timesteps // 2)
+        #         raise ValueError("Timesteps must be provided for IoU regularization.")
+        #     # Get the reconstructed data (denoise predicted_noise)
+        #     # In actual implementation, you'll need to denoise or use the appropriate
+        #     # representation for bbox calculation
+        #     recon_data = (
+        #         predicted_noise  # For simplicity, using predicted noise directly
+        #     )
 
-            # Calculate IoU regularization loss
-            iou_loss = self.bbox_iou_regularizer(
-                recon=recon_data,
-                t=timesteps,
-                num_classes=num_classes,
-                iou_weight=getattr(self.cfg.loss, "iou_weight", 0.1),
-            )
+        #     # Calculate IoU regularization loss
+        #     iou_loss = self.bbox_iou_regularizer(
+        #         recon=recon_data,
+        #         t=timesteps,
+        #         num_classes=num_classes,
+        #         iou_weight=getattr(self.cfg.loss, "iou_weight", 0.1),
+        #     )
 
-            # Add IoU loss to total loss
-            total_loss = total_loss + iou_loss
-            losses_dict["iou_loss"] = iou_loss.item()
+        #     # Add IoU loss to total loss
+        #     total_loss = total_loss + iou_loss
+        #     losses_dict["iou_loss"] = iou_loss.item()
 
         return total_loss, losses_dict
 
@@ -319,7 +332,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         Returns the loss.
         """
         scenes = batch["scenes"]
-
+        # print(f"[Ashok] ddpm forward shape of scenes {scenes.shape}")
         # Sample noise to add to the scenes.
         noise = torch.randn(scenes.shape).to(self.device)  # Shape (B, N, V)
 
@@ -355,6 +368,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             use_ema=use_ema,
         )  # Shape (B, N, V)
 
+        # print(f"[Ashok] shape of noisy scene {noisy_scenes.shape}, predicted noise {predicted_noise.shape}, ")
         if (
             self.cfg.continuous_discrete_only.continuous_only
             or self.cfg.continuous_discrete_only.discrete_only

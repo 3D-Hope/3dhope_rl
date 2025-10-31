@@ -305,6 +305,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
     ) -> torch.Tensor:
         if batch_size is None:
             batch_size = num_samples
+        # print(f"[Ashok] sampling cfg {self.cfg.classifier_free_guidance.use}, scheduler {self.noise_scheduler}, eta {self.cfg.noise_schedule.ddim.eta}")
 
         # Determine the batches in which to sample the scenes.
         num_batches = num_samples // batch_size
@@ -358,6 +359,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
                     num, cond_dict=data_batch, use_ema=use_ema
                 )
             else:
+                print(f"[Ashok] sampling scene with out guidancse")
                 scenes = self.sample_scenes_without_guidance(num, use_ema=use_ema, data_batch=data_batch)
             sampled_scene_batches.append(scenes)
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
@@ -385,7 +387,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         # Extract scenes and masks from the data batch.
         scenes = data_batch["scenes"]  # Shape (B, N, V)
         inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
-
+        # print(f"[Ashok], inpainting mask {inpainting_masks[0]}")
         if not scenes.shape == inpainting_masks.shape:
             raise ValueError(
                 "Scenes and inpainting masks must have the same shape. "
@@ -407,7 +409,6 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             data_batch = self.dataset.add_classifier_free_guidance_uncond_data(
                 data_batch.copy()
             )
-
         num_samples = scenes.shape[0]
         for t in tqdm(
             self.noise_scheduler.timesteps, desc="Inpainting scenes", leave=False
@@ -437,7 +438,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
                         cond_dict=data_batch,
                         use_ema=use_ema,
                     )  # Shape (B, N, V)
-
+            # print(f"[Ashok] inpainting cfg {self.cfg.classifier_free_guidance.use}, scheduler {self.noise_scheduler}, eta {self.cfg.noise_schedule.ddim.eta}")
             # Update the sample for masked regions.
             if isinstance(self.noise_scheduler, DDIMScheduler):
                 scheduler_out = self.noise_scheduler.step(
@@ -450,6 +451,7 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
 
             # Only update masked regions, keep unmasked regions fixed.
             xt = torch.where(inpainting_masks, xt_next, scenes)
+
 
         # Apply inverse normalization.
         inpainted_scenes = self.dataset.inverse_normalize_scenes(xt)  # Shape (B, N, V)

@@ -82,6 +82,11 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
                 p_map.package_file_path for p_map in cfg.drake_package_maps
             ],
         )
+        # Save scene_vec_desc to a file pkl
+        # import pickle;
+        # with open("scene_vec_desc.pkl", "wb") as f:
+        #     pickle.dump(self.scene_vec_desc, f)
+        # import sys; sys.exit();
 
         super().__init__(cfg)  # superclass saves cfg as self.cfg and calls _build_model
 
@@ -358,6 +363,7 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
                     self.cfg.predict.do_rearrange,
                     self.cfg.predict.do_complete,
                     self.cfg.predict.do_inference_time_search,
+                    getattr(self.cfg.predict, "do_inpainting", False),
                     self.cfg.predict.do_sample_scenes_with_k_closest_training_examples,
                 ]
             )
@@ -385,6 +391,9 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
         elif self.cfg.predict.do_inference_time_search:
             # Returns a dict.
             predictions = self.inference_time_search(data_batch=batch, use_ema=use_ema)
+        elif getattr(self.cfg.predict, "do_inpainting", False):
+            # Returns scenes of shape (B, N, V).
+            predictions = self.inpaint_scenes(data_batch=batch, use_ema=use_ema)
         elif self.cfg.predict.do_sample_scenes_with_k_closest_training_examples:
             # Returns a dict.
             predictions = self.sample_scenes_with_k_closest_training_examples(
@@ -793,6 +802,7 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
                 unormalized. The returned scenes are detached and on the CPU.
         """
         # Store original scenes to use as fallback for failed processing.
+        print(f"[Ashok] applying steerable post processing")
         original_scenes = scenes.clone()
         caches = [None for _ in range(len(scenes))]
         if self.cfg.postprocessing.apply_non_penetration_projection:

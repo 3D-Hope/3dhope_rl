@@ -3,7 +3,7 @@ defaults:
 
 _name: custom_scene
 processed_scene_data_path: null  # We don't need this
-model_path_vec_len: 22  # 30 - 12 = 18 (features minus translation and rotation)
+model_path_vec_len: 22
 max_num_objects_per_scene: 12
 translation_vec_len: 3
 rotation_parametrization: procrustes
