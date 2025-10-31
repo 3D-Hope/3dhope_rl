@@ -331,6 +331,7 @@ def main(cfg: DictConfig):
     if is_rank_zero:
         # Add global_step info.
         for ckpt_info in checkpoint_infos:
+            print(f"[DEBUG] Loading checkpoint: {ckpt_info['path']} SUI5")
             ckpt = torch.load(ckpt_info["path"])
             ckpt_info["global_step"] = ckpt["global_step"]
 

@@ -283,6 +283,7 @@ class BaseLightningExperiment(BaseExperiment):
             self.logger.watch(self.algo, log="all")
 
         if self.cfg.training.load_weights_only and self.ckpt_path is not None:
+            print(f"[DEBUG] Loading weights only from checkpoint: {self.ckpt_path} SUI1")
             ckpt = torch.load(self.ckpt_path)
             self.algo.load_state_dict(ckpt["state_dict"])
 

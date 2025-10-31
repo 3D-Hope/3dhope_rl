@@ -169,6 +169,7 @@ class SceneDataset(BaseDataset):
         # Check if the checkpoint contains the normalizer.
         ckpt_normalizer_state = None
         if ckpt_path is not None:
+            print(f"[DEBUG] Loading normalizer state from checkpoint: {ckpt_path} SUI3")
             ckpt = torch.load(ckpt_path, map_location="cpu")
             if "normalizer_state" in ckpt:
                 ckpt_normalizer_state = ckpt["normalizer_state"]

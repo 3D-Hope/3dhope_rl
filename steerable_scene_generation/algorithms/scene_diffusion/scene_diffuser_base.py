@@ -363,7 +363,7 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
                     self.cfg.predict.do_rearrange,
                     self.cfg.predict.do_complete,
                     self.cfg.predict.do_inference_time_search,
-                    getattr(self.cfg.predict, "do_inpainting", False),
+                    self.cfg.predict.do_inpainting,
                     self.cfg.predict.do_sample_scenes_with_k_closest_training_examples,
                 ]
             )
@@ -391,7 +391,7 @@ class SceneDiffuserBase(BasePytorchAlgo, ABC):
         elif self.cfg.predict.do_inference_time_search:
             # Returns a dict.
             predictions = self.inference_time_search(data_batch=batch, use_ema=use_ema)
-        elif getattr(self.cfg.predict, "do_inpainting", False):
+        elif self.cfg.predict.do_inpainting:
             # Returns scenes of shape (B, N, V).
             predictions = self.inpaint_scenes(data_batch=batch, use_ema=use_ema)
         elif self.cfg.predict.do_sample_scenes_with_k_closest_training_examples:

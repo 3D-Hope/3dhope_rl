@@ -2,7 +2,7 @@ defaults:
   - scene
 
 _name: custom_scene
-processed_scene_data_path: null  # We don't need this
+processed_scene_data_path: /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData  # We don't need this
 model_path_vec_len: 22
 max_num_objects_per_scene: 12
 translation_vec_len: 3

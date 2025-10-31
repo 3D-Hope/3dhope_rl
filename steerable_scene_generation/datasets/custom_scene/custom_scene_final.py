@@ -195,6 +195,7 @@ class CustomDataset(BaseDataset):
 
         # Try to restore from checkpoint if available
         if ckpt_path is not None:
+            # print(f"[DEBUG] Loading normalizer state from checkpoint: {ckpt_path} SUI4")
             ckpt = torch.load(ckpt_path, map_location="cpu")
             if "normalizer_state" in ckpt:
                 normalizer.load_state(ckpt["normalizer_state"])

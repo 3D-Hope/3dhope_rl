@@ -382,12 +382,32 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         return sampled_scenes
 
     def inpaint_scenes(
-        self, data_batch: Dict[str, torch.Tensor], use_ema: bool = False
+        self, data_batch: Dict[str, torch.Tensor], inpaint_masks=None, scenes=None, use_ema: bool = False
     ) -> torch.Tensor:
         # Extract scenes and masks from the data batch.
-        scenes = data_batch["scenes"]  # Shape (B, N, V)
-        inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
-        # print(f"[Ashok], inpainting mask {inpainting_masks[0]}")
+        if scenes is None:
+            print(f"[Ashok] inpainting using data batch scenes with toy 3 single beds")
+            scenes = data_batch["scenes"]  # Shape (B, N, V)
+            scenes[:, :3, :22] = -1.0           # (B, 2, 22)
+        # For both objects in all scenes, set single_bed class (index 15) to 1.0
+            scenes[:, :3, 15] = 1.0
+        
+        # print(f"[Ashok] inpainting mask {inpainting_masks[0]}")
+        # print(f"[Ashok] scenes {scenes[0]}")
+
+        if inpaint_masks is None:
+
+            # Set these class probability slots for both objects to -1 as default (not marked class)
+            
+            # try:
+            #     inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
+            # except:
+            # Fix inpainting mask and scene initialization for all scenes: set first two objects as single beds.
+            inpainting_masks = torch.ones_like(scenes, dtype=torch.bool)
+            # Set the first 22 dimensions (assumed class one-hot for 22 classes) for first two objects as not to inpaint (fixed)
+            inpainting_masks[:, :3, :22] = False  # (B, 2, 22)
+    
+
         if not scenes.shape == inpainting_masks.shape:
             raise ValueError(
                 "Scenes and inpainting masks must have the same shape. "

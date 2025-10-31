@@ -80,7 +80,7 @@ def create_scene_diffuser_midiffusion(
                 "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
                 "objfeat_dim": 0,  # Not used by our scene representation
             }
-            if self.cfg.custom.loss:
+            if self.cfg.custom.loss and not self.cfg.custom.old:
                 network_dim = {
                     "objectness_dim": 0,  # Not used by our scene representation
                     "class_dim": self.cfg.custom.num_classes,
@@ -140,6 +140,7 @@ def create_scene_diffuser_midiffusion(
             assert not (use_ema and not self.cfg.ema.use)
             model = self.ema.model if use_ema else self.model
             # print(f"[Ashok] in predict noise ema {use_ema}, cond dict {cond_dict.keys()}")
+            # print(f"[Ashok] fpbpn.shape: {cond_dict['fpbpn'].shape}")
             # print(f"[Ashok] noisy_scenes.shape: {noisy_scenes.shape}")
             # import sys; sys.exit();
 

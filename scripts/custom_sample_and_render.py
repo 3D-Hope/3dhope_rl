@@ -49,7 +49,6 @@ os.environ[
     "HF_DATASETS_CACHE"
 ] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
-# config = {'data': {'dataset_directory': '/mnt/sv-share/MiData/bedroom', 'dataset_type': 'cached_threedfront', 'encoding_type': 'cached_diffusion_cosin_angle_wocm_no_prm_eval', 'annotation_file': '/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/MiDiffusion/../ThreedFront/dataset_files/bedroom_threed_front_splits_original.csv', 'augmentations': ['fixed_rotations'], 'train_stats': 'dataset_stats.txt', 'room_layout_size': '64,64', 'room_type': 'bedroom'}, 'network': {'type': 'diffusion_scene_layout_mixed', 'sample_num_points': 12, 'max_cuboids': 19, 'angle_dim': 2, 'room_mask_condition': True, 'room_latent_dim': 64, 'position_condition': False, 'position_emb_dim': 0, 'time_num': 1000, 'diffusion_semantic_kwargs': {'att_1': 0.99999, 'att_T': 9e-06, 'ctt_1': 9e-06, 'ctt_T': 0.99999, 'model_output_type': 'x0', 'mask_weight': 1, 'auxiliary_loss_weight': 0.0005, 'adaptive_auxiliary_loss': True}, 'diffusion_geometric_kwargs': {'schedule_type': 'linear', 'beta_start': 0.0001, 'beta_end': 0.02, 'loss_type': 'mse', 'model_mean_type': 'eps', 'model_var_type': 'fixedsmall', 'train_stats_file': '/mnt/sv-share/MiData/bedroom/dataset_stats.txt'}, 'net_type': 'transformer', 'net_kwargs': {'seperate_all': True, 'n_layer': 8, 'n_embd': 512, 'n_head': 4, 'dim_feedforward': 2048, 'dropout': 0.1, 'activate': 'GELU', 'timestep_type': 'adalayernorm_abs', 'mlp_type': 'fc'}, 'class_dim': 22}, 'feature_extractor': {'name': 'pointnet_simple', 'feat_units': [4, 64, 64, 512, 64]}, 'training': {'splits': ['overfit'], 'epochs': 50000, 'batch_size': 64, 'save_frequency': 100, 'max_grad_norm': 10, 'optimizer': 'Adam', 'weight_decay': 0.0, 'schedule': 'step', 'lr': 0.0002, 'lr_step': 10000, 'lr_decay': 0.5}, 'validation': {'splits': ['overfit'], 'frequency': 100, 'batch_size': 64}, 'logger': {'type': 'wandb', 'project': 'MiDiffusion'}}
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
@@ -91,6 +90,7 @@ def main(cfg: DictConfig) -> None:
     # Get yaml names.
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
     cfg_choice = OmegaConf.to_container(hydra_cfg.runtime.choices)
+    print(f"[DEBUG] cfg_choice: {cfg_choice}")
 
     with open_dict(cfg):
         if cfg_choice["experiment"] is not None:
@@ -153,14 +153,16 @@ def main(cfg: DictConfig) -> None:
         update_data_file_paths(config["data"], config),
         # config["data"],
         split=config["validation"].get("splits", ["test"]),
-        max_length=config["network"]["sample_num_points"],
+        max_length=config["max_num_objects_per_scene"],
         include_room_mask=config["network"].get("room_mask_condition", True),
     )
     print(
         f"[Ashok] bounds sizes {encoded_dataset.bounds['sizes']}, translations {encoded_dataset.bounds['translations']}"
     )
 
-    print(f"[Ashok] type of dataset {type(encoded_dataset)}")
+    # print(f"[Ashok] type of dataset {type(encoded_dataset)}")
+    print("[DEBUG] object_types:", len(raw_dataset.object_types))
+    print("[DEBUG] class_labels:", len(raw_dataset.class_labels))
     # Create a CustomSceneDataset
     custom_dataset = CustomDataset(
         cfg=cfg.dataset,
@@ -229,10 +231,18 @@ def main(cfg: DictConfig) -> None:
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
 
+
     try:
         print("[DEBUG] Starting to sample scenes...")
         # Sample scenes from the model
         sampled_scene_batches = experiment.exec_task("predict", dataloader=dataloader)
+        # diffuser = experiment.algo
+        # svd = diffuser.scene_vec_desc
+        # print("[DEBUG] object vec len:", svd.get_object_vec_len())
+        # print("[DEBUG] class (model_path) vec len:", svd.get_model_path_vec_len())
+        # print("[DEBUG] translation vec len:", svd.get_translation_vec_len())
+        # print("[DEBUG] rotation vec len:", svd.get_rotation_vec_len())
+        # import sys; sys.exit(0)
         
         # Use the actual dataset indices that were sampled (handles resampling with replacement)
         # sampled_dataset_indices contains the original dataset index for each sampled scene
@@ -254,11 +264,15 @@ def main(cfg: DictConfig) -> None:
             pickle.dump(sampled_scenes, f)
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
+        print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
         bbox_params_list = []
-        n_classes = 22  # TODO: make it configurable, it should include empty token
+        if cfg.dataset.data.room_type == "livingroom":
+            n_classes = 25
+        else:
+            n_classes = 22
         path_to_results = output_dir / "sampled_scenes_results.pkl"
         for i in range(sampled_scenes_np.shape[0]):
-            class_labels, translations, sizes, angles = [], [], [], []
+            class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
             for j in range(sampled_scenes_np.shape[1]):
                 class_label_idx = np.argmax(sampled_scenes_np[i, j, :n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
@@ -272,12 +286,19 @@ def main(cfg: DictConfig) -> None:
                     angles.append(
                         sampled_scenes_np[i, j, n_classes + 6 : n_classes + 8]
                     )
+                    try:
+                        objfeats_32.append(
+                            sampled_scenes_np[i, j, n_classes + 8 : n_classes + 32]
+                        )
+                    except Exception as e:
+                        objfeats_32 = None
             bbox_params_list.append(
                 {
                     "class_labels": np.array(class_labels)[None, :],
                     "translations": np.array(translations)[None, :],
                     "sizes": np.array(sizes)[None, :],
                     "angles": np.array(angles)[None, :],
+                    "objfeats_32": np.array(objfeats_32)[None, :] if objfeats_32 is not None else None,
                 }
             )
         # print("bbox param list", bbox_params_list)

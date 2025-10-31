@@ -194,10 +194,15 @@ def dataset_encoding_factory(
                 print("Applying jittering augmentations")
                 dataset_collection = Jitter(dataset_collection)
 
+    if "objfeats" in name:
+        print("Applying objfeats normalization")
+        dataset_collection = Scale_CosinAngle_ObjfeatsNorm(dataset_collection)
     # Scale the input
-    if "cosin_angle" in name:
+    elif "cosin_angle" in name:
+        print("Applying cosin angle normalization")
         dataset_collection = Scale_CosinAngle(dataset_collection)
     else:
+        print("Applying scale normalization")
         dataset_collection = Scale(dataset_collection)
 
     # for diffusion (represent objectness as the last channel of class label)

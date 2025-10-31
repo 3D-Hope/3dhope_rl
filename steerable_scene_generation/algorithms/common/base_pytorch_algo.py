@@ -431,6 +431,7 @@ class BasePytorchAlgo(pl.LightningModule, ABC):
                 if v.endswith(".npy"):
                     v = torch.from_numpy(np.load(v))
                 elif v.endswith(".pt"):
+                    print(f"[DEBUG] Loading tensor from checkpoint: {v} SUI2")
                     v = torch.load(v)
                 else:
                     raise ValueError(f"Unsupported file type {v.split('.')[-1]}.")

@@ -273,6 +273,8 @@ def mcts_inference_time_search(
     )  # Shape (1, N, V)
     device = inpaint_data_batch["scenes"].device
     initial_mask = torch.ones(scene_shape, dtype=torch.bool)
+    # print(f"[DEBUG] Initial mask: {initial_mask}")
+    print(f"[DEBUG] scene {inpaint_data_batch['scenes'].shape}")
     root = MCTSNode(
         scene=torch.zeros(scene_shape, dtype=inpaint_data_batch["scenes"].dtype),
         inpainting_mask=initial_mask,

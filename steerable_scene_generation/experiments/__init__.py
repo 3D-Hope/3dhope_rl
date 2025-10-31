@@ -72,9 +72,10 @@ def build_experiment(
     # Check if we're using the custom dataset
     if cfg.dataset._name == "custom_scene":
         # Use the custom experiment when the dataset is custom_scene
+        print(f"[DEBUG] Using custom scene diffusion experiment")
         return CustomSceneDiffusionExperiment(cfg, logger, ckpt_path)
 
-    # Otherwise, use the standard registry lookup
+    # Otherwise, use the standard   registry lookup
     if cfg.experiment._name not in exp_registry:
         raise ValueError(
             f"Experiment {cfg.experiment._name} not found in registry "
