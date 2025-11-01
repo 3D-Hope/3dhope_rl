@@ -1,26 +1,57 @@
 import logging
 import os
 import pickle
+
+from pathlib import Path
+
+import hydra
 import numpy as np
 import torch
-import hydra
-from pathlib import Path
+
 from omegaconf import DictConfig, OmegaConf
 from omegaconf.omegaconf import open_dict
+from threed_front.datasets import get_raw_dataset
+from threed_front.evaluation import ThreedFrontResults
+
 from steerable_scene_generation.datasets.custom_scene import get_dataset_raw_and_encoded
-from steerable_scene_generation.datasets.custom_scene.custom_scene_final import CustomDataset, update_data_file_paths
+from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
+    CustomDataset,
+    update_data_file_paths,
+)
 from steerable_scene_generation.experiments import build_experiment
-from steerable_scene_generation.utils.ckpt_utils import download_latest_or_best_checkpoint, download_version_checkpoint, is_run_id
+from steerable_scene_generation.utils.ckpt_utils import (
+    download_latest_or_best_checkpoint,
+    download_version_checkpoint,
+    is_run_id,
+)
 from steerable_scene_generation.utils.distributed_utils import is_rank_zero
 from steerable_scene_generation.utils.logging import filter_drake_vtk_warning
 from steerable_scene_generation.utils.omegaconf import register_resolvers
-from threed_front.evaluation import ThreedFrontResults
-from threed_front.datasets import get_raw_dataset
 
-
-
-idx_to_class = {0: 'armchair', 1: 'bookshelf', 2: 'cabinet', 3: 'ceiling_lamp', 4: 'chair', 5: 'children_cabinet', 6: 'coffee_table', 7: 'desk', 8: 'double_bed', 9: 'dressing_chair', 10: 'dressing_table', 11: 'kids_bed', 12: 'nightstand', 13: 'pendant_lamp', 14: 'shelf',   15 : 'single_bed', 16: 'sofa', 17: 'stool', 18: 'table', 19: 'tv_stand', 20: 'wardrobe'}
-# Add logging filters.  
+idx_to_class = {
+    0: "armchair",
+    1: "bookshelf",
+    2: "cabinet",
+    3: "ceiling_lamp",
+    4: "chair",
+    5: "children_cabinet",
+    6: "coffee_table",
+    7: "desk",
+    8: "double_bed",
+    9: "dressing_chair",
+    10: "dressing_table",
+    11: "kids_bed",
+    12: "nightstand",
+    13: "pendant_lamp",
+    14: "shelf",
+    15: "single_bed",
+    16: "sofa",
+    17: "stool",
+    18: "table",
+    19: "tv_stand",
+    20: "wardrobe",
+}
+# Add logging filters.
 filter_drake_vtk_warning()
 
 # Disable tokenizer parallelism.
@@ -32,10 +63,13 @@ os.environ[
     "HF_DATASETS_CACHE"
 ] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
+
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
 def main(cfg: DictConfig) -> None:
     if not is_rank_zero:
-        raise ValueError("This script must be run on the main process. Try export CUDA_VISIBLE_DEVICES=0.")
+        raise ValueError(
+            "This script must be run on the main process. Try export CUDA_VISIBLE_DEVICES=0."
+        )
 
     # Set random seed
     seed = 42
@@ -58,7 +92,7 @@ def main(cfg: DictConfig) -> None:
     # Check if load path is provided
     if "load" not in cfg or cfg.load is None:
         raise ValueError("Please specify a checkpoint to load with 'load=...'")
-    
+
         # Get configuration values with defaults.
     num_scenes = cfg.get("num_scenes", 1)
     print(f"[DEBUG] Number of scenes to sample: {num_scenes}")
@@ -73,12 +107,10 @@ def main(cfg: DictConfig) -> None:
         if cfg_choice["algorithm"] is not None:
             cfg.algorithm._name = cfg_choice["algorithm"]
 
-
-
     # Set up output directory
     output_dir = Path(hydra_cfg.runtime.output_dir)
     logging.info(f"Outputs will be saved to: {output_dir}")
-    
+
     if cfg.wandb.project is None:
         cfg.wandb.project = str(Path(__file__).parent.parent.name)
     # Load the checkpoint
@@ -86,6 +118,7 @@ def main(cfg: DictConfig) -> None:
     name = f"custom_sampling_{load_id}"
 
     import wandb
+
     wandb.init(
         name=name,
         dir=str(output_dir),
@@ -98,9 +131,15 @@ def main(cfg: DictConfig) -> None:
         download_dir = output_dir / "checkpoints"
         version = cfg["checkpoint_version"]
         if version is not None and isinstance(version, int):
-            checkpoint_path = download_version_checkpoint(run_path=run_path, version=version, download_dir=download_dir)
+            checkpoint_path = download_version_checkpoint(
+                run_path=run_path, version=version, download_dir=download_dir
+            )
         else:
-            checkpoint_path = download_latest_or_best_checkpoint(run_path=run_path, download_dir=download_dir, use_best=cfg.get("use_best", False))
+            checkpoint_path = download_latest_or_best_checkpoint(
+                run_path=run_path,
+                download_dir=download_dir,
+                use_best=cfg.get("use_best", False),
+            )
     else:
         checkpoint_path = Path(load_id)
 
@@ -122,26 +161,30 @@ def main(cfg: DictConfig) -> None:
         split=config["validation"].get("splits", ["test"]),
         ckpt_path=str(checkpoint_path),
     )
-    
+
     # Limit dataset to num_scenes samples
     dataset_size = len(custom_dataset)
     num_scenes_to_sample = num_scenes  # Always use requested num_scenes
-    
+
     # Create indices with resampling if needed
     if num_scenes_to_sample <= dataset_size:
         # Use first num_scenes samples without resampling
         indices = list(range(num_scenes_to_sample))
     else:
         # Need to resample: repeat the dataset multiple times
-        print(f"[INFO] Requested {num_scenes_to_sample} scenes but dataset only has {dataset_size} scenes.")
-        print(f"[INFO] Will resample with replacement to generate {num_scenes_to_sample} scenes.")
+        print(
+            f"[INFO] Requested {num_scenes_to_sample} scenes but dataset only has {dataset_size} scenes."
+        )
+        print(
+            f"[INFO] Will resample with replacement to generate {num_scenes_to_sample} scenes."
+        )
         indices = [i % dataset_size for i in range(num_scenes_to_sample)]
-    
+
     # Create subset of dataset with the indices (may include duplicates)
     from torch.utils.data import Subset
 
     limited_dataset = Subset(custom_dataset, indices)
-    sampled_dataset_indices = indices.copy() 
+    sampled_dataset_indices = indices.copy()
     batch_size = cfg.experiment.get("test", {}).get(
         "batch_size", cfg.experiment.validation.batch_size
     )
@@ -160,7 +203,13 @@ def main(cfg: DictConfig) -> None:
     # Build experiment and get diffuser
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
     # SAUGAT
-    sampled_scene_batches = experiment.exec_task("inpaint", dataloader=dataloader, use_ema=cfg.algorithm.ema.use, scenes=scenes, inpaint_masks=inpaint_masks) #NOTE: fpbpn goes as a part of dataloader batch, scenes and inpaint_masks sent  for each indices of dataloader
+    sampled_scene_batches = experiment.exec_task(
+        "inpaint",
+        dataloader=dataloader,
+        use_ema=cfg.algorithm.ema.use,
+        scenes=scenes,
+        inpaint_masks=inpaint_masks,
+    )  # NOTE: fpbpn goes as a part of dataloader batch, scenes and inpaint_masks sent  for each indices of dataloader
     # SAUGAT
     # experiment.algo = experiment._build_algo(ckpt_path=checkpoint_path)
     # diffuser = experiment.algo
@@ -227,21 +276,22 @@ def main(cfg: DictConfig) -> None:
 
     # sampled_scenes_np = inpainted_scenes.detach().cpu().numpy()
     # print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
-    
+
     # SAUGAT
     sampled_indices = sampled_dataset_indices
     sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
-    assert len(sampled_indices) == sampled_scenes.shape[0], \
-            f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
+    assert (
+        len(sampled_indices) == sampled_scenes.shape[0]
+    ), f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
     with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
         pickle.dump(sampled_scenes, f)
-    sampled_scenes_np = sampled_scenes.detach().cpu().numpy() 
+    sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
     if cfg.dataset.data.room_type == "livingroom":
         n_classes = 25
     else:
         n_classes = 22
     # SAUGAT
-    
+
     print(f"[DEBUG] sampled scenes np: {sampled_scenes_np[0]}")
     bbox_params_list = []
     for i in range(sampled_scenes_np.shape[0]):
@@ -265,9 +315,8 @@ def main(cfg: DictConfig) -> None:
                 "angles": np.array(angles)[None, :],
             }
         )
-    
+
     # print(f"[DEBUG] bbox params list: {bbox_params_list[0]}")
-        
 
     layout_list = []
     successful_indices = list(range(len(bbox_params_list)))
@@ -279,7 +328,7 @@ def main(cfg: DictConfig) -> None:
         except Exception as e:
             print(f"[WARNING] Skipping scene due to post_process error: {e}")
             continue
-    
+
     # print(f"[DEBUG] layout list: {layout_list[0]}")
 
     threed_front_results = ThreedFrontResults(
@@ -289,6 +338,7 @@ def main(cfg: DictConfig) -> None:
     with open(results_pkl_path, "wb") as f:
         pickle.dump(threed_front_results, f)
     print(f"Saved result to: {results_pkl_path}")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

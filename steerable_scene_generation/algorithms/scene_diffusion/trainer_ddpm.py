@@ -140,7 +140,9 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         num_classes = self.cfg.custom.num_classes
         class_indices = list(range(0, num_classes))
         pos_indices = list(
-            range(len(class_indices), len(class_indices) + 3)#TODO: USE cfg.algorithm.custom.num_classes and so on for these all
+            range(
+                len(class_indices), len(class_indices) + 3
+            )  # TODO: USE cfg.algorithm.custom.num_classes and so on for these all
         )  # Next 3 dimensions for position
         size_indices = list(
             range(
@@ -155,31 +157,41 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             )
         )  # Next 2 dimensions for rotation
         # 22+3+3+2+32
-        objfeat_32_indices = list[int](
-            range(
-                len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices),
-                len(class_indices) + len(pos_indices) + len(size_indices) + len(rot_indices) + 32
+        if int(self.cfg.custom.objfeat_dim) == 32:
+            objfeat_32_indices = list[int](
+                range(
+                    len(class_indices)
+                    + len(pos_indices)
+                    + len(size_indices)
+                    + len(rot_indices),
+                    len(class_indices)
+                    + len(pos_indices)
+                    + len(size_indices)
+                    + len(rot_indices)
+                    + 32,
+                )
             )
-        )
+            pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
+            target_objfeat_32 = noise[..., objfeat_32_indices]
+            objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
+        else:
+            objfeat_32_loss = None
         # Extract components from your representation using your custom indices
         pred_pos = predicted_noise[..., pos_indices]
         pred_size = predicted_noise[..., size_indices]
         pred_rot = predicted_noise[..., rot_indices]
         pred_class = predicted_noise[..., class_indices]
-        pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
 
         target_pos = noise[..., pos_indices]
         target_size = noise[..., size_indices]
         target_rot = noise[..., rot_indices]
         target_class = noise[..., class_indices]
-        target_objfeat_32 = noise[..., objfeat_32_indices]
 
         # Calculate your custom losses
         pos_loss = F.mse_loss(pred_pos, target_pos)
         size_loss = F.mse_loss(pred_size, target_size)
         rot_loss = F.mse_loss(pred_rot, target_rot)
         class_loss = F.mse_loss(pred_class, target_class)
-        objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
 
         # Weight the losses as needed (you can make these configurable)
         pos_weight = 1.0
@@ -194,7 +206,9 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             "size_loss": size_loss.item(),
             "rot_loss": rot_loss.item(),
             "class_loss": class_loss.item(),
-            "objfeat_32_loss": objfeat_32_loss.item(),
+            "objfeat_32_loss": objfeat_32_loss.item()
+            if objfeat_32_loss is not None
+            else 0.0,
         }
 
         # Calculate base loss
@@ -203,8 +217,9 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             + size_weight * size_loss
             + rot_weight * rot_loss
             + class_weight * class_loss
-            + objfeat_32_weight * objfeat_32_loss
         )
+        if objfeat_32_loss is not None:
+            total_loss += objfeat_32_weight * objfeat_32_loss
 
         # Apply IoU regularization if enabled
         # if hasattr(self.cfg, "loss") and getattr(
@@ -332,6 +347,8 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         Returns the loss.
         """
         scenes = batch["scenes"]
+        if int(self.cfg.custom.objfeat_dim) == 0:
+            scenes = scenes[:, :, : -int(32)]  # Remove objfeat part
         # print(f"[Ashok] ddpm forward shape of scenes {scenes.shape}")
         # Sample noise to add to the scenes.
         noise = torch.randn(scenes.shape).to(self.device)  # Shape (B, N, V)
@@ -624,7 +641,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
 #             out = torch.gather(a, 0, t)
 #             assert out.shape == torch.Size([bs])
 #             return torch.reshape(out, [bs] + ((len(x_shape) - 1) * [1]))
-        
+
 #         bounds sizes (array([0.03998289, 0.02000002, 0.012772  ], dtype=float32), array([2.8682  , 1.770065, 1.698315], dtype=float32)), translations (array([-2.7625005,  0.045    , -2.75275  ], dtype=float32), array([2.7784417, 3.6248395, 2.8185427], dtype=float32))
 #         # regularizer to penalize mesh collision
 #         # alpha_prod_t = scheduler.alphas_cumprod[t], gives wiou
@@ -643,7 +660,6 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
 #         #                 # loss_iou = (w_iou * 0.1 * bbox_iou).mean(dim=list(range(1, len(w_iou.shape))))
 #         #                 loss_iou_valid_avg = (w_iou * 0.1 * bbox_iou_valid).sum( dim=list(range(1, len(bbox_iou_valid.shape))) ) / ( bbox_iou_mask.sum( dim=list(range(1, len(bbox_iou_valid.shape))) ) + 1e-6)
 #         #             losses_weight += loss_iou_valid_avg
-
 
 
 #     def axis_aligned_bbox_overlaps_3d(self, bboxes1,

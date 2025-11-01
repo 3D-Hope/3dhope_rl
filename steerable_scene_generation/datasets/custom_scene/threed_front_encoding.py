@@ -33,7 +33,16 @@ class Diffusion(DatasetDecoratorBase):
         sample_params_target = {}
         # Compute the target from the input
         for k, v in sample_params.items():
-            if k in ["room_layout", "length", "fpbpn", "room_outer_box", "floor_polygon_points", "floor_plan_vertices", "floor_plan_faces", "floor_plan_centroid"]:
+            if k in [
+                "room_layout",
+                "length",
+                "fpbpn",
+                "room_outer_box",
+                "floor_polygon_points",
+                "floor_plan_vertices",
+                "floor_plan_faces",
+                "floor_plan_centroid",
+            ]:
                 pass
 
             elif k == "class_labels":

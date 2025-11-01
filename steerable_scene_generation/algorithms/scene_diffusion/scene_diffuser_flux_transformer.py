@@ -3,11 +3,11 @@ from typing import Any, Dict, Type, Union
 import torch
 
 from steerable_scene_generation.algorithms.common.ema_model import EMAModel
-from steerable_scene_generation.algorithms.common.txt_encoding import (
-    load_txt_encoder_from_config,
-)
 from steerable_scene_generation.algorithms.common.floor_encoder import (
     load_floor_encoder_from_config,
+)
+from steerable_scene_generation.algorithms.common.txt_encoding import (
+    load_txt_encoder_from_config,
 )
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
@@ -73,7 +73,7 @@ def create_scene_diffuser_flux_transformer(
             else:
                 self.floor_encoder = None
                 floor_cond_dim = None
-                
+
             use_coarse = (
                 self.cfg.classifier_free_guidance.txt_encoder_coarse is not None
             )
@@ -97,9 +97,11 @@ def create_scene_diffuser_flux_transformer(
                 head_dim=self.cfg.model.head_dim,
                 cond_dim=text_cond_dim_coarse,
                 text_cond_dim=text_cond_dim,
-                floor_cond_dim=floor_cond_dim if self.cfg.classifier_free_guidance.use_floor else None,
+                floor_cond_dim=floor_cond_dim
+                if self.cfg.classifier_free_guidance.use_floor
+                else None,
                 object_feature_dim_out=obj_diff_vec_len,
-                max_objects=self.cfg.max_num_objects_per_scene
+                max_objects=self.cfg.max_num_objects_per_scene,
             )
 
             if self.cfg.ema.use:
@@ -168,21 +170,19 @@ def create_scene_diffuser_flux_transformer(
             #         print(f"[ERROR] Available: {list(cond_dict.keys())}")
             #     else:
             #         print(f"[DEBUG] fpbpn shape in cond_dict: {cond_dict['fpbpn'].shape}")
-                
+
             #     floor_cond = self.floor_encoder(cond_dict["fpbpn"])
             #     print(f"[DEBUG] floor_cond after encoder: {floor_cond.shape}")
-                
+
             if cond_dict is not None and self.floor_encoder is not None:
-                floor_cond = self.floor_encoder(
-                    cond_dict["fpbpn"]
-                )  # Shape (B, 64)
+                floor_cond = self.floor_encoder(cond_dict["fpbpn"])  # Shape (B, 64)
                 # print(f"[Ashok] floor_cond shape: {floor_cond.shape}, fpbpn shape: {cond_dict['fpbpn'].shape}")
             # Predict the noise.
             predicted_noise = model(
                 noisy_scenes,
                 timestep=timesteps,
                 cond=text_cond_coarse,
-                text_cond=text_cond, 
+                text_cond=text_cond,
                 floor_cond=floor_cond,
             )  # Shape (B, N, V)
 

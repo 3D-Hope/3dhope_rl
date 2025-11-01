@@ -1,5 +1,7 @@
 from typing import Dict, Type
 
+import torch
+
 from steerable_scene_generation.algorithms.scene_diffusion import (
     SceneDiffuserTrainerDDPM,
     SceneDiffuserTrainerPPO,
@@ -11,7 +13,6 @@ from steerable_scene_generation.datasets.custom_scene import CustomDataset
 from steerable_scene_generation.experiments.scene_diffusion import (
     SceneDiffusionExperiment,
 )
-import torch
 
 
 class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
@@ -28,13 +29,13 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
         scene=CustomDataset,  # The original key "scene" still points to our custom dataset
         custom_scene=CustomDataset,  # Add a direct "custom_scene" key
     )
-    
+
     def inpaint(
         self,
         dataloader: torch.utils.data.DataLoader | None = None,
         use_ema: bool = False,
-        scenes= None,
-        inpaint_masks= None,
+        scenes=None,
+        inpaint_masks=None,
         callbacks: list | None = None,
     ) -> list[torch.Tensor]:
         if not self.algo:
@@ -43,7 +44,9 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
                 print(f"[DEBUG] Loading checkpoint: {self.ckpt_path} SUI7")
                 ckpt = torch.load(self.ckpt_path, map_location="cpu")
                 state_dict = ckpt.get("state_dict", ckpt)
-                missing, unexpected = self.algo.load_state_dict(state_dict, strict=False)
+                missing, unexpected = self.algo.load_state_dict(
+                    state_dict, strict=False
+                )
                 if getattr(self.algo, "ema", None) and "ema_state_dict" in ckpt:
                     self.algo.ema.load_state_dict(ckpt["ema_state_dict"])
                 print(f"[DEBUG] Missing keys: {missing}")
@@ -68,6 +71,8 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
                     k: v.to(device) if isinstance(v, torch.Tensor) else v
                     for k, v in batch.items()
                 }
-                inpainted = self.algo.inpaint_scenes(batch, scenes=scenes, inpaint_masks=inpaint_masks, use_ema=use_ema)
+                inpainted = self.algo.inpaint_scenes(
+                    batch, scenes=scenes, inpaint_masks=inpaint_masks, use_ema=use_ema
+                )
                 results.append(inpainted.cpu())
         return results

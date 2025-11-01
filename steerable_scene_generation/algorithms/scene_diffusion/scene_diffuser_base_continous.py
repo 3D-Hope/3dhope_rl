@@ -360,7 +360,9 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
                 )
             else:
                 print(f"[Ashok] sampling scene with out guidancse")
-                scenes = self.sample_scenes_without_guidance(num, use_ema=use_ema, data_batch=data_batch)
+                scenes = self.sample_scenes_without_guidance(
+                    num, use_ema=use_ema, data_batch=data_batch
+                )
             sampled_scene_batches.append(scenes)
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 
@@ -382,23 +384,26 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         return sampled_scenes
 
     def inpaint_scenes(
-        self, data_batch: Dict[str, torch.Tensor], inpaint_masks=None, scenes=None, use_ema: bool = False
+        self,
+        data_batch: Dict[str, torch.Tensor],
+        inpaint_masks=None,
+        scenes=None,
+        use_ema: bool = False,
     ) -> torch.Tensor:
         # Extract scenes and masks from the data batch.
         if scenes is None:
             print(f"[Ashok] inpainting using data batch scenes with toy 3 single beds")
             scenes = data_batch["scenes"]  # Shape (B, N, V)
-            scenes[:, :3, :22] = -1.0           # (B, 2, 22)
-        # For both objects in all scenes, set single_bed class (index 15) to 1.0
+            scenes[:, :3, :22] = -1.0  # (B, 2, 22)
+            # For both objects in all scenes, set single_bed class (index 15) to 1.0
             scenes[:, :3, 15] = 1.0
-        
+
         # print(f"[Ashok] inpainting mask {inpainting_masks[0]}")
         # print(f"[Ashok] scenes {scenes[0]}")
 
         if inpaint_masks is None:
-
             # Set these class probability slots for both objects to -1 as default (not marked class)
-            
+
             # try:
             #     inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
             # except:
@@ -406,7 +411,6 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             inpainting_masks = torch.ones_like(scenes, dtype=torch.bool)
             # Set the first 22 dimensions (assumed class one-hot for 22 classes) for first two objects as not to inpaint (fixed)
             inpainting_masks[:, :3, :22] = False  # (B, 2, 22)
-    
 
         if not scenes.shape == inpainting_masks.shape:
             raise ValueError(
@@ -472,7 +476,6 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             # Only update masked regions, keep unmasked regions fixed.
             xt = torch.where(inpainting_masks, xt_next, scenes)
 
-
         # Apply inverse normalization.
         inpainted_scenes = self.dataset.inverse_normalize_scenes(xt)  # Shape (B, N, V)
 
@@ -511,7 +514,9 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         x = x * (maximum - minimum)[None, None, :] + minimum[None, None, :]
         return x
 
-    def bbox_iou_regularizer(self, recon, num_classes, t=None, iou_weight=0.1, using_as_reward=False):
+    def bbox_iou_regularizer(
+        self, recon, num_classes, t=None, iou_weight=0.1, using_as_reward=False
+    ):
         """
         Calculate IoU-based regularization loss to penalize mesh/bbox collisions.
 
@@ -594,7 +599,9 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
         # Only consider IoU between valid objects
         bbox_iou_valid = bbox_iou * bbox_iou_mask  # Shape: [B, N, N]
         if using_as_reward:
-            return bbox_iou_valid.sum(dim=list(range(1, len(bbox_iou_valid.shape))))  #shape: [B,]
+            return bbox_iou_valid.sum(
+                dim=list(range(1, len(bbox_iou_valid.shape)))
+            )  # shape: [B,]
         # Calculate average IoU for valid objects
         # bbox_iou_valid_avg = bbox_iou_valid.sum(dim=list(range(1, len(bbox_iou_valid.shape)))) / (bbox_iou_mask.sum(dim=list(range(1, len(bbox_iou_valid.shape)))) + 1e-6)
 

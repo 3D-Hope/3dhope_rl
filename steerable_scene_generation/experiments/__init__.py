@@ -34,16 +34,17 @@
 #             "'experiments/__init__.py' under the same name as yaml file."
 #         )
 
-#     return exp_registry[cfg.experiment._name](cfg, logger, ckpt_path)
-from steerable_scene_generation.experiments.scene_diffusion import SceneDiffusionExperiment
-
-
 import pathlib
 
 from typing import Optional, Union
 
 from lightning.pytorch.loggers.wandb import WandbLogger
 from omegaconf import DictConfig
+
+#     return exp_registry[cfg.experiment._name](cfg, logger, ckpt_path)
+from steerable_scene_generation.experiments.scene_diffusion import (
+    SceneDiffusionExperiment,
+)
 
 from .custom_scene_diffusion import CustomSceneDiffusionExperiment
 from .exp_base import BaseExperiment

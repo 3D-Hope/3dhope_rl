@@ -1,17 +1,25 @@
+import os
+
 from typing import Dict, Optional, Tuple
 
 import torch
-import os
+
 from diffusers import DDIMScheduler, DDPMScheduler
 from tqdm import tqdm
 
 from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
 from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
+from universal_constraint_rewards.accessibility_reward import (
+    AccessibilityCache,
+    precompute_accessibility_cache,
+)
 from universal_constraint_rewards.commons import parse_and_descale_scenes
+from universal_constraint_rewards.not_out_of_bound_reward import (
+    SDFCache,
+    precompute_sdf_cache,
+)
 
-from universal_constraint_rewards.not_out_of_bound_reward import precompute_sdf_cache, SDFCache
-from universal_constraint_rewards.accessibility_reward import precompute_accessibility_cache, AccessibilityCache
 from .ddpo_helpers import (
     composite_reward,
     ddim_step_with_logprob,
@@ -21,9 +29,9 @@ from .ddpo_helpers import (
     non_penetration_reward,
     number_of_physically_feasible_objects_reward,
     object_number_reward,
+    physcene_reward,
     prompt_following_reward,
     universal_reward,
-    physcene_reward,
 )
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
@@ -46,7 +54,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         self.cfg = cfg
         if (
             self.cfg.ddpo.dynamic_constraint_rewards.use
-            or self.cfg.ddpo.use_universal_reward and not self.cfg.ddpo.universal_reward.use_physcene_reward
+            or self.cfg.ddpo.use_universal_reward
+            and not self.cfg.ddpo.universal_reward.use_physcene_reward
         ):
             self.reward_normalizer = RewardNormalizer(
                 self.cfg.ddpo.dynamic_constraint_rewards.stats_path
@@ -54,16 +63,15 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             if not hasattr(self.cfg.dataset, "sdf_cache_dir") or not os.path.exists(
                 self.cfg.dataset.sdf_cache_dir
             ):
-                print(
-                    f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}..."
-                )
+                print(f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}...")
                 # precompute_sdf_cache(
                 #     config=self.cfg, num_workers=16,
                 #     sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                 # )
-                
+
                 precompute_accessibility_cache(
-                    config=self.cfg, num_workers=16,
+                    config=self.cfg,
+                    num_workers=16,
                     accessibility_cache_dir=self.cfg.dataset.accessibility_cache_dir,
                 )
             else:
@@ -75,7 +83,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     f"Precomputing Accessibility cache at {self.cfg.dataset.accessibility_cache_dir}..."
                 )
                 precompute_accessibility_cache(
-                    config=self.cfg, num_workers=16,
+                    config=self.cfg,
+                    num_workers=16,
                     accessibility_cache_dir=self.cfg.dataset.accessibility_cache_dir,
                 )
             else:
@@ -84,8 +93,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 )
             # self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
             # self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
-            self.train_accessibility_cache = AccessibilityCache(self.cfg.dataset.accessibility_cache_dir, split="train_val")
-            self.val_accessibility_cache = AccessibilityCache(self.cfg.dataset.accessibility_cache_dir, split="test")
+            self.train_accessibility_cache = AccessibilityCache(
+                self.cfg.dataset.accessibility_cache_dir, split="train_val"
+            )
+            self.val_accessibility_cache = AccessibilityCache(
+                self.cfg.dataset.accessibility_cache_dir, split="test"
+            )
         else:
             self.reward_normalizer = None
 
@@ -99,8 +112,6 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
-            
-        
 
     def generate_trajs_for_ddpo(
         self,
@@ -316,7 +327,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         elif self.cfg.ddpo.use_universal_reward:
             print("Using universal rewards")
-            
+
             is_val = len(self.dataset) <= 200
             print(f"[Ashok] is_val: {is_val}")
             # Get room type from config
@@ -345,11 +356,18 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 # TODO: Get floor plan args from dataset, how do we get the dataset here? we need get_floor_plan_args from custom dataset here to get the values for each scene in the batch
                 indices = cond_dict["idx"]
                 # Efficiently gather floor plan args for all indices in the batch
-                floor_plan_args_list = [self.dataset.get_floor_plan_args(idx) for idx in indices]
+                floor_plan_args_list = [
+                    self.dataset.get_floor_plan_args(idx) for idx in indices
+                ]
                 # Stack each key across the batch for tensor conversion
                 floor_plan_args = {
                     key: [args[key] for args in floor_plan_args_list]
-                    for key in ["floor_plan_centroid", "floor_plan_vertices", "floor_plan_faces", "room_outer_box"]
+                    for key in [
+                        "floor_plan_centroid",
+                        "floor_plan_vertices",
+                        "floor_plan_faces",
+                        "room_outer_box",
+                    ]
                 }
                 # Compute physcene reward
                 rewards, reward_components = physcene_reward(
@@ -374,7 +392,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                         on_epoch=False,
                         prog_bar=False,
                     )
-            else: 
+            else:
                 # Compute universal reward with all physics constraints
                 rewards, reward_components = universal_reward(
                     parsed_scene=parsed_scene,
@@ -383,12 +401,17 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     cfg=self.cfg,
                     room_type=room_type,
                     importance_weights=importance_weights,
-                    floor_polygons=[self.dataset.get_floor_polygon_points(idx) for idx in cond_dict["idx"]],
+                    floor_polygons=[
+                        self.dataset.get_floor_polygon_points(idx)
+                        for idx in cond_dict["idx"]
+                    ],
                     indices=cond_dict["idx"],
                     is_val=is_val,
                     # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                     # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
-                    accessibility_cache=self.train_accessibility_cache if not is_val else self.val_accessibility_cache
+                    accessibility_cache=self.train_accessibility_cache
+                    if not is_val
+                    else self.val_accessibility_cache,
                 )
 
                 # Log individual components for analysis using log_dict for proper step tracking
@@ -423,12 +446,17 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 room_type=room_type,
                 reward_normalizer=self.reward_normalizer,
                 get_reward_functions=self.get_reward_functions,
-                floor_polygons=[self.dataset.get_floor_polygon_points(idx) for idx in cond_dict["idx"]],
+                floor_polygons=[
+                    self.dataset.get_floor_polygon_points(idx)
+                    for idx in cond_dict["idx"]
+                ],
                 indices=cond_dict["idx"],
                 is_val=is_val,
                 # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                 # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
-                accessibility_cache=self.train_accessibility_cache if not is_val else self.val_accessibility_cache
+                accessibility_cache=self.train_accessibility_cache
+                if not is_val
+                else self.val_accessibility_cache,
             )
 
             # Log individual components for analysis using log_dict for proper step tracking

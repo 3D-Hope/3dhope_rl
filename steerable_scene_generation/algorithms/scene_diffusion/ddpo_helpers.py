@@ -31,16 +31,19 @@ from universal_constraint_rewards.commons import (
     get_universal_reward,
     parse_and_descale_scenes,
 )
-
-from universal_constraint_rewards.physcene import room_layout_constraint, walkability_constraint, collision_constraint
+from universal_constraint_rewards.physcene import (
+    collision_constraint,
+    room_layout_constraint,
+    walkability_constraint,
+)
 
 from .inpainting_helpers import (
     generate_empty_object_inpainting_masks,
     generate_physical_feasibility_inpainting_masks,
 )
 
-import multiprocessing
 num_cpus = multiprocessing.cpu_count()
+
 
 def ddpm_step_with_logprob(
     scheduler: DDPMScheduler,
@@ -625,6 +628,7 @@ def universal_reward(
 
     return total_rewards, reward_components
 
+
 def physcene_reward(
     parsed_scene: torch.Tensor,
     scene_vec_desc: SceneVecDescription,
@@ -634,16 +638,14 @@ def physcene_reward(
     weight_coll=2.0,
     weight_walk=100.0,
     weight_layout=300000.0,
-    **kwargs
+    **kwargs,
 ) -> torch.Tensor:
-    
     # Temporary code to test with fixed floor plan args
     # import os
     # import pickle
     # if not os.path.exists("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl"):
     #     with open("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/universal_constraint_rewards/floor_plan_args.pkl", "wb") as f:
     #         pickle.dump(floor_plan_args, f)
-
 
     # collision_loss = collision_constraint(parsed_scene, floor_plan_args=floor_plan_args)
     layout_loss = room_layout_constraint(parsed_scene, floor_plan_args=floor_plan_args)
@@ -660,10 +662,11 @@ def physcene_reward(
     reward_components = {
         # 'collision_reward': -weight_coll*collision_loss,
         # 'layout_reward': -weight_layout*layout_loss,
-        'layout_reward': -layout_loss,
+        "layout_reward": -layout_loss,
         # 'walkability_reward': -weight_walk*walkability_loss,
     }
     return rewards, reward_components
+
 
 def composite_reward(
     scenes: torch.Tensor,
@@ -672,7 +675,7 @@ def composite_reward(
     cfg: DictConfig,
     get_reward_functions: dict,
     room_type: str = "bedroom",
-    **kwargs
+    **kwargs,
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward (general scene quality) plus task-specific reward.
@@ -728,7 +731,7 @@ def composite_reward(
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
-        **kwargs
+        **kwargs,
     )
 
     dynamic_total, dynamic_components = get_dynamic_reward(
@@ -739,7 +742,7 @@ def composite_reward(
         reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
         config=cfg,
-        **kwargs
+        **kwargs,
     )
 
     total_rewards = universal_total + dynamic_total

@@ -82,7 +82,7 @@ class CustomDataset(BaseDataset):
             split_names = split
         else:
             split_names = [split]
-            
+
         # print(f"[Ashok] max_num_objects_per_scene: {cfg.max_num_objects_per_scene}")
         # import sys; sys.exit();
 
@@ -352,10 +352,10 @@ class CustomDataset(BaseDataset):
         scene_tensor = self._to_scene_tensor(raw_item)
 
         item: dict[str, Any] = {
-            "scenes": scene_tensor, 
-            "idx": idx, 
+            "scenes": scene_tensor,
+            "idx": idx,
             "fpbpn": raw_item["fpbpn"],
-            }
+        }
 
         # if self.cfg.use_permutation_augmentation:
         #     perm = torch.randperm(len(scene_tensor))
@@ -386,22 +386,22 @@ class CustomDataset(BaseDataset):
         #                 ]["coarse"]
         #             else:
         #                 item["text_cond_coarse"] = self._empty_encoding_coarse
-        
+
         return item
-    
+
     def get_floor_polygon_points(self, idx: int) -> torch.Tensor:
         raw_item = self._get_item(idx)
         return raw_item["floor_polygon_points"]
-    
+
     def get_floor_plan_args(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
         return {
             "floor_plan_centroid": raw_item["floor_plan_centroid"],
             "floor_plan_faces": raw_item["floor_plan_faces"],
             "floor_plan_vertices": raw_item["floor_plan_vertices"],
-            "room_outer_box": raw_item["room_outer_box"],            
+            "room_outer_box": raw_item["room_outer_box"],
         }
-        
+
     def _to_scene_tensor(self, item: dict) -> torch.Tensor:
         """
         Convert a ThreedFront-encoded sample dict to a scene tensor of shape (N, O).
@@ -412,7 +412,7 @@ class CustomDataset(BaseDataset):
             item["class_labels"],
             item["translations"],
             item["sizes"],
-            item["angles"],  
+            item["angles"],
         ]
         if "objfeats_32" in item:
             components.append(item["objfeats_32"])  # prefer 32-dim if available

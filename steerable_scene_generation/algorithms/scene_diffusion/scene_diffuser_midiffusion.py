@@ -89,7 +89,7 @@ def create_scene_diffuser_midiffusion(
                     "angle_dim": self.cfg.custom.angle_dim,
                     "objfeat_dim": self.cfg.custom.objfeat_dim,  # Not used by our scene representation
                 }
-            
+
             self.model = MIDiffusionContinuous(
                 network_dim=network_dim,
                 seperate_all=self.cfg.model.seperate_all,
@@ -136,13 +136,17 @@ def create_scene_diffuser_midiffusion(
                 torch.Tensor: Output of same shape as the input.
             """
             # for key in cond_dict:
-                # print(f"[Ashok] pred noise, {key}: {cond_dict[key].shape}")
+            # print(f"[Ashok] pred noise, {key}: {cond_dict[key].shape}")
             assert not (use_ema and not self.cfg.ema.use)
             model = self.ema.model if use_ema else self.model
-            # print(f"[Ashok] in predict noise ema {use_ema}, cond dict {cond_dict.keys()}")
+            # print(
+            #     f"[Ashok] in predict noise ema {use_ema}, cond dict {cond_dict.keys()}"
+            # )
             # print(f"[Ashok] fpbpn.shape: {cond_dict['fpbpn'].shape}")
             # print(f"[Ashok] noisy_scenes.shape: {noisy_scenes.shape}")
-            # import sys; sys.exit();
+            # import sys
+
+            # sys.exit()
 
             # Process different timestep input formats.
             if not torch.is_tensor(timesteps):
@@ -181,12 +185,10 @@ def create_scene_diffuser_midiffusion(
                     )  # Shape (B, N, C)
             elif cond_dict is not None and self.floor_encoder is not None:
                 # Floor conditioning (same pattern as Flux)
-                floor_cond = self.floor_encoder(
-                    cond_dict["fpbpn"]
-                )  # Shape (B, 64)
+                floor_cond = self.floor_encoder(cond_dict["fpbpn"])  # Shape (B, 64)
                 # print(f"[Ashok] Floor condition shape: {floor_cond.shape}")
                 floor_cond = floor_cond.to(noisy_scenes.dtype)
-                
+
                 # Expand context along num_objects dimension (same as text)
                 context = floor_cond.unsqueeze(1).expand(
                     -1, noisy_scenes.size(1), -1

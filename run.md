@@ -248,7 +248,7 @@ custom:
 <!--  Render Results -->
 python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-57-19/sampled_scenes_results.pkl --no_texture --without_floor
 
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/17-08-42/sampled_scenes_results.pkl --no_texture
+python ../ThreedFront/scripts/render_results.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-31/19-40-48/sampled_scenes_results.pkl --no_texture
 
 
 
@@ -953,10 +953,10 @@ PYTHONPATH=. python -u main.py +name=continuous_mi_bedroom_floor_obj32 \
 
 
 
-python scripts/custom_sample_and_render.py +num_scenes=1 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
-    load=vic6vvt5 \
+python scripts/custom_sample_and_render.py +num_scenes=32 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
+    load=ndt0yc0l \
     dataset=custom_scene \
-    dataset.data.dataset_directory=bedrooms_objfeats_32_64 \
+    dataset.data.dataset_directory=bedroom \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset._name=custom_scene \
     dataset.max_num_objects_per_scene=12 \
@@ -977,10 +977,11 @@ python scripts/custom_sample_and_render.py +num_scenes=1 algorithm.noise_schedul
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm \
+    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/3d_front_data
 
 
-python scripts/custom_sample_and_render.py +num_scenes=1 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
+python scripts/custom_sample_and_render.py +num_scenes=32 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 3 \
     load=x6n93gvb \
     dataset=custom_scene \
     dataset.data.dataset_directory=livingroom \
@@ -1009,6 +1010,8 @@ python scripts/custom_sample_and_render.py +num_scenes=1 algorithm.noise_schedul
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm \
     dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/3d_front_data
+
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-01/05-42-23/sampled_scenes_results.pkl --no_texture
 
 PYTHONPATH=. python -u main.py +name=continuous_mi_livingroom_floor_obj32 \
     dataset=custom_scene \

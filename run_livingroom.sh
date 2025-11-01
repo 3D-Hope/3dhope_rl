@@ -16,7 +16,7 @@ PYTHONPATH=. python -u main.py +name=continuous_mi_livingroom_floor_obj32 \
     algorithm.custom.obj_vec_len=65 \
     algorithm.custom.obj_diff_vec_len=65 \
     algorithm.custom.loss=true \
-    algorithm.custom.objfeat_dim=32 \
+    algorithm.custom.objfeat_dim=0 \
     algorithm.custom.num_classes=25 \
     algorithm.validation.num_samples_to_render=0 \
     algorithm.validation.num_samples_to_visualize=0 \

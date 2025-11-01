@@ -50,7 +50,6 @@ os.environ[
 ] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
 
-
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
 def main(cfg: DictConfig) -> None:
     if not is_rank_zero:
@@ -129,9 +128,11 @@ def main(cfg: DictConfig) -> None:
             checkpoint_path = download_version_checkpoint(
                 run_path=run_path, version=version, download_dir=download_dir
             )
-            
+
         else:
-            print(f"[Ashok] no checkpoint version specified, using_best {cfg.get('use_best', False)}")
+            print(
+                f"[Ashok] no checkpoint version specified, using_best {cfg.get('use_best', False)}"
+            )
             checkpoint_path = download_latest_or_best_checkpoint(
                 run_path=run_path,
                 download_dir=download_dir,
@@ -186,24 +187,30 @@ def main(cfg: DictConfig) -> None:
     # Limit dataset to num_scenes samples
     dataset_size = len(custom_dataset)
     num_scenes_to_sample = num_scenes  # Always use requested num_scenes
-    
+
     # Create indices with resampling if needed
     if num_scenes_to_sample <= dataset_size:
         # Use first num_scenes samples without resampling
         indices = list(range(num_scenes_to_sample))
     else:
         # Need to resample: repeat the dataset multiple times
-        print(f"[INFO] Requested {num_scenes_to_sample} scenes but dataset only has {dataset_size} scenes.")
-        print(f"[INFO] Will resample with replacement to generate {num_scenes_to_sample} scenes.")
+        print(
+            f"[INFO] Requested {num_scenes_to_sample} scenes but dataset only has {dataset_size} scenes."
+        )
+        print(
+            f"[INFO] Will resample with replacement to generate {num_scenes_to_sample} scenes."
+        )
         indices = [i % dataset_size for i in range(num_scenes_to_sample)]
-    
+
     # Create subset of dataset with the indices (may include duplicates)
     from torch.utils.data import Subset
 
     limited_dataset = Subset(custom_dataset, indices)
-    
+
     # Store the actual dataset indices for each sample (needed for conditions and floor rendering)
-    sampled_dataset_indices = indices.copy()  # This tracks which dataset index was used for each sample
+    sampled_dataset_indices = (
+        indices.copy()
+    )  # This tracks which dataset index was used for each sample
 
     print(f"[DEBUG] Full dataset size: {dataset_size}")
     print(f"[DEBUG] Sampling {num_scenes_to_sample} scenes")
@@ -231,7 +238,6 @@ def main(cfg: DictConfig) -> None:
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
 
-
     try:
         print("[DEBUG] Starting to sample scenes...")
         # Sample scenes from the model
@@ -243,22 +249,25 @@ def main(cfg: DictConfig) -> None:
         # print("[DEBUG] translation vec len:", svd.get_translation_vec_len())
         # print("[DEBUG] rotation vec len:", svd.get_rotation_vec_len())
         # import sys; sys.exit(0)
-        
+
         # Use the actual dataset indices that were sampled (handles resampling with replacement)
         # sampled_dataset_indices contains the original dataset index for each sampled scene
         sampled_indices = sampled_dataset_indices
-        
+
         print(f"[DEBUG] Number of sampled scenes: {len(sampled_indices)}")
-        print(f"[DEBUG] Sampled indices length matches batches: {len(sampled_indices) == sum(len(batch) for batch in sampled_scene_batches)}")
-        
+        print(
+            f"[DEBUG] Sampled indices length matches batches: {len(sampled_indices) == sum(len(batch) for batch in sampled_scene_batches)}"
+        )
+
         sampled_scenes = torch.cat(sampled_scene_batches, dim=0)
 
         print(f"[DEBUG] Sampled scenes shape: {sampled_scenes.shape}")
         print(f"[DEBUG] Sampled indices count: {len(sampled_indices)}")
-        
+
         # Verify the counts match
-        assert len(sampled_indices) == sampled_scenes.shape[0], \
-            f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
+        assert (
+            len(sampled_indices) == sampled_scenes.shape[0]
+        ), f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
 
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
@@ -298,7 +307,9 @@ def main(cfg: DictConfig) -> None:
                     "translations": np.array(translations)[None, :],
                     "sizes": np.array(sizes)[None, :],
                     "angles": np.array(angles)[None, :],
-                    "objfeats_32": np.array(objfeats_32)[None, :] if objfeats_32 is not None else None,
+                    "objfeats_32": np.array(objfeats_32)[None, :]
+                    if objfeats_32 is not None
+                    else None,
                 }
             )
         # print("bbox param list", bbox_params_list)
