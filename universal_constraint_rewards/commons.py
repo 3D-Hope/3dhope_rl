@@ -1,6 +1,6 @@
 import torch
 
-idx_to_labels = {
+idx_to_labels_bedroom = {
     0: "armchair",
     1: "bookshelf",
     2: "cabinet",
@@ -24,6 +24,39 @@ idx_to_labels = {
     20: "wardrobe",
 }
 
+idx_to_labels_livingroom = {
+    0: "armchair",
+    1: "bookshelf",
+    2: "cabinet",
+    3: "ceiling_lamp",
+    4: "chaise_longue_sofa",
+    5: "chinese_chair",
+    6: "coffee_table",
+    7: "console_table",
+    8: "corner_side_table",
+    9: "desk",
+    10: "dining_chair",
+    11: "dining_table",
+    12: "l_shaped_sofa",
+    13: "lazy_sofa",
+    14: "lounge_chair",
+    15: "loveseat_sofa",
+    16: "multi_seat_sofa",
+    17: "pendant_lamp",
+    18: "round_end_table",
+    19: "shelf",
+    20: "stool",
+    21: "tv_stand",
+    22: "wardrobe",
+    23: "wine_cabinet"
+}
+
+idx_to_labels = {
+    "bedroom": idx_to_labels_bedroom,
+    "livingroom": idx_to_labels_livingroom,
+}
+    
+
 ceiling_objects = ["ceiling_lamp", "pendant_lamp"]
 
 
@@ -37,7 +70,7 @@ def descale_to_origin(x, minimum, maximum):
     return x
 
 
-def descale_pos(positions, pos_min=None, pos_max=None, device="cuda"):
+def descale_pos(positions, pos_min=None, pos_max=None, device="cuda", room_type="livingroom"):
     """
     Descale positions to original coordinates.
 
@@ -51,14 +84,25 @@ def descale_pos(positions, pos_min=None, pos_max=None, device="cuda"):
         Descaled positions
     """
     if pos_min is None:
-        pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
+        if room_type == "bedroom":
+            pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
+        elif room_type == "livingroom":
+            pos_min = torch.tensor([-5.672918693230125, 0.0375, -5.716401580065309], device=device)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
     if pos_max is None:
-        pos_max = torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device)
+        if room_type == "bedroom":
+            pos_max = torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device)
+        elif room_type == "livingroom":
+            pos_max = torch.tensor([ 5.09667921844729, 3.3577405149437496, 5.4048500000000015], device=device)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
+
 
     return descale_to_origin(positions, pos_min, pos_max)
 
 
-def descale_size(sizes, size_min=None, size_max=None, device="cuda"):
+def descale_size(sizes, size_min=None, size_max=None, device="cuda", room_type="livingroom"):
     """
     Descale sizes to original dimensions.
 
@@ -80,14 +124,24 @@ def descale_size(sizes, size_min=None, size_max=None, device="cuda"):
         Descaled sizes (HALF-EXTENTS)
     """
     if size_min is None:
-        size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
+        if room_type == "bedroom":
+            size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
+        elif room_type == "livingroom":
+            size_min = torch.tensor([  0.03998999999999997,0.020000020334800084,0.0328434999999998,], device=device)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
     if size_max is None:
-        size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
+        if room_type == "bedroom":
+            size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
+        elif room_type == "livingroom":
+            size_max = torch.tensor([2.3802699999999994, 1.7700649999999998, 1.3224289999999996], device=device)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
 
     return descale_to_origin(sizes, size_min, size_max)
 
 
-def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False):
+def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False, room_type="livingroom"):
     """
     Parse scene tensor and descale positions/sizes to world coordinates.
 
@@ -121,8 +175,8 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False):
 
     # Descale to world coordinates
     if not parse_only:
-        positions = descale_pos(positions_normalized, device=device)
-        sizes = descale_size(sizes_normalized, device=device)
+        positions = descale_pos(positions_normalized, device=device, room_type=room_type)
+        sizes = descale_size(sizes_normalized, device=device, room_type=room_type)
     else:
         positions = positions_normalized
         sizes = sizes_normalized
@@ -156,52 +210,44 @@ def get_all_universal_reward_functions():
         Dict mapping reward names to reward functions
     """
     # Import here to avoid circular imports
+    from universal_constraint_rewards.accessibility_reward import (
+        compute_accessibility_reward,
+    )
+    from universal_constraint_rewards.axis_alignment_reward import (
+        compute_axis_alignment_reward,
+    )
+    from universal_constraint_rewards.furniture_against_wall_reward import (
+        compute_wall_proximity_reward,
+    )
+    from universal_constraint_rewards.gravity_following_reward import (
+        compute_gravity_following_reward,
+    )
     from universal_constraint_rewards.must_have_furniture_reward import (
         compute_must_have_furniture_reward,
+    )
+    from universal_constraint_rewards.night_tables_on_head_side_reward import (
+        compute_nightstand_placement_reward,
     )
     from universal_constraint_rewards.non_penetration_reward import (
         compute_non_penetration_reward,
     )
-    from universal_constraint_rewards.object_count_reward import (
-        compute_object_count_reward,
-    )
-    
     from universal_constraint_rewards.not_out_of_bound_reward import (
         compute_boundary_violation_reward,
     )
-    
-    from universal_constraint_rewards.gravity_following_reward import (
-        compute_gravity_following_reward,
-    )
-    
-    from universal_constraint_rewards.accessibility_reward import (
-        compute_accessibility_reward,
-    )
-    
-    from universal_constraint_rewards.night_tables_on_head_side_reward import (
-        compute_nightstand_placement_reward,
-    )
-    
-    from universal_constraint_rewards.axis_alignment_reward import (
-        compute_axis_alignment_reward,
-    )
-    
-    from universal_constraint_rewards.furniture_against_wall_reward import (
-        compute_wall_proximity_reward,
-    )
-    
+    # from universal_constraint_rewards.object_count_reward import (
+    #     compute_object_count_reward,
+    # )
 
     return {
-        "must_have_furniture": compute_must_have_furniture_reward,
+        # "must_have_furniture": compute_must_have_furniture_reward if ,
         "non_penetration": compute_non_penetration_reward,
-        "object_count": compute_object_count_reward,
+        # "object_count": compute_object_count_reward,
         "not_out_of_bound": compute_boundary_violation_reward,
         "accessibility": compute_accessibility_reward,
         "gravity_following": compute_gravity_following_reward,
-        "night_tables_on_head_side": compute_nightstand_placement_reward,
-        "axis_alignment": compute_axis_alignment_reward,
-        "furniture_against_wall": compute_wall_proximity_reward,
-        
+        # "night_tables_on_head_side": compute_nightstand_placement_reward,
+        # "axis_alignment": compute_axis_alignment_reward,
+        # "furniture_against_wall": compute_wall_proximity_reward,
     }
 
 
@@ -248,7 +294,9 @@ def get_universal_reward(
     reward_components = {}
     if reward_normalizer is not None:
         for key, value in rewards.items():
-            reward_components[key] = value # viz raw values to avoid weird normalized values in curves
+            reward_components[
+                key
+            ] = value  # viz raw values to avoid weird normalized values in curves
             rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
     else:
         for key, value in rewards.items():
@@ -263,6 +311,5 @@ def get_universal_reward(
     for key, value in rewards.items():
         importance = universal_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
-        
 
     return rewards_sum / sum(universal_importance_weights.values()), reward_components

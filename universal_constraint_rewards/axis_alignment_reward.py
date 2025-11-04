@@ -1,7 +1,10 @@
-import torch
 import math
-from universal_constraint_rewards.commons import idx_to_labels
+
 import numpy as np
+import torch
+
+from universal_constraint_rewards.commons import idx_to_labels
+
 # Objects that should be axis-aligned (typically large furniture placed against walls)
 AXIS_ALIGNED_OBJECTS = {
     "double_bed",
@@ -14,10 +17,10 @@ AXIS_ALIGNED_OBJECTS = {
     "desk",
     "dressing_table",
     "tv_stand",
-    "table"
+    "table",
 }
 
-
+# TODO: Ashok I have changed this function to take extra room_type parameter to make it more flexible, fix everywhere this function is used.
 def compute_axis_alignment_reward(parsed_scenes, **kwargs):
     """
     Reward objects for being axis-aligned (parallel/perpendicular to walls).
@@ -35,23 +38,25 @@ def compute_axis_alignment_reward(parsed_scenes, **kwargs):
     Returns:
         rewards: (B,) - alignment reward per scene (negative of total violation)
     """
+    room_type = kwargs["room_type"]
     orientations = parsed_scenes["orientations"]  # (B, N, 2)
     object_indices = parsed_scenes["object_indices"]  # (B, N)
     is_empty = parsed_scenes["is_empty"]  # (B, N)
 
     batch_size, num_objects = orientations.shape[0], orientations.shape[1]
     device = orientations.device
-
+    room_type = kwargs["room_type"]
     # Convert [cos, sin] to angles in radians
     axis_aligned_indices = [
-        int(idx) for idx, label in idx_to_labels.items()
+        int(idx)
+        for idx, label in idx_to_labels[room_type].items()
         if label in AXIS_ALIGNED_OBJECTS
     ]
 
     # Create mask for objects that should be axis-aligned
     should_align = torch.zeros_like(is_empty, dtype=torch.bool)
     for idx in axis_aligned_indices:
-        should_align |= (object_indices == idx)
+        should_align |= object_indices == idx
 
     # Mask for valid objects to check (non-empty AND should be aligned)
     valid_mask = ~is_empty & should_align  # (B, N)
@@ -77,7 +82,6 @@ def compute_axis_alignment_reward(parsed_scenes, **kwargs):
     #         print(f"  Batch {b}, Object {n}, ClassIdx {class_idx}, Angle {angle}")
     # Identify which objects should be axis-aligned
 
-
     # Compute deviation from nearest axis-aligned angle (0, 90, 180, -90, -180) in degrees
     axis_angles = np.array([0, 90, 180, -90, -180])
     deviation = np.zeros_like(angles_deg, dtype=float)
@@ -95,7 +99,10 @@ def compute_axis_alignment_reward(parsed_scenes, **kwargs):
 
 
 if __name__ == "__main__":
-    args = np.load("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/reward_func_args_for_first_10_scenes.npy", allow_pickle=True)
+    args = np.load(
+        "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/reward_func_args_for_first_10_scenes.npy",
+        allow_pickle=True,
+    )
     # print("loaded ", args)
     start = 0
     end = 15
@@ -106,8 +113,9 @@ if __name__ == "__main__":
     #         args.item()[key] = args.item()[key][start:end]
     #     print(f"{key}: {args.item()[key].shape if hasattr(args.item()[key], 'shape') else len(args.item()[key])}")
     # Enable visualization for testing
-    result = compute_axis_alignment_reward(**args.item(), 
+    result = compute_axis_alignment_reward(
+        **args.item(),
         # save_viz=True, viz_dir="./viz"
     )
-    # print(result[start:end])   
-    print(result) 
+    # print(result[start:end])
+    print(result)

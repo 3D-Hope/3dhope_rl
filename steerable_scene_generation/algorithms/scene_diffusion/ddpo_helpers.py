@@ -737,7 +737,7 @@ def composite_reward(
     # Get number of classes from config
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
-    parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes)
+    parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes, room_type=room_type)
     # print(f"[Ashok] parsed scene {parsed_scene}")
     # for key in parsed_scene:
     #     print(f"[Ashok] datatype of {key} is {type(parsed_scene[key])}")

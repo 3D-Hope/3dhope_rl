@@ -15,9 +15,9 @@ ddpo:
   use_inpaint: False  # Use inpainting-based diffusion for RL finetuning
   dynamic_constraint_rewards:
     use: False
-    reward_code_dir: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/dynamic_reward_functions"
+    reward_code_dir: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/dynamic_reward_functions_final"
     user_query: "a kids room"
-    room_type: "bedroom"
+    room_type: ${dataset.data.room_type}
     stats_path: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
     
     # Overall weights for universal vs dynamic rewards

@@ -67,16 +67,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 self.cfg.dataset.sdf_cache_dir
             ):
                 print(f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}...")
-                # precompute_sdf_cache(
-                #     config=self.cfg, num_workers=16,
-                #     sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                # )
-
-                precompute_accessibility_cache(
-                    config=self.cfg,
-                    num_workers=16,
-                    accessibility_cache_dir=self.cfg.dataset.accessibility_cache_dir,
+                precompute_sdf_cache(
+                    config=self.cfg, num_workers=16,
+                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                 )
+
             else:
                 print(
                     f"SDF cache directory {self.cfg.dataset.sdf_cache_dir} already exists. Skipping SDF precomputation."
@@ -94,8 +89,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 print(
                     f"Accessibility cache directory {self.cfg.dataset.accessibility_cache_dir} already exists. Skipping Accessibility precomputation."
                 )
-            # self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
-            # self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
+            self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
+            self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
             self.train_accessibility_cache = AccessibilityCache(
                 self.cfg.dataset.accessibility_cache_dir, split="train_val"
             )
@@ -110,7 +105,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 self.get_reward_functions,
                 self.test_reward_functions,
             ) = import_dynamic_reward_functions(
-                self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir
+                self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir,
+                "dynamic_reward_functions_final"
+                
             )
         else:
             self.get_reward_functions = None
@@ -143,7 +140,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         ), "Cannot specify both last_n_timesteps_only and n_timesteps_to_sample"
 
         self.put_model_in_eval_mode()
-
+        room_type = getattr(self.cfg.dataset.data, "room_type", "bedroom")
         if isinstance(self.noise_scheduler, DDIMScheduler):
             self.noise_scheduler.set_timesteps(
                 self.cfg.noise_schedule.ddim.num_inference_timesteps, device=self.device
@@ -177,17 +174,34 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             self.cfg.max_num_objects_per_scene
             + self.cfg.num_additional_tokens_for_sampling
         )
-        xt = self.sample_continuous_noise_prior(
-            (
-                self.cfg.ddpo.batch_size,
-                num_objects_per_scene,
-                self.scene_vec_desc.get_object_vec_len(),
-            )
-        ).to(
-            self.device
-        )  # Shape (B, N, V)
+        if room_type == "livingroom":
+            xt = self.sample_continuous_noise_prior(
+                (
+                    self.cfg.ddpo.batch_size,
+                    num_objects_per_scene,
+                    self.cfg.custom.num_classes
+                    + self.cfg.custom.translation_dim
+                    + self.cfg.custom.size_dim
+                    + self.cfg.custom.angle_dim
+                    + self.cfg.custom.objfeat_dim,
+                )
+            ).to(
+                self.device
+            )  # Shape (B, N, V)
+        elif room_type == "bedroom":
+            xt = self.sample_continuous_noise_prior(
+                (
+                    self.cfg.ddpo.batch_size,
+                    num_objects_per_scene,
+                    self.scene_vec_desc.get_object_vec_len(),
+                )
+            ).to(
+                self.device
+            )  # Shape (B, N, V)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
         trajectory.append(xt)
-
+        print(f"[Ashok] Initial noise xt shape: {xt.shape}")
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:
@@ -199,7 +213,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
         if use_inpaint:
             # Build label->idx map from room type labels
-            room_type = getattr(self.cfg.dataset.data, "room_type", "bedroom")
+            
             label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
             label_to_idx = {v: k for k, v in label_map.items()}
 
@@ -420,7 +434,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             )
 
             # Parse and descale scenes
-            parsed_scene = parse_and_descale_scenes(x0, num_classes=num_classes)
+            parsed_scene = parse_and_descale_scenes(x0, num_classes=num_classes, room_type=room_type)
 
             if self.cfg.ddpo.universal_reward.use_physcene_reward:
                 # TODO: Get floor plan args from dataset, how do we get the dataset here? we need get_floor_plan_args from custom dataset here to get the values for each scene in the batch
@@ -477,8 +491,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     ],
                     indices=cond_dict["idx"],
                     is_val=is_val,
-                    # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                    # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                    sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                    sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache,
                     accessibility_cache=self.train_accessibility_cache
                     if not is_val
                     else self.val_accessibility_cache,
@@ -504,7 +518,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
             if hasattr(self.cfg.ddpo, "dynamic_constraint_rewards"):
                 room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
-                    "room_type", "bedroom"
+                    "room_type", self.cfg.dataset.data.room_type
                 )
 
             # Compute composite reward with all physics constraints
@@ -522,8 +536,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 ],
                 indices=cond_dict["idx"],
                 is_val=is_val,
-                # sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                # sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache
+                sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
+                sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache,
                 accessibility_cache=self.train_accessibility_cache
                 if not is_val
                 else self.val_accessibility_cache,

@@ -5,15 +5,20 @@ Ensures objects stay within room boundaries and follow proper layout constraints
 Compatible with parsed_scene format used throughout the project.
 """
 
+from typing import Dict
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import Dict
+
 from tqdm import trange
 
 from .common import cal_iou_3d
 
-def room_layout_constraint(parsed_scene: Dict, floor_plan_args: Dict, **kwargs) -> torch.Tensor:
+
+def room_layout_constraint(
+    parsed_scene: Dict, floor_plan_args: Dict, **kwargs
+) -> torch.Tensor:
     """
     Calculate room layout loss (φlayout) for each scene in the batch.
 
@@ -47,11 +52,14 @@ def room_layout_constraint(parsed_scene: Dict, floor_plan_args: Dict, **kwargs) 
     angles = torch.atan2(orientations[:, :, 1], orientations[:, :, 0])  # (B, N)
 
     # Construct bbox [B, N, 7]
-    bbox = torch.cat([
-        positions,  # x, y, z
-        sizes * 2,  # w, l, h (convert half-extents to full size)
-        angles.unsqueeze(-1)  # angle
-    ], dim=-1)
+    bbox = torch.cat(
+        [
+            positions,  # x, y, z
+            sizes * 2,  # w, l, h (convert half-extents to full size)
+            angles.unsqueeze(-1),  # angle
+        ],
+        dim=-1,
+    )
 
     # Construct objectness from is_empty [B, N, 1]
     objectness = (~is_empty).unsqueeze(-1)
@@ -60,22 +68,27 @@ def room_layout_constraint(parsed_scene: Dict, floor_plan_args: Dict, **kwargs) 
     print("Calculating Room-layout Guidance ...")
     device = bbox.device
     loss_room_layout = torch.zeros(len(bbox), device=device)
-    bbox_outer = torch.tensor(floor_plan_args["room_outer_box"], device=device, dtype=torch.float32)
+    bbox_outer = torch.tensor(
+        floor_plan_args["room_outer_box"], device=device, dtype=torch.float32
+    )
     bbox_cnt_room = bbox_outer.shape[1]
 
     for j in trange(len(bbox)):
-        bbox_cur = bbox[j:j+1, :, :]
-        objectness_cur = objectness[j:j+1, :, :]
+        bbox_cur = bbox[j : j + 1, :, :]
+        objectness_cur = objectness[j : j + 1, :, :]
 
-        bbox_cur = bbox_cur[:, objectness_cur[0,:,0], :]
+        bbox_cur = bbox_cur[:, objectness_cur[0, :, 0], :]
         bbox_cur_cnt = bbox_cur.shape[1]
-        bbox_outer_cur = bbox_outer[j:j+1, :, :]
+        bbox_outer_cur = bbox_outer[j : j + 1, :, :]
 
         for i in range(bbox_cur_cnt):
             bbox_target = bbox_cur[:, i, :]  # [1, 7]
-            bbox_target = torch.tile(bbox_target[:, None, :], [1, bbox_cnt_room, 1])   
-            loss_room_layout[j] += cal_iou_3d(bbox_outer_cur, bbox_target).sum() / len(bbox) / bbox_cur_cnt
+            bbox_target = torch.tile(bbox_target[:, None, :], [1, bbox_cnt_room, 1])
+            loss_room_layout[j] += (
+                cal_iou_3d(bbox_outer_cur, bbox_target).sum() / len(bbox) / bbox_cur_cnt
+            )
     return loss_room_layout
+
 
 def test_room_layout_constraint():
     """Test cases for room layout constraint."""
@@ -112,13 +125,12 @@ def test_room_layout_constraint():
 
         return scene
 
-   
     # Test Case 1: Objects completely inside room bounds (should have low IoU with walls)
     print("\nTest 1: Objects within room bounds")
     scene1 = create_scene_with_positions(
         [
-            (4, [0.0, 1.0, 0.0], [0.3, 0.3, 0.3]),      # Chair at room center
-            (18, [1.0, 0.5, 1.0], [0.4, 0.2, 0.4]),     # Table near center
+            (4, [0.0, 1.0, 0.0], [0.3, 0.3, 0.3]),  # Chair at room center
+            (18, [1.0, 0.5, 1.0], [0.4, 0.2, 0.4]),  # Table near center
         ]
     )
 
@@ -126,8 +138,8 @@ def test_room_layout_constraint():
     print("Test 2: Objects outside room bounds")
     scene2 = create_scene_with_positions(
         [
-            (4, [10.0, 10.0, 10.0], [0.3, 0.3, 0.3]),   # Chair far outside
-            (18, [-10.0, -5.0, -10.0], [0.4, 0.2, 0.4]), # Table far outside
+            (4, [10.0, 10.0, 10.0], [0.3, 0.3, 0.3]),  # Chair far outside
+            (18, [-10.0, -5.0, -10.0], [0.4, 0.2, 0.4]),  # Table far outside
         ]
     )
 
@@ -135,8 +147,8 @@ def test_room_layout_constraint():
     print("Test 3: Mixed - some inside, some outside")
     scene3 = create_scene_with_positions(
         [
-            (4, [0.0, 1.0, 0.0], [0.3, 0.3, 0.3]),      # Chair inside
-            (18, [10.0, 5.0, 10.0], [0.4, 0.2, 0.4]),   # Table outside
+            (4, [0.0, 1.0, 0.0], [0.3, 0.3, 0.3]),  # Chair inside
+            (18, [10.0, 5.0, 10.0], [0.4, 0.2, 0.4]),  # Table outside
         ]
     )
 
@@ -148,10 +160,10 @@ def test_room_layout_constraint():
 
     # Parse scenes
     parsed = parse_and_descale_scenes(scenes, num_classes=num_classes)
-    
+
     # TODO: room_outer_box ??
     # b, num of sides of floor polygon, 7
-    room_outer_box = torch.rand(4,50,7)  # Dummy data for testing
+    room_outer_box = torch.rand(4, 50, 7)  # Dummy data for testing
 
     # Compute room layout loss for each scene
     losses = room_layout_constraint(parsed, room_outer_box)
@@ -168,6 +180,7 @@ def test_room_layout_constraint():
 
     print("\n✓ All room layout constraint tests passed!")
     print("=" * 70)
+
 
 if __name__ == "__main__":
     test_room_layout_constraint()

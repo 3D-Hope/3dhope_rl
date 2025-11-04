@@ -1,23 +1,22 @@
 import json
 import os
-
 import torch
-
-from universal_constraint_rewards.commons import parse_and_descale_scenes
+from universal_constraint_rewards.commons import idx_to_labels
+from dynamic_constraint_rewards.get_reward_stats import get_reward_stats_from_baseline, get_reward_stats_from_dataset
+from omegaconf import DictConfig
 
 
 def import_dynamic_reward_functions(reward_code_dir: str):
-    import os
-
     # Test each reward function individually.
+    base_dir = os.path.dirname(__file__)
     reward_functions = {}
     # Iterate through each file inside reward_code_dir and import the reward function.
-    for file in os.listdir(reward_code_dir):
+    for file in os.listdir(os.path.join(base_dir, reward_code_dir)):
         if file.endswith(".py") and file != "__init__.py":
             # Dynamically import the module and extract get_reward and test_reward.
             import importlib
 
-            module_name = f"dynamic_constraint_rewards.dynamic_reward_functions.{file.split('.')[0]}"
+            module_name = f"dynamic_constraint_rewards.{reward_code_dir}.{file.split('.')[0]}"
             module = importlib.import_module(module_name)
 
             get_reward = getattr(module, "get_reward")
@@ -71,7 +70,7 @@ def get_dynamic_reward(
     )
     idx_to_label = all_rooms_info[room_type]["unique_values"]
     max_objects = all_rooms_info[room_type]["max_objects"]
-    num_classes = all_rooms_info[room_type]["num_classes"]
+    num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     for key, value in get_reward_functions.items():
         reward = value(
             parsed_scene,
@@ -95,10 +94,83 @@ def get_dynamic_reward(
     if dynamic_importance_weights is None:
         dynamic_importance_weights = {key: 1.0 for key in rewards.keys()}
 
-
     for key, value in rewards.items():
         importance = dynamic_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
-        
 
     return rewards_sum / sum(dynamic_importance_weights.values()), reward_components
+
+    
+def verify_tests_for_reward_function(room_type: str, reward_code_dir: str = None) -> bool:
+    if reward_code_dir is None:
+        raise ValueError("reward_code_dir is required")
+    _, test_reward_functions = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
+    floor_polygons = [[-3,-3],[-3,3],[3,3],[3,-3]]
+    for test_reward_function_name, test_reward_function in test_reward_functions.items():
+        # try:
+        print("Testing reward function: ", test_reward_function_name)
+        test_reward_function(idx_to_labels[room_type], room_type, floor_polygons)
+        print("Passed test", test_reward_function_name)
+        # except Exception as e:
+        #     print("Failed test", test_reward_function_name, "with error: ", e)
+        #     return False
+    return True
+
+def get_reward_stats_from_baseline_helper(cfg: DictConfig, load = None, inpaint_masks=None, threshold_dict=None, reward_code_dir: str = None):
+    get_reward_functions, _ = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
+    stats = get_reward_stats_from_baseline(
+        get_reward_functions,
+        load=load,
+        num_scenes=1000,
+        config=cfg,
+        algorithm_custom_old=cfg.algorithm.custom.old,
+        inpaint_masks=inpaint_masks,
+        threshold_dict=threshold_dict,
+    )
+    # print(f"[Ashok] Baseline stats: {stats}")
+    return stats
+
+def get_reward_stats_from_dataset_helper(cfg: DictConfig, reward_code_dir: str = None):
+    get_reward_functions, _ = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
+    stats = get_reward_stats_from_dataset(
+        get_reward_functions,
+        config=cfg,
+    )
+    return stats
+
+def save_reward_functions(reward_functions, reward_code_dir: str = None):
+    if reward_code_dir is None:
+        raise ValueError("reward_code_dir is required")
+    base_dir = os.path.dirname(__file__)
+    reward_code_dir = os.path.join(base_dir, reward_code_dir)
+    rewards = reward_functions["rewards"]
+    if os.path.exists(reward_code_dir):
+        import shutil
+        shutil.rmtree(reward_code_dir)
+    os.makedirs(reward_code_dir, exist_ok=True)
+
+    for reward in rewards:
+        print(reward["id"], reward["constraint_id"], reward["name"])
+        file_path = os.path.join(reward_code_dir, f"{reward['id']}_{reward['name']}.py")
+        with open(file_path, "w") as f:
+            f.write(reward["code"])
+        print(f"Saved code to {file_path}")
+    return True
+
+def get_stats_from_initial_rewards(reward_functions, cfg=None, load=None, reward_code_dir: str = None):  
+    if cfg is None:
+        raise ValueError("cfg is required")
+    inpaint_masks = reward_functions["inpaint"]
+    inpaint_masks = str(inpaint_masks).replace("'", '')
+    print(inpaint_masks)
+    print(type(inpaint_masks))
+    threshold_dict = {}
+    for reward in reward_functions["rewards"]:
+        threshold_dict[reward["name"]] = reward["success_threshold"]
+    print(threshold_dict)
+    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir=reward_code_dir)
+    baseline_stats = get_reward_stats_from_baseline_helper(cfg, load=load, inpaint_masks=inpaint_masks, threshold_dict=threshold_dict, reward_code_dir=reward_code_dir)  
+    print(f"Dataset stats: {dataset_stats}")
+    print(f"Baseline stats: {baseline_stats}")
+
+    return dataset_stats, baseline_stats

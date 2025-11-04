@@ -7,7 +7,7 @@ import torch
 from universal_constraint_rewards.commons import idx_to_labels
 
 
-def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom", **kwargs):
+def compute_must_have_furniture_reward(parsed_scene, **kwargs):
     """
     Calculate reward based on whether the scene contains required furniture for the room type.
 
@@ -20,6 +20,7 @@ def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom", **kwar
     Returns:
         rewards: Tensor of shape (B,) with must-have furniture rewards for each scene
     """
+    room_type = kwargs["room_type"]
     if room_type != "bedroom":
         raise NotImplementedError(
             f"Room type '{room_type}' is not supported yet. Only 'bedroom' is implemented."
@@ -32,7 +33,9 @@ def compute_must_have_furniture_reward(parsed_scene, room_type="bedroom", **kwar
 
     # Define required furniture for bedroom
     bed_types = ["single_bed", "double_bed", "kids_bed"]
-    bed_indices = [idx for idx, label in idx_to_labels.items() if label in bed_types]
+    bed_indices = [
+        int(idx) for idx, label in idx_to_labels[room_type].items() if label in bed_types
+    ]
 
     # Check if each scene has at least one bed
     has_bed = torch.zeros(batch_size, dtype=torch.bool, device=device)

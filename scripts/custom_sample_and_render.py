@@ -19,9 +19,7 @@ from omegaconf.omegaconf import open_dict
 from threed_front.datasets import get_raw_dataset
 from threed_front.evaluation import ThreedFrontResults
 
-from steerable_scene_generation.algorithms.scene_diffusion.scene_diffuser_base import (
-    SceneDiffuserBase,
-)
+
 from steerable_scene_generation.datasets.custom_scene import get_dataset_raw_and_encoded
 from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
     CustomDataset,
@@ -314,9 +312,9 @@ def main(cfg: DictConfig) -> None:
                     else None,
                 }
             )
-        print(f"[Ashok] shape of objfeats_32: {np.array(objfeats_32)[None, :].shape}")
-        # print("bbox param list", bbox_params_list)
-        print(f"[Ashok] type of dataset {type(encoded_dataset)}")
+        # print(f"[Ashok] shape of objfeats_32: {np.array(objfeats_32)[None, :].shape}")
+        # # print("bbox param list", bbox_params_list)
+        # print(f"[Ashok] type of dataset {type(encoded_dataset)}")
 
         # Only collect successful indices and layouts
         layout_list = []
@@ -331,7 +329,7 @@ def main(cfg: DictConfig) -> None:
                 print(f"[WARNING] Skipping scene {idx} due to post_process error: {e}")
                 continue
 
-        # print("final output: ", layout_list)
+        # print("postprocessed output: ", layout_list[0])
         # layout_list [{"class_labels":[], "translations":[1,2,3], "sizes": [1,2,3,], "angles": [1]}, ...]
         threed_front_results = ThreedFrontResults(
             raw_train_dataset, raw_dataset, config, successful_indices, layout_list

@@ -1,12 +1,14 @@
 import json
-import torch
+
 import numpy as np
+import torch
 
 
 class RewardNormalizer:
     """
     Normalize each to [-1, 1] using robust min–max scaling using EMA-updated percentiles.
     """
+
     def __init__(
         self,
         baseline_stats_path: str,
@@ -36,8 +38,12 @@ class RewardNormalizer:
         for name, s in baseline_stats.items():
             # Initialize from robust range if available, else use min/max
             self.stats[name] = {
-                "min": torch.tensor(s.get("percentile_1", s["min"]), dtype=torch.float32),
-                "max": torch.tensor(s.get("percentile_99", s["max"]), dtype=torch.float32),
+                "min": torch.tensor(
+                    s.get("percentile_1", s["min"]), dtype=torch.float32
+                ),
+                "max": torch.tensor(
+                    s.get("percentile_99", s["max"]), dtype=torch.float32
+                ),
             }
 
     def normalize(self, name: str, rewards: torch.Tensor) -> torch.Tensor:

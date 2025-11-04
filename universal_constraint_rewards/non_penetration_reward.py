@@ -91,18 +91,19 @@ def compute_non_penetration_reward(parsed_scene, **kwargs):
     Returns:
         rewards: Tensor of shape (B,) with non-penetration rewards for each scene
     """
+    room_type = kwargs["room_type"]
     positions = parsed_scene["positions"]
     sizes = parsed_scene["sizes"]
     object_indices = parsed_scene["object_indices"]
     is_empty = parsed_scene["is_empty"]
     batch_size = positions.shape[0]
     device = positions.device
-
+    # print(f"Parsed scene: pos {positions[:10]} sizes: {sizes[:10]}")
     # print(f"Parsed scene: {parsed_scene}")
 
     # Identify ceiling objects (they don't participate in ground-level collisions)
     ceiling_indices = [
-        idx for idx, label in idx_to_labels.items() if label in ceiling_objects
+        idx for idx, label in idx_to_labels[room_type].items() if label in ceiling_objects
     ]
     is_ceiling = torch.zeros_like(is_empty, dtype=torch.bool)
     for ceiling_idx in ceiling_indices:
@@ -137,6 +138,7 @@ def compute_non_penetration_reward(parsed_scene, **kwargs):
     # Following original authors: reward = sum(distances) where distances are negative
     # Here: reward = -penetration_depth (more penetration = more negative)
     reward = -total_penetration
+    # import sys; sys.exit()
     return reward
 
 

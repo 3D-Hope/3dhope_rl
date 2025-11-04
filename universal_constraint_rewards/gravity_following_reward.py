@@ -3,63 +3,100 @@ import torch
 
 from universal_constraint_rewards.commons import ceiling_objects, idx_to_labels
 
+
 def compute_gravity_following_reward(parsed_scene, tolerance=0.01, **kwargs):
     """
     Calculate gravity-following reward based on how close objects are to the ground.
-    
+
     Objects should rest on the floor (y_min ≈ 0), except for ceiling objects.
     Only penalizes objects that are MORE than tolerance away from the floor(both sinking and floating cases).
-    
+
     Args:
         parsed_scene: Dict returned by parse_and_descale_scenes()
         tolerance: Distance threshold in meters (default 0.01m = 1cm)
-    
+
     Returns:
         rewards: Tensor of shape (B,) with gravity-following rewards
     """
+
+    # --- Check for required keys and NaNs ---
+    required_keys = ["positions", "sizes", "object_indices", "is_empty"]
+    for key in required_keys:
+        if key not in parsed_scene:
+            raise ValueError(f"Key '{key}' missing in parsed_scene for gravity reward.")
+        if not torch.is_tensor(parsed_scene[key]):
+            raise TypeError(
+                f"Key '{key}' should be a torch.Tensor in parsed_scene."
+            )
+        if torch.isnan(parsed_scene[key]).any():
+            # Print which batch/object is NaN if possible
+            nan_locs = torch.nonzero(torch.isnan(parsed_scene[key]))
+            print(f"[WARNING] NaN detected in '{key}' at indices {nan_locs}.")
+            print(f"[Ashok] parsed_scene: {parsed_scene[key][nan_locs]}")
+            # Optionally replace with zeros for safety, or just raise:
+            # raise ValueError(f"NaN detected in '{key}' for gravity reward computation.")
+
+    if "room_type" not in kwargs:
+        raise ValueError("Missing 'room_type' in kwargs for gravity reward.")
+
+    room_type = kwargs["room_type"]
     positions = parsed_scene["positions"]
     sizes = parsed_scene["sizes"]
     object_indices = parsed_scene["object_indices"]
     is_empty = parsed_scene["is_empty"]
-    
+
+    # Check shapes are consistent
+    B, N = positions.shape[:2]
+    for _key in ["sizes", "object_indices", "is_empty"]:
+        arr = parsed_scene[_key]
+        if arr.shape[0] != B or arr.shape[1] != N:
+            raise ValueError(
+                f"Shape mismatch: 'positions' is ({B}, {N}), but '{_key}' is {arr.shape}"
+            )
+
     # Identify ceiling objects
     ceiling_indices = [
-        idx for idx, label in idx_to_labels.items() if label in ceiling_objects
+        idx for idx, label in idx_to_labels[room_type].items() if label in ceiling_objects
     ]
     is_ceiling = torch.zeros_like(is_empty, dtype=torch.bool)
     for ceiling_idx in ceiling_indices:
         is_ceiling |= object_indices == ceiling_idx
-    
+
     # Mask: objects that should follow gravity (non-empty, non-ceiling)
     should_follow_gravity = ~is_empty & ~is_ceiling
-    
+
     # Calculate y_min for each object (bottom of bounding box)
     y_centers = positions[:, :, 1]  # (B, N)
     y_half_extents = sizes[:, :, 1]  # (B, N) - already half-extents
     y_min = y_centers - y_half_extents  # (B, N)
-    
+
     # Distance from floor (should be ~0 for objects on ground)
     floor_distance = torch.abs(y_min)  # (B, N)
-    
+
     # Calculate violations: distance beyond tolerance
     # If object is 0.005m off ground and tolerance is 0.01m: no violation (0)
     # If object is 0.05m off ground and tolerance is 0.01m: violation of 0.04m
     violations = torch.clamp(floor_distance - tolerance, min=0.0)  # (B, N)
-    
+
     # Apply mask: only consider gravity-following objects
     masked_violations = torch.where(
-        should_follow_gravity, 
-        violations, 
-        torch.zeros_like(violations)
+        should_follow_gravity, violations, torch.zeros_like(violations)
     )
-    
+
     # Sum violations per scene
     total_violation = masked_violations.sum(dim=1)  # (B,)
-    
-    # Negative because violations are bad
+
+    # Additional check: if all objects are empty, set reward to zero for that scene
+    # (avoiding negative zero if there are no objects to sum over)
+    all_empty = is_empty.all(dim=1)  # (B,)
     reward = -total_violation
-    
-    # print(f"Gravity reward (negative total violation in m): {reward}")
+    reward = torch.where(all_empty, torch.zeros_like(reward), reward)
+
+    # Final check for NaN in reward
+    if torch.isnan(reward).any():
+        nan_locs = torch.nonzero(torch.isnan(reward))
+        print(f"[WARNING] NaN detected in gravity reward output at indices {nan_locs}.")
+
     return reward
 
 

@@ -1,7 +1,10 @@
-import torch
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, FancyArrow, Polygon as MplPolygon
+import numpy as np
+import torch
+
+from matplotlib.patches import FancyArrow, Polygon as MplPolygon, Rectangle
+from universal_constraint_rewards.commons import idx_to_labels
+
 # TODO: IF distance of headboard is less than 5 0 reward
 
 # Objects that should have back against wall
@@ -18,7 +21,9 @@ WALL_BACKED_OBJECTS = {
 }
 
 
-def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, **kwargs):
+def compute_wall_proximity_reward(
+    parsed_scenes, floor_polygons, **kwargs
+):
     """
     Reward furniture for having their back/headboard close to walls.
 
@@ -42,6 +47,7 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
     Returns:
         rewards: (B,) - wall proximity reward per scene (negative of total distance)
     """
+    room_type = kwargs["room_type"]
     positions = parsed_scenes["positions"]  # (B, N, 3)
     orientations = parsed_scenes["orientations"]  # (B, N, 2)
     sizes = parsed_scenes["sizes"]  # (B, N, 3) - already half-extents
@@ -53,13 +59,12 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
 
     # Identify which objects should have back against wall
     wall_backed_indices = [
-        int(idx) for idx, label in idx_to_labels.items()
-        if label in WALL_BACKED_OBJECTS
+        int(idx) for idx, label in idx_to_labels[room_type].items() if label in WALL_BACKED_OBJECTS
     ]
     # print("wall_backed_indices:", wall_backed_indices)
     should_back_wall = torch.zeros_like(is_empty, dtype=torch.bool)
     for idx in wall_backed_indices:
-        should_back_wall |= (object_indices == idx)
+        should_back_wall |= object_indices == idx
 
     # Mask for valid objects (non-empty AND should be against wall)
     valid_mask = ~is_empty & should_back_wall  # (B, N)
@@ -137,8 +142,8 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
                 continue
             pos_x = positions[b, n, 0]  # X position
             pos_z = positions[b, n, 2]  # Z position
-            size_x = sizes[b, n, 0]     # half-width
-            size_z = sizes[b, n, 2]     # half-depth
+            size_x = sizes[b, n, 0]  # half-width
+            size_z = sizes[b, n, 2]  # half-depth
 
             cos_theta = orientations[b, n, 0]
             sin_theta = orientations[b, n, 1]
@@ -173,7 +178,7 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
                 ray_dz = 0.0
 
             # Cast ray and find nearest wall intersection
-            min_distance = float('inf')
+            min_distance = float("inf")
             nearest_wall_point = None
             for i in range(num_edges):
                 p1 = polygon[i]
@@ -190,8 +195,11 @@ def compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels, 
                 if t > 0 and 0 <= s <= 1:
                     if t < min_distance:
                         min_distance = t
-                        nearest_wall_point = (headboard_x + t * ray_dx, headboard_z + t * ray_dz)
-            if min_distance < float('inf'):
+                        nearest_wall_point = (
+                            headboard_x + t * ray_dx,
+                            headboard_z + t * ray_dz,
+                        )
+            if min_distance < float("inf"):
                 total_distances[b] += min_distance
                 min_distances.append(min_distance)
                 headboard_xs.append(headboard_x.item())
@@ -219,14 +227,16 @@ def visualize_bed_placement():
     Also computes wall proximity reward for each setup using compute_wall_proximity_reward().
     """
     # L-shaped room
-    room_polygon = np.array([
-        [0, 0],
-        [6, 0],
-        [6, 4],
-        [3, 4],
-        [3, 6],
-        [0, 6],
-    ])
+    room_polygon = np.array(
+        [
+            [0, 0],
+            [6, 0],
+            [6, 4],
+            [3, 4],
+            [3, 6],
+            [0, 6],
+        ]
+    )
 
     # Bed dimensions (half-extents)
     bed_width = 1.0
@@ -254,8 +264,13 @@ def visualize_bed_placement():
         ax = axes[idx]
 
         # Draw room
-        room_patch = MplPolygon(room_polygon, fill=True, facecolor='lightgray',
-                                edgecolor='black', linewidth=2)
+        room_patch = MplPolygon(
+            room_polygon,
+            fill=True,
+            facecolor="lightgray",
+            edgecolor="black",
+            linewidth=2,
+        )
         ax.add_patch(room_patch)
 
         # Calculate headboard position and ray direction (for drawing)
@@ -278,18 +293,22 @@ def visualize_bed_placement():
         # -----------------------------
         parsed_scenes = {
             "positions": torch.tensor([[[x, 0.0, z]]], dtype=torch.float32),
-            "orientations": torch.tensor([[[np.cos(angle_rad), np.sin(angle_rad)]]], dtype=torch.float32),
+            "orientations": torch.tensor(
+                [[[np.cos(angle_rad), np.sin(angle_rad)]]], dtype=torch.float32
+            ),
             "sizes": torch.tensor([[[bed_width, 0.0, bed_depth]]], dtype=torch.float32),
             "object_indices": torch.tensor([[0]]),  # single bed
             "is_empty": torch.tensor([[False]]),
         }
         floor_polygons = [torch.tensor(room_polygon, dtype=torch.float32)]
-        reward = compute_wall_proximity_reward(parsed_scenes, floor_polygons, idx_to_labels)
+        reward = compute_wall_proximity_reward(
+            parsed_scenes, floor_polygons, idx_to_labels
+        )
         reward_value = reward.item()
         # -----------------------------
 
         # Ray-cast manually to visualize intersection
-        min_distance = float('inf')
+        min_distance = float("inf")
         nearest_wall_point, nearest_edge = None, None
         num_edges = len(room_polygon)
         for i in range(num_edges):
@@ -305,58 +324,119 @@ def visualize_bed_placement():
             if t > 0 and 0 <= s <= 1:
                 if t < min_distance:
                     min_distance = t
-                    nearest_wall_point = (headboard_x + t * ray_dx, headboard_z + t * ray_dz)
+                    nearest_wall_point = (
+                        headboard_x + t * ray_dx,
+                        headboard_z + t * ray_dz,
+                    )
                     nearest_edge = (p1, p2)
 
         # Draw bed rectangle
-        bed_rect = Rectangle((x - bed_width, z - bed_depth),
-                             bed_width * 2, bed_depth * 2,
-                             angle=rotation, rotation_point='center',
-                             facecolor='purple', alpha=0.7, edgecolor='black', linewidth=2)
+        bed_rect = Rectangle(
+            (x - bed_width, z - bed_depth),
+            bed_width * 2,
+            bed_depth * 2,
+            angle=rotation,
+            rotation_point="center",
+            facecolor="purple",
+            alpha=0.7,
+            edgecolor="black",
+            linewidth=2,
+        )
         ax.add_patch(bed_rect)
 
         # Draw arrows
-        ax.arrow(x, z, np.sin(angle_rad)*0.5, np.cos(angle_rad)*0.5,
-                 head_width=0.2, head_length=0.15, fc='red', ec='red', linewidth=2)
-        ax.arrow(x, z, -np.sin(angle_rad)*0.5, -np.cos(angle_rad)*0.5,
-                 head_width=0.2, head_length=0.15, fc='green', ec='green',
-                 linewidth=2, linestyle='--', alpha=0.7)
+        ax.arrow(
+            x,
+            z,
+            np.sin(angle_rad) * 0.5,
+            np.cos(angle_rad) * 0.5,
+            head_width=0.2,
+            head_length=0.15,
+            fc="red",
+            ec="red",
+            linewidth=2,
+        )
+        ax.arrow(
+            x,
+            z,
+            -np.sin(angle_rad) * 0.5,
+            -np.cos(angle_rad) * 0.5,
+            head_width=0.2,
+            head_length=0.15,
+            fc="green",
+            ec="green",
+            linewidth=2,
+            linestyle="--",
+            alpha=0.7,
+        )
 
         # Mark headboard
-        ax.plot(headboard_x, headboard_z, 'go', markersize=10, label='Headboard', zorder=5)
+        ax.plot(
+            headboard_x, headboard_z, "go", markersize=10, label="Headboard", zorder=5
+        )
 
         # Highlight wall edge and ray
         if nearest_edge is not None:
-            ax.plot([nearest_edge[0][0], nearest_edge[1][0]],
-                    [nearest_edge[0][1], nearest_edge[1][1]],
-                    'r-', linewidth=4, alpha=0.5, label='Nearest wall')
+            ax.plot(
+                [nearest_edge[0][0], nearest_edge[1][0]],
+                [nearest_edge[0][1], nearest_edge[1][1]],
+                "r-",
+                linewidth=4,
+                alpha=0.5,
+                label="Nearest wall",
+            )
         if nearest_wall_point is not None:
-            ax.plot([headboard_x, nearest_wall_point[0]],
-                    [headboard_z, nearest_wall_point[1]],
-                    'b--', linewidth=2, label=f'Dist={min_distance:.2f}')
-            ax.plot(nearest_wall_point[0], nearest_wall_point[1], 'rx',
-                    markersize=12, markeredgewidth=3, zorder=5)
+            ax.plot(
+                [headboard_x, nearest_wall_point[0]],
+                [headboard_z, nearest_wall_point[1]],
+                "b--",
+                linewidth=2,
+                label=f"Dist={min_distance:.2f}",
+            )
+            ax.plot(
+                nearest_wall_point[0],
+                nearest_wall_point[1],
+                "rx",
+                markersize=12,
+                markeredgewidth=3,
+                zorder=5,
+            )
 
         # Plot settings
         ax.set_xlim(-0.5, 6.5)
         ax.set_ylim(-0.5, 6.5)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
         ax.grid(True, alpha=0.3)
-        color = "green" if reward_value < -0.3 else ("orange" if reward_value < -1.0 else "red")
-        ax.set_title(f"{desc}\nReward: {reward_value:.3f}", fontsize=10, fontweight='bold', color=color)
-        ax.legend(fontsize=8, loc='upper right')
+        color = (
+            "green"
+            if reward_value < -0.3
+            else ("orange" if reward_value < -1.0 else "red")
+        )
+        ax.set_title(
+            f"{desc}\nReward: {reward_value:.3f}",
+            fontsize=10,
+            fontweight="bold",
+            color=color,
+        )
+        ax.legend(fontsize=8, loc="upper right")
 
     plt.tight_layout()
-    plt.savefig('bed_placement_visualization_with_rewards.png', dpi=150, bbox_inches='tight')
+    plt.savefig(
+        "bed_placement_visualization_with_rewards.png", dpi=150, bbox_inches="tight"
+    )
     plt.show()
     print("Visualization saved as 'bed_placement_visualization_with_rewards.png'")
 
+
 if __name__ == "__main__":
     # visualize_bed_placement()
-    args = np.load("/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/reward_func_args_for_first_10_scenes.npy", allow_pickle=True)
+    args = np.load(
+        "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/reward_func_args_for_first_10_scenes.npy",
+        allow_pickle=True,
+    )
     # print("loaded ", args)
     # only take start to end scenes
     start = 40
     end = 55
-    
+
     print(compute_wall_proximity_reward(**args.item()))

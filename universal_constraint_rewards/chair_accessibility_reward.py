@@ -534,12 +534,14 @@ Room bounds (from dataset):
 #     print("=" * 70)
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 # if __name__ == "__main__":
 #     test_chair_accessibility_reward()
 import torch
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Polygon as MplPolygon
+
+from matplotlib.patches import Polygon as MplPolygon, Rectangle
 
 # Seating set
 SEATING_OBJECTS = {
@@ -552,7 +554,10 @@ SEATING_OBJECTS = {
     "bench",
 }
 
-def compute_seating_accessibility_reward(parsed_scene, floor_polygons, idx_to_labels, **kwargs):
+
+def compute_seating_accessibility_reward(
+    parsed_scene, floor_polygons, idx_to_labels, **kwargs
+):
     """
     Reward that penalizes seating objects that face a wall too closely (so they cannot be seated).
     Signature matches compute_wall_proximity_reward:
@@ -572,16 +577,20 @@ def compute_seating_accessibility_reward(parsed_scene, floor_polygons, idx_to_la
     device = positions.device
 
     # Find which indices correspond to seating objects
-    seating_indices = [int(idx) for idx, label in idx_to_labels.items() if label in SEATING_OBJECTS]
+    seating_indices = [
+        int(idx) for idx, label in idx_to_labels.items() if label in SEATING_OBJECTS
+    ]
 
     should_seating_check = torch.zeros_like(is_empty, dtype=torch.bool)
     for idx in seating_indices:
-        should_seating_check |= (object_indices == idx)
+        should_seating_check |= object_indices == idx
 
     valid_mask = ~is_empty & should_seating_check
 
     # Parameters (tweakable)
-    min_clearance = kwargs.get("min_clearance", 0.3)   # meters: below this => cannot sit (hard penalty)
+    min_clearance = kwargs.get(
+        "min_clearance", 0.3
+    )  # meters: below this => cannot sit (hard penalty)
     eps = 1e-6
 
     penalties = torch.zeros(batch_size, device=device)
@@ -644,7 +653,7 @@ def compute_seating_accessibility_reward(parsed_scene, floor_polygons, idx_to_la
                 ray_dz = 0.0
 
             # Cast ray from front point along forward direction; find nearest wall intersection distance t
-            min_t = float('inf')
+            min_t = float("inf")
             for i in range(num_edges):
                 p1 = poly[i]
                 p2 = poly[(i + 1) % num_edges]
@@ -666,14 +675,15 @@ def compute_seating_accessibility_reward(parsed_scene, floor_polygons, idx_to_la
                         min_t = t
 
             # If ray hits a wall (seat front faces wall), apply penalty depending on how close it is
-            if min_t < float('inf'):
+            if min_t < float("inf"):
                 # Hard violation: too close to wall to sit
                 if min_t + eps < min_clearance:
                     # quadratic penalty of violation magnitude
-                    violation = (min_clearance - min_t)
-                    penalties[b] += (violation ** 2)  # positive penalty; reward will be negative sum
+                    violation = min_clearance - min_t
+                    penalties[b] += (
+                        violation**2
+                    )  # positive penalty; reward will be negative sum
                     # print(f"less than clearance {min_t=}, {penalties[b]}")
-
 
             # If no wall intersection along forward ray -> no penalty (seat faces open space)
 
@@ -688,14 +698,16 @@ def visualize_seating_configs():
     Uses the same L-shaped room polygon as earlier visualizations.
     """
     # L-shaped room
-    room_polygon = np.array([
-        [0, 0],
-        [6, 0],
-        [6, 4],
-        [3, 4],
-        [3, 6],
-        [0, 6],
-    ])
+    room_polygon = np.array(
+        [
+            [0, 0],
+            [6, 0],
+            [6, 4],
+            [3, 4],
+            [3, 6],
+            [0, 6],
+        ]
+    )
 
     # Seat half-extents (approx)
     seat_w = 0.45
@@ -723,8 +735,13 @@ def visualize_seating_configs():
         ax = axes[idx]
 
         # draw room polygon
-        room_patch = MplPolygon(room_polygon, fill=True, facecolor='lightgray',
-                                edgecolor='black', linewidth=2)
+        room_patch = MplPolygon(
+            room_polygon,
+            fill=True,
+            facecolor="lightgray",
+            edgecolor="black",
+            linewidth=2,
+        )
         ax.add_patch(room_patch)
 
         angle_rad = np.radians(rotation)
@@ -750,17 +767,21 @@ def visualize_seating_configs():
         # Build parsed_scene for single object and call reward
         parsed_scene = {
             "positions": torch.tensor([[[x, 0.0, z]]], dtype=torch.float32),
-            "orientations": torch.tensor([[[np.cos(angle_rad), np.sin(angle_rad)]]], dtype=torch.float32),
+            "orientations": torch.tensor(
+                [[[np.cos(angle_rad), np.sin(angle_rad)]]], dtype=torch.float32
+            ),
             "sizes": torch.tensor([[[seat_w, 0.0, seat_d]]], dtype=torch.float32),
             "object_indices": torch.tensor([[0]]),
             "is_empty": torch.tensor([[False]]),
         }
         floor_polygons = [torch.tensor(room_polygon, dtype=torch.float32)]
-        reward = compute_seating_accessibility_reward(parsed_scene, floor_polygons, idx_to_labels)
+        reward = compute_seating_accessibility_reward(
+            parsed_scene, floor_polygons, idx_to_labels
+        )
         reward_value = reward.item()
 
         # Ray cast to visualize intersection point and distance (same logic as in reward)
-        min_t = float('inf')
+        min_t = float("inf")
         nearest_edge = None
         nearest_point = None
         for i in range(len(room_polygon)):
@@ -782,46 +803,79 @@ def visualize_seating_configs():
                     nearest_point = (front_x + t * fdx, front_z + t * fdz)
 
         # draw seat rectangle
-        seat_rect = Rectangle((x - seat_w, z - seat_d), seat_w * 2, seat_d * 2,
-                              angle=rotation, rotation_point='center',
-                              facecolor='sandybrown', edgecolor='black', linewidth=2, alpha=0.9)
+        seat_rect = Rectangle(
+            (x - seat_w, z - seat_d),
+            seat_w * 2,
+            seat_d * 2,
+            angle=rotation,
+            rotation_point="center",
+            facecolor="sandybrown",
+            edgecolor="black",
+            linewidth=2,
+            alpha=0.9,
+        )
         ax.add_patch(seat_rect)
 
         # draw forward arrow (red) and front point
-        ax.arrow(x, z, np.sin(angle_rad) * 0.35, np.cos(angle_rad) * 0.35,
-                 head_width=0.12, head_length=0.1, fc='red', ec='red', linewidth=2)
-        ax.plot(front_x, front_z, 'go', markersize=8, label='Seat front')
+        ax.arrow(
+            x,
+            z,
+            np.sin(angle_rad) * 0.35,
+            np.cos(angle_rad) * 0.35,
+            head_width=0.12,
+            head_length=0.1,
+            fc="red",
+            ec="red",
+            linewidth=2,
+        )
+        ax.plot(front_x, front_z, "go", markersize=8, label="Seat front")
 
         # highlight nearest wall
         if nearest_edge is not None:
-            ax.plot([nearest_edge[0][0], nearest_edge[1][0]],
-                    [nearest_edge[0][1], nearest_edge[1][1]],
-                    'r-', linewidth=4, alpha=0.5, label='Nearest wall')
+            ax.plot(
+                [nearest_edge[0][0], nearest_edge[1][0]],
+                [nearest_edge[0][1], nearest_edge[1][1]],
+                "r-",
+                linewidth=4,
+                alpha=0.5,
+                label="Nearest wall",
+            )
         if nearest_point is not None:
-            ax.plot([front_x, nearest_point[0]], [front_z, nearest_point[1]], 'b--', linewidth=2,
-                    label=f"dist={min_t:.2f}")
-            ax.plot(nearest_point[0], nearest_point[1], 'rx', markersize=10, zorder=5)
+            ax.plot(
+                [front_x, nearest_point[0]],
+                [front_z, nearest_point[1]],
+                "b--",
+                linewidth=2,
+                label=f"dist={min_t:.2f}",
+            )
+            ax.plot(nearest_point[0], nearest_point[1], "rx", markersize=10, zorder=5)
 
         ax.set_xlim(-0.5, 6.5)
         ax.set_ylim(-0.5, 6.5)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
         ax.grid(True, alpha=0.3)
 
         # Color the title based on severity: more negative => worse
         if reward_value < -1.0:
-            color = 'red'
+            color = "red"
         elif reward_value < -0.2:
-            color = 'orange'
+            color = "orange"
         else:
-            color = 'green'
+            color = "green"
 
-        ax.set_title(f"{desc}\nReward: {reward_value:.3f}", fontsize=10, fontweight='bold', color=color)
-        ax.legend(fontsize=8, loc='upper right')
+        ax.set_title(
+            f"{desc}\nReward: {reward_value:.3f}",
+            fontsize=10,
+            fontweight="bold",
+            color=color,
+        )
+        ax.legend(fontsize=8, loc="upper right")
 
     plt.tight_layout()
-    plt.savefig('seating_accessibility_visualization.png', dpi=150, bbox_inches='tight')
+    plt.savefig("seating_accessibility_visualization.png", dpi=150, bbox_inches="tight")
     plt.show()
     print("Visualization saved as 'seating_accessibility_visualization.png'")
+
 
 if __name__ == "__main__":
     visualize_seating_configs()

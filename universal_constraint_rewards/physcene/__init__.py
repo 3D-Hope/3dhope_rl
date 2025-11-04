@@ -10,6 +10,5 @@ from .common import (
     image_to_map_coordinate,
     map_to_image_coordinate,
 )
-from .walkability_constraint import walkability_constraint
 from .room_layout_constraint import room_layout_constraint
-
+from .walkability_constraint import walkability_constraint

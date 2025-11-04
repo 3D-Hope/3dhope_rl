@@ -5,15 +5,16 @@ Prevents objects from overlapping or colliding with each other.
 Compatible with parsed_scene format used throughout the project.
 """
 
-import torch
 from typing import Dict
+
+import torch
+
 from tqdm import trange
 
 from .common import cal_iou_3d
 
 
-def collision_constraint(parsed_scene: Dict,
-                       **kwargs) -> torch.Tensor:
+def collision_constraint(parsed_scene: Dict, **kwargs) -> torch.Tensor:
     """
     Calculate collision avoidance loss (φcoll) for each scene in the batch.
 
@@ -49,16 +50,21 @@ def collision_constraint(parsed_scene: Dict,
     angles = torch.atan2(orientations[:, :, 1], orientations[:, :, 0])  # (B, N)
 
     # Construct bbox [B, N, 7]
-    bbox = torch.cat([
-        positions,  # x, y, z 
-        sizes * 2,  # w, l, h (convert half-extents to full size)
-        angles.unsqueeze(-1)  # angle
-    ], dim=-1)
-    
+    bbox = torch.cat(
+        [
+            positions,  # x, y, z
+            sizes * 2,  # w, l, h (convert half-extents to full size)
+            angles.unsqueeze(-1),  # angle
+        ],
+        dim=-1,
+    )
+
     print("Length of bbox", len(bbox))
 
     # Construct objectness from is_empty [B, N, 1]
-    objectness = (~is_empty).unsqueeze(-1)  # bool mask: True for present objects, False for empty
+    objectness = (~is_empty).unsqueeze(
+        -1
+    )  # bool mask: True for present objects, False for empty
     class_labels = one_hot
 
     print("Calculating Collision Guidance (φcoll)...")
@@ -66,16 +72,16 @@ def collision_constraint(parsed_scene: Dict,
     loss_collision = torch.zeros(len(bbox), device=device)
 
     for j in trange(len(bbox)):
-        bbox_cur = bbox[j:j+1, :, :]
-        objectness_cur = objectness[j:j+1, :, :]
-        class_labels_cur = class_labels[j:j+1, :, :]
+        bbox_cur = bbox[j : j + 1, :, :]
+        objectness_cur = objectness[j : j + 1, :, :]
+        class_labels_cur = class_labels[j : j + 1, :, :]
 
         # Filter valid objects (convert to boolean mask)
-        bbox_cur = bbox_cur[:, objectness_cur[0,:,0], :]
-        class_labels_cur = class_labels_cur[:, objectness_cur[0,:,0], :]
+        bbox_cur = bbox_cur[:, objectness_cur[0, :, 0], :]
+        class_labels_cur = class_labels_cur[:, objectness_cur[0, :, 0], :]
 
         bbox_cur_cnt = bbox_cur.shape[1]
-        
+
         for i in range(bbox_cur_cnt):
             bbox_target = bbox_cur[:, i, :]  # [B, 7]
             # Compare with all other objects
@@ -89,6 +95,7 @@ def collision_constraint(parsed_scene: Dict,
 
             loss_collision[j] += loss_iter.sum() / bbox_cur_cnt / len(bbox)
     return loss_collision
+
 
 def test_collision_constraint():
     """Test cases for collision constraint."""
@@ -173,7 +180,6 @@ def test_collision_constraint():
 
     # Compute collision loss
     losses_collision = collision_constraint(parsed)
-    
 
     print(f"\nResults:")
     for i in range(4):
