@@ -42,17 +42,17 @@
     "num_scenes": 1000
   },
   "gravity_following": {
-    "min": NaN,
-    "max": NaN,
-    "mean": NaN,
-    "median": NaN,
-    "stddev": NaN,
-    "percentile_1": NaN,
-    "percentile_5": NaN,
-    "percentile_25": NaN,
-    "percentile_75": NaN,
-    "percentile_95": NaN,
-    "percentile_99": NaN,
+    "min": -1,
+    "max": 0,
+    "mean": -0.5,
+    "median": -0.5,
+    "stddev": 0.0,
+    "percentile_1": -1.0,
+    "percentile_5": -1.0,
+    "percentile_25": -1.0,
+    "percentile_75": 0.0,
+    "percentile_95": 0.0,
+    "percentile_99": 0.0,
     "num_scenes": 1000
   }
 }

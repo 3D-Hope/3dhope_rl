@@ -50,8 +50,6 @@ os.environ[
 ] = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/.cache/huggingface/datasets"
 
 
-
-
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
 def main(cfg: DictConfig) -> None:
     if not is_rank_zero:
@@ -147,7 +145,7 @@ def main(cfg: DictConfig) -> None:
         update_data_file_paths(config["data"], config),
         # config["data"],
         split=config["validation"].get("splits", ["test"]),
-        max_length=config["network"]["sample_num_points"],
+        max_length=config["max_num_objects_per_scene"],
         include_room_mask=config["network"].get("room_mask_condition", True),
     )
     print(
@@ -178,19 +176,22 @@ def main(cfg: DictConfig) -> None:
     # Limit dataset to num_scenes samples
     dataset_size = len(custom_dataset)
     num_scenes_to_sample = min(num_scenes, dataset_size)
-    
+
     # Create subset of dataset with only the first num_scenes samples
     from torch.utils.data import Subset
+
     indices = list(range(num_scenes_to_sample))
     limited_dataset = Subset(custom_dataset, indices)
-    
+
     print(f"[DEBUG] Full dataset size: {dataset_size}")
     print(f"[DEBUG] Sampling {num_scenes_to_sample} scenes")
-    
+
     # Use batch size from config, not num_scenes
-    batch_size = cfg.experiment.get("test", {}).get("batch_size", cfg.experiment.validation.batch_size)
+    batch_size = cfg.experiment.get("test", {}).get(
+        "batch_size", cfg.experiment.validation.batch_size
+    )
     print(f"[DEBUG] Using batch size: {batch_size}")
-    
+
     # Create a dataloader for the limited dataset
     dataloader = torch.utils.data.DataLoader(
         limited_dataset,
@@ -206,7 +207,7 @@ def main(cfg: DictConfig) -> None:
     for batch in dataloader:
         print(f"[DEBUG] Batch keys: {batch.keys()}")
         print(f"[DEBUG] Has fpbpn: {'fpbpn' in batch}")
-        if 'fpbpn' in batch:
+        if "fpbpn" in batch:
             print(f"[DEBUG] fpbpn shape: {batch['fpbpn'].shape}")
             print(f"[DEBUG] fpbpn sample values: {batch['fpbpn'][0, :5]}")
         else:
@@ -232,11 +233,13 @@ def main(cfg: DictConfig) -> None:
         print("COMPOSITE REWARD ANALYSIS")
         print("=" * 80)
         try:
-            from universal_constraint_rewards.commons import get_composite_reward
+            from universal_constraint_rewards.commons import (
+                get_composite_reward,
+                parse_and_descale_scenes,
+            )
             from universal_constraint_rewards.gravity_following_reward import (
                 compute_gravity_following_reward,
             )
-            from universal_constraint_rewards.commons import parse_and_descale_scenes
 
             # Get composite reward with all components
             total_rewards, reward_components = get_composite_reward(
@@ -274,16 +277,16 @@ def main(cfg: DictConfig) -> None:
             print("\n" + "=" * 80)
             print("DETAILED GRAVITY VIOLATION ANALYSIS")
             print("=" * 80)
-            
+
             # Parse scenes to get descaled positions and sizes
             parsed_scene = parse_and_descale_scenes(sampled_scenes, num_classes=22)
-            
+
             # Compute raw gravity reward (negative penalty)
             gravity_raw = compute_gravity_following_reward(parsed_scene)
-            
+
             # Convert to numpy for statistics
             r = gravity_raw.cpu().numpy()
-            
+
             # Basic descriptive statistics
             stats = {
                 "mean": np.mean(r),
@@ -292,27 +295,27 @@ def main(cfg: DictConfig) -> None:
                 "min": np.min(r),
                 "max": np.max(r),
                 "iqr": np.percentile(r, 75) - np.percentile(r, 25),
-                "skewness": ((r - np.mean(r))**3).mean() / (np.std(r)**3 + 1e-8),
-                "kurtosis": ((r - np.mean(r))**4).mean() / (np.std(r)**4 + 1e-8),
+                "skewness": ((r - np.mean(r)) ** 3).mean() / (np.std(r) ** 3 + 1e-8),
+                "kurtosis": ((r - np.mean(r)) ** 4).mean() / (np.std(r) ** 4 + 1e-8),
             }
-            
+
             print("\n=== Raw Gravity Reward Statistics (Negative Penalty) ===")
             print("-" * 60)
             for k, v in stats.items():
                 print(f"{k:20s}: {v:+.6f}")
-            
+
             print("\n=== Percentile Distribution ===")
             print("-" * 60)
             for p in [5, 25, 50, 75, 95, 99]:
                 print(f"{p:2d}th percentile: {np.percentile(r, p):+.6f}")
-            
+
             print("\n=== Variation Metrics ===")
             print("-" * 60)
             batch_var = np.var(r)
             batch_cv = np.std(r) / (abs(np.mean(r)) + 1e-8)
             print(f"Variance              : {batch_var:.6f}")
             print(f"Coefficient of Var    : {batch_cv:.6f}")
-            
+
             # Count scenes by severity
             print("\n=== Violation Severity Breakdown ===")
             print("-" * 60)
@@ -320,13 +323,21 @@ def main(cfg: DictConfig) -> None:
             minor_violations = np.sum((r < 0) & (r >= -0.1))
             moderate_violations = np.sum((r < -0.1) & (r >= -0.5))
             severe_violations = np.sum(r < -0.5)
-            
+
             total = len(r)
-            print(f"Perfect (r = 0)       : {perfect_scenes:4d} / {total} ({100*perfect_scenes/total:5.1f}%)")
-            print(f"Minor (-0.1 < r < 0)  : {minor_violations:4d} / {total} ({100*minor_violations/total:5.1f}%)")
-            print(f"Moderate (-0.5 < r < -0.1): {moderate_violations:4d} / {total} ({100*moderate_violations/total:5.1f}%)")
-            print(f"Severe (r < -0.5)     : {severe_violations:4d} / {total} ({100*severe_violations/total:5.1f}%)")
-            
+            print(
+                f"Perfect (r = 0)       : {perfect_scenes:4d} / {total} ({100*perfect_scenes/total:5.1f}%)"
+            )
+            print(
+                f"Minor (-0.1 < r < 0)  : {minor_violations:4d} / {total} ({100*minor_violations/total:5.1f}%)"
+            )
+            print(
+                f"Moderate (-0.5 < r < -0.1): {moderate_violations:4d} / {total} ({100*moderate_violations/total:5.1f}%)"
+            )
+            print(
+                f"Severe (r < -0.5)     : {severe_violations:4d} / {total} ({100*severe_violations/total:5.1f}%)"
+            )
+
             # Physical interpretation
             print("\n=== Physical Interpretation ===")
             print("-" * 60)
@@ -335,15 +346,21 @@ def main(cfg: DictConfig) -> None:
             print(f"Median floating area  : {-np.median(r):.4f} m²")
             print(f"Max floating area     : {-np.min(r):.4f} m² (worst scene)")
             print(f"Min floating area     : {-np.max(r):.4f} m² (best scene)")
-            
+
             print("\n=== Recommended Scale Parameter ===")
             print("-" * 60)
             # Recommend scale based on data distribution
-            recommended_scale = np.percentile(-r, 75)  # Use 75th percentile of violation
+            recommended_scale = np.percentile(
+                -r, 75
+            )  # Use 75th percentile of violation
             print(f"Based on 75th percentile violation: {recommended_scale:.4f}")
-            print(f"This means violations around {recommended_scale:.4f} m² will get ~-0.76 normalized penalty")
-            print(f"Current scale in code: Check NORMALIZATION_CONFIG['gravity']['scale']")
-            
+            print(
+                f"This means violations around {recommended_scale:.4f} m² will get ~-0.76 normalized penalty"
+            )
+            print(
+                f"Current scale in code: Check NORMALIZATION_CONFIG['gravity']['scale']"
+            )
+
             print("=" * 80 + "\n")
 
         except Exception as e:

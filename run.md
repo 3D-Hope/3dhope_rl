@@ -262,6 +262,14 @@ rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/s
 
 rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/accessibility_cache.zip insait:/home/pramish_paudel/3dhope_data/accessibility_cache.zip
 
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom.zip insait:/home/pramish_paudel/3dhope_data/  
+
+
+
+
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_accessibility_cache.zip insait:/home/pramish_paudel/3dhope_data/ 
+
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_sdf_cache.zip insait:/home/pramish_paudel/3dhope_data/  
 ---
 {0: 'armchair', 1: 'bookshelf', 2: 'cabinet', 3: 'ceiling_lamp', 4: 'chair', 5: 'children_cabinet', 6: 'coffee_table', 7: 'desk', 8: 'double_bed', 9: 'dressing_chair', 10: 'dressing_table', 11: 'kids_bed', 12: 'nightstand', 13: 'pendant_lamp', 14: 'shelf', 15: 'single_bed', 16: 'sofa', 17: 'stool', 18: 'table', 19: 'tv_stand', 20: 'wardrobe'}
 
@@ -1234,8 +1242,8 @@ python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=cust
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/3d_front_data \
-    dataset.sdf_cache_dir=./living_sdf_cache/ \
-    dataset.accessibility_cache_dir=./living_accessibility_cache
+    dataset.sdf_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_sdf_cache \
+    dataset.accessibility_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_accessibility_cache
     
 
 
