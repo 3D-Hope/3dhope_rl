@@ -297,10 +297,12 @@ def main(cfg: DictConfig) -> None:
                     )
                     try:
                         objfeats_32.append(
-                            sampled_scenes_np[i, j, n_classes + 8 : n_classes + 32]
+                            sampled_scenes_np[i, j, n_classes + 8 : n_classes + 8 + 32]
                         )
+                        
                     except Exception as e:
                         objfeats_32 = None
+                
             bbox_params_list.append(
                 {
                     "class_labels": np.array(class_labels)[None, :],
@@ -312,6 +314,7 @@ def main(cfg: DictConfig) -> None:
                     else None,
                 }
             )
+        print(f"[Ashok] shape of objfeats_32: {np.array(objfeats_32)[None, :].shape}")
         # print("bbox param list", bbox_params_list)
         print(f"[Ashok] type of dataset {type(encoded_dataset)}")
 

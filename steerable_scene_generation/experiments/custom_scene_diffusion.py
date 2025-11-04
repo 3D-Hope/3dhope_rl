@@ -36,6 +36,7 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
         use_ema: bool = False,
         scenes=None,
         inpaint_masks=None,
+        to_hardcode=None,
         callbacks: list | None = None,
     ) -> list[torch.Tensor]:
         if not self.algo:
@@ -72,7 +73,8 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
                     for k, v in batch.items()
                 }
                 inpainted = self.algo.inpaint_scenes(
-                    batch, scenes=scenes, inpaint_masks=inpaint_masks, use_ema=use_ema
+                    batch, scenes=scenes, inpaint_masks=inpaint_masks, use_ema=use_ema,
+                    to_hardcode=to_hardcode,
                 )
                 results.append(inpainted.cpu())
         return results

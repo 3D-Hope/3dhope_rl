@@ -52,6 +52,7 @@ def ddpm_step_with_logprob(
     sample: torch.Tensor,
     generator=None,
     prev_sample: Optional[torch.Tensor] = None,
+    mask: Optional[torch.Tensor] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Copied and adapted from
@@ -77,6 +78,9 @@ def ddpm_step_with_logprob(
             A random number generator.
         prev_sample (`torch.Tensor`, *optional*): The previous sample. If not provided,
             it is computed from the model output.
+        mask (`torch.Tensor`, *optional*): A boolean mask of shape matching sample.
+            If provided, only True elements contribute to the log probability.
+            Shape: (B, N, V) where True means "editable/include in log prob".
 
     Returns:
         A tuple containing the (predicted) previous sample and the log probability of
@@ -179,6 +183,11 @@ def ddpm_step_with_logprob(
         - torch.log(variance)
         - torch.log(torch.sqrt(2 * torch.as_tensor(math.pi)))
     )
+    
+    # Apply mask if provided: zero out log prob for masked (frozen) elements
+    if mask is not None:
+        log_prob = log_prob * mask.float()
+    
     # Compute mean log probability over all but batch dimension. This is the combined
     # log probability as the individual elements of xt are independent.
     log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))
@@ -195,6 +204,7 @@ def ddim_step_with_logprob(
     use_clipped_model_output: bool = False,
     generator=None,
     prev_sample: Optional[torch.Tensor] = None,
+    mask: Optional[torch.Tensor] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Copied and adapted from
@@ -224,6 +234,9 @@ def ddim_step_with_logprob(
         generator: random number generator.
         prev_sample (`torch.Tensor`, *optional*): The previous sample. If not provided,
             it is computed from the model output.
+        mask (`torch.Tensor`, *optional*): A boolean mask of shape matching sample.
+            If provided, only True elements contribute to the log probability.
+            Shape: (B, N, V) where True means "editable/include in log prob".
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: A tuple containing the (predicted) previous
@@ -343,6 +356,11 @@ def ddim_step_with_logprob(
         - torch.log(std_dev_t)
         - torch.log(torch.sqrt(2 * torch.as_tensor(math.pi)))
     )
+    
+    # Apply mask if provided: zero out log prob for masked (frozen) elements
+    if mask is not None:
+        log_prob = log_prob * mask.float()
+    
     # Compute mean log probability over all but batch dimension. This is the combined
     # log probability as the individual elements of xt are independent.
     log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))

@@ -1,13 +1,13 @@
 import logging
 import os
 import pickle
-
+import json
 from pathlib import Path
 
 import hydra
 import numpy as np
 import torch
-
+import yaml
 from omegaconf import DictConfig, OmegaConf
 from omegaconf.omegaconf import open_dict
 from threed_front.datasets import get_raw_dataset
@@ -27,6 +27,7 @@ from steerable_scene_generation.utils.ckpt_utils import (
 from steerable_scene_generation.utils.distributed_utils import is_rank_zero
 from steerable_scene_generation.utils.logging import filter_drake_vtk_warning
 from steerable_scene_generation.utils.omegaconf import register_resolvers
+from universal_constraint_rewards.commons import idx_to_labels
 
 idx_to_class = {
     0: "armchair",
@@ -199,17 +200,35 @@ def main(cfg: DictConfig) -> None:
         persistent_workers=False,
         pin_memory=cfg.experiment.test.pin_memory,
     )
+    
+    idx_to_labels_room_type = idx_to_labels[cfg.dataset.data.room_type]
+    label_to_idx_room_type = {v: k for k, v in idx_to_labels_room_type.items()}
+    print(f"[DEBUG] label_to_idx_room_type: {label_to_idx_room_type}")
 
     # Build experiment and get diffuser
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
+    print(f"[DEBUG] experiment: {cfg.algorithm.predict.inpaint_masks}")
+    if cfg.algorithm.predict.inpaint_masks is not None:
+        print(f"[DEBUG] Inpaint masks: {cfg.algorithm.predict.inpaint_masks}")
+        print(f"[DEBUG] Type of inpaint masks: {type(cfg.algorithm.predict.inpaint_masks)}")
+        val = cfg.algorithm.predict.inpaint_masks
+        if isinstance(val, DictConfig):
+            inpaint_masks = OmegaConf.to_container(val, resolve=True)  # -> plain dict
+        elif isinstance(val, str):
+            inpaint_masks = yaml.safe_load(val)
+        to_hardcode = {int(label_to_idx_room_type[k]): v for k, v in inpaint_masks.items()}
+    else:
+        inpaint_masks = None
+        to_hardcode = None
     # SAUGAT
     sampled_scene_batches = experiment.exec_task(
         "inpaint",
         dataloader=dataloader,
         use_ema=cfg.algorithm.ema.use,
-        scenes=scenes,
-        inpaint_masks=inpaint_masks,
-    )  # NOTE: fpbpn goes as a part of dataloader batch, scenes and inpaint_masks sent  for each indices of dataloader
+        to_hardcode=to_hardcode,
+    )
+    
+    # NOTE: fpbpn goes as a part of dataloader batch, scenes and inpaint_masks sent  for each indices of dataloader
     # SAUGAT
     # experiment.algo = experiment._build_algo(ckpt_path=checkpoint_path)
     # diffuser = experiment.algo

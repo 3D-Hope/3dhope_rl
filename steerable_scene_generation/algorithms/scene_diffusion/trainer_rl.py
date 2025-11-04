@@ -14,7 +14,10 @@ from universal_constraint_rewards.accessibility_reward import (
     AccessibilityCache,
     precompute_accessibility_cache,
 )
-from universal_constraint_rewards.commons import parse_and_descale_scenes
+from universal_constraint_rewards.commons import (
+    parse_and_descale_scenes,
+    idx_to_labels,
+)
 from universal_constraint_rewards.not_out_of_bound_reward import (
     SDFCache,
     precompute_sdf_cache,
@@ -191,6 +194,64 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             cond_dict = self.dataset.sample_data_dict(
                 data=batch, num_items=self.cfg.ddpo.batch_size
             )
+        
+        # Optional: RL inpainting using cfg.algorithm.predict.inpaint_masks
+        use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
+        if use_inpaint:
+            # Build label->idx map from room type labels
+            room_type = getattr(self.cfg.dataset.data, "room_type", "bedroom")
+            label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
+            label_to_idx = {v: k for k, v in label_map.items()}
+
+            # Determine class dimension
+            if hasattr(self.cfg, "custom") and hasattr(self.cfg.custom, "num_classes"):
+                num_classes = int(self.cfg.custom.num_classes)
+            else:
+                num_classes = len(label_map) + 1  # +1 for empty
+
+            # Read inpaint config dict: {label_name: count}
+            inpaint_cfg = getattr(self.cfg.predict, "inpaint_masks", None)
+            
+            if inpaint_cfg is None:
+                raise ValueError(
+                    "cfg.ddpo.use_inpaint=True but cfg.algorithm.predict.inpaint_masks is not provided."
+                )
+            
+            # Handle DictConfig or string representations
+            from omegaconf import DictConfig, OmegaConf
+            if isinstance(inpaint_cfg, str):
+                # Parse string as YAML/dict
+                import yaml
+                inpaint_cfg = yaml.safe_load(inpaint_cfg)
+            elif isinstance(inpaint_cfg, DictConfig):
+                inpaint_cfg = OmegaConf.to_container(inpaint_cfg, resolve=True)
+            
+            print(f"Using inpainting with config: {inpaint_cfg}")
+            # Initialize mask and originals
+            inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
+            original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
+
+            hardcoded_count = 0
+            # DictConfig and dict both support .items()
+            for label_name, count in inpaint_cfg.items():
+                class_idx = int(label_to_idx[str(label_name)])
+                count = int(count)
+                end = hardcoded_count + count
+                if end > xt.shape[1]:
+                    end = xt.shape[1]
+                if hardcoded_count >= end:
+                    continue
+                # Freeze class slots for these objects
+                inpainting_masks[:, hardcoded_count:end, :num_classes] = False
+                # Set original class one-hot: default -1, with target class 1
+                original_scenes[:, hardcoded_count:end, :num_classes] = -1.0
+                original_scenes[:, hardcoded_count:end, class_idx] = 1.0
+                hardcoded_count = end
+
+            # Apply mask to initial noise
+            xt = torch.where(inpainting_masks, xt, original_scenes)
+            trajectory[0] = xt
+            print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
 
         for t_idx, t in enumerate(
             tqdm(
@@ -212,20 +273,28 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
             # Compute the updated sample and log probability.
             if isinstance(self.noise_scheduler, DDPMScheduler):
-                xt, log_prop = ddpm_step_with_logprob(
+                xt_next, log_prop = ddpm_step_with_logprob(
                     scheduler=self.noise_scheduler,
                     model_output=residual,
                     timestep=t,
                     sample=xt,
+                    mask=inpainting_masks if use_inpaint else None,
                 )
             else:  # DDIMScheduler
-                xt, log_prop = ddim_step_with_logprob(
+                xt_next, log_prop = ddim_step_with_logprob(
                     scheduler=self.noise_scheduler,
                     model_output=residual,
                     timestep=t,
                     sample=xt,
                     eta=self.cfg.noise_schedule.ddim.eta,
+                    mask=inpainting_masks if use_inpaint else None,
                 )
+
+            # If inpainting, keep unmasked values fixed to originals
+            if use_inpaint:
+                xt = torch.where(inpainting_masks, xt_next, original_scenes)
+            else:
+                xt = xt_next
 
             trajectory.append(xt)
             trajectory_log_props.append(log_prop)
@@ -331,7 +400,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             is_val = len(self.dataset) <= 200
             print(f"[Ashok] is_val: {is_val}")
             # Get room type from config
-            room_type = "bedroom"  # default
+            # room_type = "bedroom"  # default
+            room_type = self.cfg.dataset.data.room_type  # default
             if hasattr(self.cfg.ddpo, "universal_reward"):
                 room_type = self.cfg.ddpo.universal_reward.get("room_type", "bedroom")
 
@@ -430,7 +500,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         elif self.cfg.ddpo.dynamic_constraint_rewards.use:
             # print("Using dynamic constraint rewards and universal rewards")
             # Get room type from config
-            room_type = "bedroom"  # default
+            room_type = self.cfg.dataset.data.room_type  # default
 
             if hasattr(self.cfg.ddpo, "dynamic_constraint_rewards"):
                 room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
@@ -615,6 +685,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         Returns:
             torch.Tensor: The unnormalized scenes of shape (num_samples, N, V).
         """
+        # TODO: allow inpainting mask here for rl inpaint sampling
         cond_dict = None
         if data_batch is not None:
             cond_dict = self.dataset.sample_data_dict(

@@ -72,11 +72,16 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             self.cfg.max_num_objects_per_scene
             + self.cfg.num_additional_tokens_for_sampling
         )
+        print(f"[Ashok] self.cfg.custom.obj_vec_len {self.cfg.custom.obj_vec_len}")
         xt = self.sample_continuous_noise_prior(
             (
                 num_samples,
                 num_objects_per_scene,
-                self.cfg.custom.obj_vec_len
+                self.cfg.custom.num_classes 
+                + self.cfg.custom.translation_dim
+                + self.cfg.custom.size_dim
+                + self.cfg.custom.angle_dim
+                + self.cfg.custom.objfeat_dim
                 if hasattr(self.cfg, "custom") and self.cfg.custom.loss
                 else self.scene_vec_desc.get_object_vec_len(),
             )
@@ -386,32 +391,53 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
     def inpaint_scenes(
         self,
         data_batch: Dict[str, torch.Tensor],
+        to_hardcode: Dict[str, int] = None,
         inpaint_masks=None,
         scenes=None,
         use_ema: bool = False,
     ) -> torch.Tensor:
+        """
+        to_hardcode: Dict[str, int] = None
+        {obj_idx: count}
+        """
         # Extract scenes and masks from the data batch.
-        if scenes is None:
-            print(f"[Ashok] inpainting using data batch scenes with toy 3 single beds")
+        if to_hardcode is None:
+            if scenes is None:
+                print(f"[Ashok] inpainting using data batch scenes with toy 3 single beds")
+                scenes = data_batch["scenes"]  # Shape (B, N, V)
+                scenes[:, :3, :22] = -1.0  # (B, 2, 22)
+                # For both objects in all scenes, set single_bed class (index 15) to 1.0
+                scenes[:, :3, 15] = 1.0
+
+            # print(f"[Ashok] inpainting mask {inpainting_masks[0]}")
+            # print(f"[Ashok] scenes {scenes[0]}")
+
+            if inpaint_masks is None:
+                # Set these class probability slots for both objects to -1 as default (not marked class)
+
+                # try:
+                #     inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
+                # except:
+                # Fix inpainting mask and scene initialization for all scenes: set first two objects as single beds.
+                inpainting_masks = torch.ones_like(scenes, dtype=torch.bool)
+                # Set the first 22 dimensions (assumed class one-hot for 22 classes) for first two objects as not to inpaint (fixed)
+                inpainting_masks[:, :3, :22] = False  # (B, 2, 22)
+
+                
+        if to_hardcode is not None:
             scenes = data_batch["scenes"]  # Shape (B, N, V)
-            scenes[:, :3, :22] = -1.0  # (B, 2, 22)
-            # For both objects in all scenes, set single_bed class (index 15) to 1.0
-            scenes[:, :3, 15] = 1.0
+            if self.cfg.custom.objfeat_dim == 0:
+                scenes = scenes[:, :, :-32]
 
-        # print(f"[Ashok] inpainting mask {inpainting_masks[0]}")
-        # print(f"[Ashok] scenes {scenes[0]}")
-
-        if inpaint_masks is None:
-            # Set these class probability slots for both objects to -1 as default (not marked class)
-
-            # try:
-            #     inpainting_masks = data_batch["inpainting_masks"]  # Shape (B, N, V)
-            # except:
-            # Fix inpainting mask and scene initialization for all scenes: set first two objects as single beds.
             inpainting_masks = torch.ones_like(scenes, dtype=torch.bool)
-            # Set the first 22 dimensions (assumed class one-hot for 22 classes) for first two objects as not to inpaint (fixed)
-            inpainting_masks[:, :3, :22] = False  # (B, 2, 22)
-
+            hardcoded_count = 0
+            for obj_idx, count in to_hardcode.items():
+                inpainting_masks[:, hardcoded_count:hardcoded_count + count, :self.cfg.custom.num_classes] = False
+                scenes[:, hardcoded_count:hardcoded_count + count, :self.cfg.custom.num_classes] = -1.0
+                scenes[:, hardcoded_count:hardcoded_count + count, obj_idx] = 1.0
+                hardcoded_count += count
+                
+                
         if not scenes.shape == inpainting_masks.shape:
             raise ValueError(
                 "Scenes and inpainting masks must have the same shape. "

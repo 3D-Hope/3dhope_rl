@@ -150,6 +150,7 @@ predict:
   do_complete: False
   do_inference_time_search: False
   do_inpainting: False
+  inpaint_masks: null
   do_sample_scenes_with_k_closest_training_examples: False
 
   inference_time_search:
