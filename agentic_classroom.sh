@@ -50,37 +50,38 @@ echo ""
 # fi
 # echo ""
 
-# Move SDF cache
-# rm -rf /scratch/pramish_paudel/sdf_cache
-echo "Checking SDF cache..."
-if [ ! -f "/scratch/pramish_paudel/living_sdf_cache" ]; then
+rm -rf /scratch/pramish_paudel/living_sdf_cache
+if [ ! -d "/scratch/pramish_paudel/living_sdf_cache" ]; then
     echo "Copying SDF cache..."
     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/living_sdf_cache.zip /scratch/pramish_paudel/ || {
         echo "❌ Failed to copy SDF cache"
         exit 1
     }
-    unzip /scratch/pramish_paudel/living_sdf_cache.zip -d /scratch/pramish_paudel/ || {
+
+    echo "Extracting SDF cache..."
+    unzip -o /scratch/pramish_paudel/living_sdf_cache.zip -d /scratch/pramish_paudel/ || {
         echo "❌ Failed to extract SDF cache"
         exit 1
     }
+
     rm /scratch/pramish_paudel/living_sdf_cache.zip
     echo "✅ SDF cache copied"
 else
     echo "✅ SDF cache already exists in scratch"
 fi
-echo ""
+
 ls /scratch/pramish_paudel/living_sdf_cache
 
 
-
+rm -rf /scratch/pramish_paudel/living_accessibility_cache
 echo "Checking accessibility cache..."
-if [ ! -f "/scratch/pramish_paudel/living_accessibility_cache" ]; then
+if [ ! -d "/scratch/pramish_paudel/living_accessibility_cache" ]; then
     echo "Copying accessibility cache..."
     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/living_accessibility_cache.zip /scratch/pramish_paudel/ || {
         echo "❌ Failed to copy accessibility cache"
         exit 1
     }
-    unzip /scratch/pramish_paudel/living_accessibility_cache.zip -d /scratch/pramish_paudel/ || {
+    unzip -o /scratch/pramish_paudel/living_accessibility_cache.zip -d /scratch/pramish_paudel/ || {
         echo "❌ Failed to extract accessibility cache"
         exit 1
     }
