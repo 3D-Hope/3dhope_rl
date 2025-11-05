@@ -20,7 +20,7 @@ from physcene_utils import (
 from scipy.ndimage import binary_dilation
 from threed_front.datasets.threed_future_dataset import ThreedFutureDataset
 from threed_front.evaluation import ThreedFrontResults
-from threed_front.utils import PATH_TO_PICKLED_3D_FUTURE_MODEL
+from threed_front.utils import PATH_TO_PICKLED_3D_FUTURE_MODEL_REMESH as PATH_TO_PICKLED_3D_FUTURE_MODEL
 from tqdm import tqdm
 
 from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
@@ -338,9 +338,9 @@ def main(argv):
         cfg=config,
         visualize_overlap=False,
     )
-    print("walkable_average_rate:", walkable_average_rate)
-    print("accessable_rate:", accessable_rate)
-    print("box_wall_rate:", box_wall_rate)
+    print("walkable_average_rate, Rwalkable:", walkable_average_rate)
+    print("accessable_rate, Rreach:", accessable_rate)
+    print("box_wall_rate, Rout:", box_wall_rate)
     print("overlap_ratio, Colobj:", overlap_ratio)
     print("overlap_scene_rate, Colscene:", overlap_scene_rate)
 

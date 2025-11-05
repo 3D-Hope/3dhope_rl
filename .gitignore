@@ -176,3 +176,6 @@ viz/
 
 reward_analysis_images/
 reward_analysis_txt/
+
+fid_tmps/
+latest-run/

@@ -19,25 +19,6 @@ def compute_gravity_following_reward(parsed_scene, tolerance=0.01, **kwargs):
         rewards: Tensor of shape (B,) with gravity-following rewards
     """
 
-    # --- Check for required keys and NaNs ---
-    required_keys = ["positions", "sizes", "object_indices", "is_empty"]
-    for key in required_keys:
-        if key not in parsed_scene:
-            raise ValueError(f"Key '{key}' missing in parsed_scene for gravity reward.")
-        if not torch.is_tensor(parsed_scene[key]):
-            raise TypeError(
-                f"Key '{key}' should be a torch.Tensor in parsed_scene."
-            )
-        if torch.isnan(parsed_scene[key]).any():
-            # Print which batch/object is NaN if possible
-            nan_locs = torch.nonzero(torch.isnan(parsed_scene[key]))
-            print(f"[WARNING] NaN detected in '{key}' at indices {nan_locs}.")
-            print(f"[Ashok] parsed_scene: {parsed_scene[key][nan_locs]}")
-            # Optionally replace with zeros for safety, or just raise:
-            # raise ValueError(f"NaN detected in '{key}' for gravity reward computation.")
-
-    if "room_type" not in kwargs:
-        raise ValueError("Missing 'room_type' in kwargs for gravity reward.")
 
     room_type = kwargs["room_type"]
     positions = parsed_scene["positions"]
@@ -45,14 +26,6 @@ def compute_gravity_following_reward(parsed_scene, tolerance=0.01, **kwargs):
     object_indices = parsed_scene["object_indices"]
     is_empty = parsed_scene["is_empty"]
 
-    # Check shapes are consistent
-    B, N = positions.shape[:2]
-    for _key in ["sizes", "object_indices", "is_empty"]:
-        arr = parsed_scene[_key]
-        if arr.shape[0] != B or arr.shape[1] != N:
-            raise ValueError(
-                f"Shape mismatch: 'positions' is ({B}, {N}), but '{_key}' is {arr.shape}"
-            )
 
     # Identify ceiling objects
     ceiling_indices = [
@@ -92,10 +65,6 @@ def compute_gravity_following_reward(parsed_scene, tolerance=0.01, **kwargs):
     reward = -total_violation
     reward = torch.where(all_empty, torch.zeros_like(reward), reward)
 
-    # Final check for NaN in reward
-    if torch.isnan(reward).any():
-        nan_locs = torch.nonzero(torch.isnan(reward))
-        print(f"[WARNING] NaN detected in gravity reward output at indices {nan_locs}.")
 
     return reward
 

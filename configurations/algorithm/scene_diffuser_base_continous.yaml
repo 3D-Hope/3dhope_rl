@@ -19,6 +19,8 @@ ddpo:
     user_query: "a kids room"
     room_type: ${dataset.data.room_type}
     stats_path: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
+    weights_path: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/responses_tmp/llm_response_4.json"
+    inpaint_path: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/responses_tmp/llm_response_3.json"
     
     # Overall weights for universal vs dynamic rewards
     universal_weight: 1.0  # Weight for all universal rewards combined

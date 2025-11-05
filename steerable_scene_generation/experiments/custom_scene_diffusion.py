@@ -52,10 +52,13 @@ class CustomSceneDiffusionExperiment(SceneDiffusionExperiment):
                     self.algo.ema.load_state_dict(ckpt["ema_state_dict"])
                 print(f"[DEBUG] Missing keys: {missing}")
                 print(f"[DEBUG] Unexpected keys: {unexpected}")
+                
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.algo = self.algo.to(device)
         if self.cfg.test.compile:
             self.algo = torch.compile(self.algo)
-
         device = next(self.algo.parameters()).device
+        
         if dataloader is None:
             dataloader = self._build_test_loader(self.ckpt_path)
         dataloader = (

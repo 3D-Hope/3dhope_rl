@@ -46,6 +46,11 @@ def get_dynamic_reward(
     num_classes=22,
     dynamic_importance_weights=None,
     config=None,
+    floor_polygons=None,
+    indices=None,
+    is_val=None,
+    sdf_cache=None,
+    floor_plan_args=None,
     **kwargs,
 ):
     """
@@ -68,15 +73,20 @@ def get_dynamic_reward(
             )
         )
     )
-    idx_to_label = all_rooms_info[room_type]["unique_values"]
+    from universal_constraint_rewards.commons import idx_to_labels
+    idx_to_label = idx_to_labels[room_type]
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     for key, value in get_reward_functions.items():
         reward = value(
             parsed_scene,
             idx_to_labels=idx_to_label,
-            num_classes=num_classes,
-            max_objects=max_objects,
+            room_type=room_type,
+            floor_polygons=floor_polygons,
+            indices=indices,
+            is_val=True,
+            sdf_cache=sdf_cache,
+            floor_plan_args=floor_plan_args,
             **kwargs,
         )
         print(f"[Ashok] Raw reward for {key}: {reward}")
@@ -91,14 +101,23 @@ def get_dynamic_reward(
         for key, value in rewards.items():
             reward_components[key] = value
     rewards_sum = 0
+    dynamic_importance_weights = dynamic_importance_weights.get("importance_weights", None)
     if dynamic_importance_weights is None:
         dynamic_importance_weights = {key: 1.0 for key in rewards.keys()}
 
     for key, value in rewards.items():
-        importance = dynamic_importance_weights.get(key, 1.0)
+        # print(f"[Ashok] key: {key}")
+        matching_key = "_".join(key.split("_")[1:])
+        # print(f"[Ashok] matching_key: {matching_key}")
+        # print(f"[Ashok] value: {value}")
+        importance = dynamic_importance_weights.get(matching_key, 1.0)
+        # print(f"[Ashok] importance: {importance}")
         rewards_sum += importance * value
+    
+    # print(f"[Ashok] rewards_sum: {rewards_sum}")
+    # import sys; sys.exit()
 
-    return rewards_sum / sum(dynamic_importance_weights.values()), reward_components
+    return rewards_sum , reward_components
 
     
 def verify_tests_for_reward_function(room_type: str, reward_code_dir: str = None) -> bool:

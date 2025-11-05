@@ -10,7 +10,13 @@ BASE_DIR="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ste
 # Array of pickle files to evaluate with floor conditioning info
 # Format: "pkl_file|use_floor"
 PKL_FILES_WITH_FLAGS=(
-    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/13-04-43/sampled_scenes_results.pkl|with_floor" # Newest rl with floor
+    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-04/20-44-55/sampled_scenes_results.pkl|with_floor" # # mi floor living no obj
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-11-45/sampled_scenes_results.pkl|with_floor" # mi floor obj living
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-01-54/sampled_scenes_results.pkl|with_floor" # mi floor no obj living
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-08-05/sampled_scenes_results.pkl|no_floor"  # mi no floor obj living(still training 80k epochs)
+
+
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-27/13-04-43/sampled_scenes_results.pkl|with_floor" # Newest rl with floor
     # "$BASE_DIR/outputs/2025-10-22/11-12-45/sampled_scenes_results.pkl|no_floor"  # 45
     # "$BASE_DIR/outputs/2025-10-22/11-20-15/sampled_scenes_results.pkl|no_floor"   #50
     # "$BASE_DIR/outputs/2025-10-22/11-25-41/sampled_scenes_results.pkl|no_floor"   #55
@@ -87,88 +93,89 @@ process_entry() {
 
     # Remove PNG files in the directory containing the PKL file (if any)
     # local PKL_DIR
-    # PKL_DIR=$(dirname "$PKL_FILE")
-    # if compgen -G "$PKL_DIR/*.png" > /dev/null; then
-    #     echo "[Job ${IDX}] Removing PNG files in $PKL_DIR" | tee -a "$LOG_FILE" "$JOB_LOG"
-    #     rm -f "$PKL_DIR"/*.png
-    # fi
+    PKL_DIR=$(dirname "$PKL_FILE")
+    if compgen -G "$PKL_DIR/*.png" > /dev/null; then
+        echo "[Job ${IDX}] Removing PNG files in $PKL_DIR" | tee -a "$LOG_FILE" "$JOB_LOG"
+        rm -f "$PKL_DIR"/*.png
+    fi
 
-    # # -------- Render Phase --------
-    # START_TIME_RENDER=$(date +%s)
-    # if [ "$FLOOR_FLAG" = "with_floor" ]; then
-    #     RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture)
-    # else
-    #     RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --without_floor)
-    # fi
+    # -------- Render Phase --------
+    START_TIME_RENDER=$(date +%s)
+    if [ "$FLOOR_FLAG" = "with_floor" ]; then
+        RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --retrieve_by_size)
+    else
+        RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --without_floor)
+    fi
 
-    # echo "[Job ${IDX}] Running render: ${RENDER_CMD[*]}" | tee -a "$LOG_FILE" "$JOB_LOG"
-    # if "${RENDER_CMD[@]}" >> "$JOB_LOG" 2>&1; then
-    #     END_TIME_RENDER=$(date +%s)
-    #     DURATION_RENDER=$((END_TIME_RENDER - START_TIME_RENDER))
-    #     echo "[Job ${IDX}] ✅ Rendered in ${DURATION_RENDER}s [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    # else
-    #     echo "[Job ${IDX}] ❌ Rendering FAILED for $PKL_FILE" | tee -a "$LOG_FILE" "$JOB_LOG"
-    #     echo >&3  # Release semaphore token
-    #     return
-    # fi
+    echo "[Job ${IDX}] Running render: ${RENDER_CMD[*]}" | tee -a "$LOG_FILE" "$JOB_LOG"
+    if "${RENDER_CMD[@]}" >> "$JOB_LOG" 2>&1; then
+        END_TIME_RENDER=$(date +%s)
+        DURATION_RENDER=$((END_TIME_RENDER - START_TIME_RENDER))
+        echo "[Job ${IDX}] ✅ Rendered in ${DURATION_RENDER}s [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    else
+        echo "[Job ${IDX}] ❌ Rendering FAILED for $PKL_FILE" | tee -a "$LOG_FILE" "$JOB_LOG"
+        echo >&3  # Release semaphore token
+        return
+    fi
 
-    # # -------- Evaluation Phase --------
-    # START_TIME_EVAL=$(date +%s)
-    # EVAL_SUCCESS=true
-    # if [ "$FLOOR_FLAG" = "with_floor" ]; then
-    #     FLOOR_EVAL_FLAG=""
-    # else
-    #     FLOOR_EVAL_FLAG="--no_floor"
-    # fi
+    # -------- Evaluation Phase --------
+    START_TIME_EVAL=$(date +%s)
+    EVAL_SUCCESS=true
+    if [ "$FLOOR_FLAG" = "with_floor" ]; then
+        FLOOR_EVAL_FLAG=""
+    else
+        FLOOR_EVAL_FLAG="--no_floor"
+    fi
 
-    # echo "[Job ${IDX}] [1/6] Computing FID scores... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    # if ! python scripts/compute_fid_scores.py "$PKL_FILE" \
-    #     --output_directory ./fid_tmps \
-    #     --no_texture \
-    #     --dataset_directory /mnt/sv-share/MiDiffusion/gravee/bedroom/ \
-    #     $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
-    #     EVAL_SUCCESS=false
-    # fi
+    echo "[Job ${IDX}] [1/7] Computing FID scores... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    if ! python scripts/compute_fid_scores.py "$PKL_FILE" \
+        --output_directory ./fid_tmps \
+        --no_texture \
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ \
+        $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
+        EVAL_SUCCESS=false
+    fi
 
-    # echo "[Job ${IDX}] [2/6] Computing KID scores... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    # if ! python scripts/compute_fid_scores.py "$PKL_FILE" \
-    #     --compute_kid \
-    #     --output_directory ./fid_tmps \
-    #     --no_texture \
-    #     --dataset_directory /mnt/sv-share/MiDiffusion/gravee/bedroom/ \
-    #     $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
-    #     EVAL_SUCCESS=false
-    # fi
+    echo "[Job ${IDX}] [2/7] Computing KID scores... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    if ! python scripts/compute_fid_scores.py "$PKL_FILE" \
+        --compute_kid \
+        --output_directory ./fid_tmps \
+        --no_texture \
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ \
+        $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
+        EVAL_SUCCESS=false
+    fi
 
-    echo "[Job ${IDX}] [3/6] Running bbox analysis..." | tee -a "$LOG_FILE" "$JOB_LOG"
+    echo "[Job ${IDX}] [3/7] Running bbox analysis..." | tee -a "$LOG_FILE" "$JOB_LOG"
     if ! python scripts/bbox_analysis.py "$PKL_FILE" >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
 
-    echo "[Job ${IDX}] [4/6] Computing KL divergence..." | tee -a "$LOG_FILE" "$JOB_LOG"
+    echo "[Job ${IDX}] [4/7] Computing KL divergence..." | tee -a "$LOG_FILE" "$JOB_LOG"
     if ! python scripts/evaluate_kl_divergence_object_category.py "$PKL_FILE" \
         --output_directory ./kl_tmps >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
 
-    echo "[Job ${IDX}] [5/6] Calculating object count..." | tee -a "$LOG_FILE" "$JOB_LOG"
+    echo "[Job ${IDX}] [5/7] Calculating object count..." | tee -a "$LOG_FILE" "$JOB_LOG"
     if ! python scripts/calculate_num_obj.py "$PKL_FILE" >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
 
-    echo "[Job ${IDX}] [6/6] Running has tv... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    if ! python scripts/dynamic_rewards/has_tv_in_bed_room_reward.py "$PKL_FILE" >> "$JOB_LOG" 2>&1; then
-        EVAL_SUCCESS=false
-    fi
-
-    # echo "[Job ${IDX}] [6/6] Running classifier... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    # if ! python scripts/synthetic_vs_real_classifier.py "$PKL_FILE" \
-    #     --output_directory ./classifier_tmps \
-    #     --no_texture \
-    #     $FLOOR_EVAL_FLAG \
-    #     --dataset_directory /mnt/sv-share/MiDiffusion/gravee/bedroom/ >> "$JOB_LOG" 2>&1; then
+    # Physcene Metrics
+    # echo "[Job ${IDX}] [6/7] Running physcene metrics... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    # if ! python scripts/physcene_metrics.py "$PKL_FILE" >> "$JOB_LOG" 2>&1; then
     #     EVAL_SUCCESS=false
     # fi
+
+    echo "[Job ${IDX}] [7/7] Running classifier... [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    if ! python scripts/synthetic_vs_real_classifier.py "$PKL_FILE" \
+        --output_directory ./classifier_tmps \
+        --no_texture \
+        $FLOOR_EVAL_FLAG \
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ >> "$JOB_LOG" 2>&1; then
+        EVAL_SUCCESS=false
+    fi
 
     END_TIME_EVAL=$(date +%s)
     DURATION_EVAL=$((END_TIME_EVAL - START_TIME_EVAL))

@@ -44,7 +44,6 @@ def compute_boundary_violation_reward(
     B, N = positions.shape[0], positions.shape[1]
     rewards = torch.zeros(B, device=device)
 
-
     # Process each scene in batch
     for b in range(B):
         scene_idx = indices[b] if indices is not None else b

@@ -185,7 +185,7 @@ def create_scene_diffuser_midiffusion(
                     )  # Shape (B, N, C)
             elif cond_dict is not None and self.floor_encoder is not None:
                 # Floor conditioning (same pattern as Flux)
-                floor_cond = self.floor_encoder(cond_dict["fpbpn"])  # Shape (B, 64)
+                floor_cond = self.floor_encoder(cond_dict["fpbpn"].to(noisy_scenes.dtype))  # Shape (B, 64)
                 # print(f"[Ashok] Floor condition shape: {floor_cond.shape}")
                 floor_cond = floor_cond.to(noisy_scenes.dtype)
 

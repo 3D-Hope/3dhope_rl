@@ -28,7 +28,7 @@ from universal_constraint_rewards.not_out_of_bound_reward import (
     SDFCache,
     precompute_sdf_cache,
 )
-
+from universal_constraint_rewards.accessibility_reward import AccessibilityCache
 
 def analyze_distribution_shape(rewards_array):
     """
@@ -350,6 +350,7 @@ def get_reward_stats_from_baseline(
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
+    accessibility_cache = AccessibilityCache(config.dataset.accessibility_cache_dir, split="test")
 
     floor_plan_args_list = [custom_dataset.get_floor_plan_args(idx) for idx in indices]
     # Stack each key across the batch for tensor conversion
@@ -382,6 +383,7 @@ def get_reward_stats_from_baseline(
         "indices": indices,
         "is_val": True,
         "sdf_cache": sdf_cache,
+        "accessibility_cache": accessibility_cache,
         "floor_plan_args": floor_plan_args,
     }
     # # Save arguments to npy file (use pickle for objects that are not arrays)
@@ -415,6 +417,7 @@ def get_reward_stats_from_baseline(
             indices=indices,
             is_val=True,
             sdf_cache=sdf_cache,
+            accessibility_cache=accessibility_cache,
             floor_plan_args=floor_plan_args,
         )
         
@@ -518,6 +521,7 @@ def get_reward_stats_from_dataset(
     max_objects = all_rooms_info[room_type]["max_objects"]
     num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
+    accessibility_cache = AccessibilityCache(config.dataset.accessibility_cache_dir, split="test")
     reward_stats = {}
     floor_plan_args_list = [custom_dataset.get_floor_plan_args(idx) for idx in indices]
     # Stack each key across the batch for tensor conversion
@@ -567,6 +571,7 @@ def get_reward_stats_from_dataset(
             indices=indices,
             is_val=True,
             sdf_cache=sdf_cache,
+            accessibility_cache=accessibility_cache,
             floor_plan_args=floor_plan_args,
         )
 
@@ -612,7 +617,7 @@ def get_reward_stats_from_baseline_for_normalizer(
     algorithm_noise_schedule_scheduler: str = "ddim",
     algorithm_noise_schedule_ddim_num_inference_timesteps: int = 150,
     algorithm_custom_old: bool = True,
-    inpaint_masks=None,
+    inpaint_dict=None,
     threshold_dict=None,
 ) -> Dict[str, Dict[str, float]]:
     """
@@ -649,7 +654,7 @@ def get_reward_stats_from_baseline_for_normalizer(
     except Exception as e:
         print(f"Error creating CustomDataset: {e}")
         raise
-    if inpaint_masks is not None:
+    if inpaint_dict is not None:
         cmd = [
             "python",
             "scripts/inpaint.py",
@@ -668,7 +673,7 @@ def get_reward_stats_from_baseline_for_normalizer(
             f"algorithm.ema.use={algorithm_ema_use}",
             f"algorithm.noise_schedule.scheduler={algorithm_noise_schedule_scheduler}",
             f"algorithm.noise_schedule.ddim.num_inference_timesteps={algorithm_noise_schedule_ddim_num_inference_timesteps}",
-            f"algorithm.predict.inpaint_masks={inpaint_masks}",
+            f"algorithm.predict.inpaint_masks={inpaint_dict}",
             f"dataset.data.room_type={config.dataset.data.room_type}",
             f"dataset.model_path_vec_len=30",
             f"dataset.data.path_to_processed_data={config.dataset.data.path_to_processed_data}",
@@ -780,6 +785,7 @@ def get_reward_stats_from_baseline_for_normalizer(
     with open(pkl_path, "rb") as f:
         raw_results = pickle.load(f)
 
+
     dataset_size = len(custom_dataset)
     indices = [i % dataset_size for i in range(num_scenes)]
     
@@ -797,11 +803,14 @@ def get_reward_stats_from_baseline_for_normalizer(
     num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     
     raw_results = torch.tensor(raw_results)
+    raw_results = torch.nan_to_num(raw_results)
+    
     parsed_scenes = parse_and_descale_scenes(raw_results, num_classes=num_classes, room_type=room_type)
 
     
 
     sdf_cache = SDFCache(config.dataset.sdf_cache_dir, split="test")
+    accessibility_cache = AccessibilityCache(config.dataset.accessibility_cache_dir, split="test")
 
     floor_plan_args_list = [custom_dataset.get_floor_plan_args(idx) for idx in indices]
     # Stack each key across the batch for tensor conversion
@@ -838,6 +847,7 @@ def get_reward_stats_from_baseline_for_normalizer(
             indices=indices,
             is_val=True,
             sdf_cache=sdf_cache,
+            accessibility_cache=accessibility_cache,
             floor_plan_args=floor_plan_args,
         )
         
@@ -877,18 +887,32 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     from universal_constraint_rewards.commons import get_all_universal_reward_functions
+    from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
+    dynamic_rewards, _ = import_dynamic_reward_functions("dynamic_reward_functions_final")
+    
     reward_functions = get_all_universal_reward_functions()
+    reward_functions.update(dynamic_rewards)
+    print(f"Reward functions to analyze: {list(reward_functions.keys())}")
+    
+    inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 
+    with open(inpaint_path, "r") as f:
+        inpaint_info = json.load(f)
+    inpaint_dict = inpaint_info["inpaint"]
+    inpaint_dict = str(inpaint_dict).replace("'", '')
+    print(f"Loaded inpaint masks from: {inpaint_path}, inpaint dict {inpaint_dict}")
+    
     get_reward_stats_from_baseline_for_normalizer(
         reward_functions=reward_functions,
         config=cfg,
         load="cu8sru1y",
         dataset_max_num_objects_per_scene=21,
         algorithm_custom_old=True,
-        inpaint_masks=None,
+        inpaint_dict=inpaint_dict,
+        # num_scenes=300,
     )
     
 if __name__ == "__main__":
     main()
     
     
-# python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=5 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+# python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=5 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 dataset.sdf_cache_dir=./living_sdf_cache/ dataset.accessibility_cache_dir=./living_accessibility_cache/

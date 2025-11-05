@@ -104,11 +104,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             (
                 self.get_reward_functions,
                 self.test_reward_functions,
-            ) = import_dynamic_reward_functions(
-                self.cfg.ddpo.dynamic_constraint_rewards.reward_code_dir,
-                "dynamic_reward_functions_final"
-                
-            )
+            ) = import_dynamic_reward_functions("dynamic_reward_functions_final")
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
@@ -201,7 +197,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             raise ValueError(f"Unknown room type: {room_type}")
         trajectory.append(xt)
-        print(f"[Ashok] Initial noise xt shape: {xt.shape}")
+        # print(f"[Ashok] Initial noise xt shape: {xt.shape}")
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:
@@ -222,25 +218,32 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 num_classes = int(self.cfg.custom.num_classes)
             else:
                 num_classes = len(label_map) + 1  # +1 for empty
+                
+            inpaint_path = self.cfg.ddpo.dynamic_constraint_rewards.inpaint_path
+            with open(inpaint_path, "r") as f:
+                import json
+                inpaint_cfg = json.load(f)
+            inpaint_cfg = inpaint_cfg["inpaint"]
+
 
             # Read inpaint config dict: {label_name: count}
-            inpaint_cfg = getattr(self.cfg.predict, "inpaint_masks", None)
+            # inpaint_cfg = getattr(self.cfg.predict, "inpaint_masks", None)
             
-            if inpaint_cfg is None:
-                raise ValueError(
-                    "cfg.ddpo.use_inpaint=True but cfg.algorithm.predict.inpaint_masks is not provided."
-                )
+            # if inpaint_cfg is None:
+            #     raise ValueError(
+            #         "cfg.ddpo.use_inpaint=True but cfg.algorithm.predict.inpaint_masks is not provided."
+            #     )
             
             # Handle DictConfig or string representations
-            from omegaconf import DictConfig, OmegaConf
-            if isinstance(inpaint_cfg, str):
-                # Parse string as YAML/dict
-                import yaml
-                inpaint_cfg = yaml.safe_load(inpaint_cfg)
-            elif isinstance(inpaint_cfg, DictConfig):
-                inpaint_cfg = OmegaConf.to_container(inpaint_cfg, resolve=True)
+            # from omegaconf import DictConfig, OmegaConf
+            # if isinstance(inpaint_cfg, str):
+            #     # Parse string as YAML/dict
+            #     import yaml
+            #     inpaint_cfg = yaml.safe_load(inpaint_cfg)
+            # elif isinstance(inpaint_cfg, DictConfig):
+            #     inpaint_cfg = OmegaConf.to_container(inpaint_cfg, resolve=True)
             
-            print(f"Using inpainting with config: {inpaint_cfg}")
+            # print(f"Using inpainting with config: {inpaint_cfg}")
             # Initialize mask and originals
             inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
             original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
@@ -265,7 +268,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # Apply mask to initial noise
             xt = torch.where(inpainting_masks, xt, original_scenes)
             trajectory[0] = xt
-            print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
+            # print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
 
         for t_idx, t in enumerate(
             tqdm(
@@ -520,6 +523,20 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
                     "room_type", self.cfg.dataset.data.room_type
                 )
+            
+            indices = cond_dict["idx"]
+            floor_plan_args_list = [
+                self.dataset.get_floor_plan_args(idx) for idx in indices
+            ]
+            floor_plan_args = {
+                key: [args[key] for args in floor_plan_args_list]
+                for key in [
+                    "floor_plan_centroid",
+                    "floor_plan_vertices",
+                    "floor_plan_faces",
+                    "room_outer_box",
+                ]
+            }
 
             # Compute composite reward with all physics constraints
             is_val = len(self.dataset) <= 200
@@ -534,13 +551,14 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     self.dataset.get_floor_polygon_points(idx)
                     for idx in cond_dict["idx"]
                 ],
-                indices=cond_dict["idx"],
+                indices=indices,
                 is_val=is_val,
                 sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                 sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache,
                 accessibility_cache=self.train_accessibility_cache
                 if not is_val
                 else self.val_accessibility_cache,
+                floor_plan_args=floor_plan_args,
             )
 
             # Log individual components for analysis using log_dict for proper step tracking

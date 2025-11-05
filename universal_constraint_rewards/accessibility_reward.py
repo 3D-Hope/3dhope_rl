@@ -64,7 +64,6 @@ def compute_accessibility_reward(
         int(idx) for idx, label in idx_to_labels[room_type].items() if label in ceiling_objects
     ]
     B, N = positions.shape[0], positions.shape[1]
-
     # Create viz directory if needed
     if save_viz:
         os.makedirs(viz_dir, exist_ok=True)
@@ -75,7 +74,6 @@ def compute_accessibility_reward(
 
     for b in range(B):
         scene_idx = indices[b] if indices is not None else b
-
         # Try to load from cache first
         grid_data = None
         if accessibility_cache is not None:
@@ -85,7 +83,10 @@ def compute_accessibility_reward(
         if grid_data is None:
             print("cache miss for scene ", scene_idx, ", computing on-the-fly")
             try:
-                floor_verts = floor_polygons[b].cpu().numpy()
+                try:
+                    floor_verts = floor_polygons[b].cpu().numpy()
+                except:
+                    floor_verts = np.array(floor_polygons[b])
                 # Remove padding vertices (marked as -1000 or similar)
                 valid_mask = np.all(np.abs(floor_verts) < 999, axis=1)
                 floor_verts = floor_verts[valid_mask]
@@ -235,9 +236,9 @@ def compute_accessibility_reward(
                 z_coords=z_coords,
             )
 
-    print(
-        f"Accessibility rewards - Coverage: {coverage_ratios.mean().item():.3f}, Regions: {num_regions.mean().item():.1f}, Clearance: {avg_clearances.mean().item():.2f}m"
-    )
+    # print(
+    #     f"Accessibility rewards - Coverage: {coverage_ratios.mean().item():.3f}, Regions: {num_regions.mean().item():.1f}, Clearance: {avg_clearances.mean().item():.2f}m"
+    # )
 
     return 1 * coverage_ratios - 0.1 * num_regions + 0.5 * avg_clearances
 

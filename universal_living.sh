@@ -358,7 +358,7 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=256 \
+    algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \

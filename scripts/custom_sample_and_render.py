@@ -269,6 +269,16 @@ def main(cfg: DictConfig) -> None:
 
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
+        
+        # Remove samples that contain any NaN and keep indices in sync
+        mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
+        # Filter scenes
+        sampled_scenes = sampled_scenes[mask]
+        # Filter corresponding dataset indices so they align with the kept scenes
+        mask_np = mask.detach().cpu().numpy().astype(bool)
+        sampled_indices = [idx for idx, keep in zip(sampled_indices, mask_np) if keep]
+
+        print(f"Remaining samples: {sampled_scenes.shape[0]} out of {num_scenes_to_sample}")
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
         print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")

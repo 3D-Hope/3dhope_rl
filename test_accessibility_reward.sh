@@ -52,24 +52,24 @@ echo ""
 
 # Move SDF cache
 # rm -rf /scratch/pramish_paudel/sdf_cache
-# echo "Checking SDF cache..."
-# if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
-#     echo "Copying SDF cache..."
-#     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/sdf_cache.zip /scratch/pramish_paudel/ || {
-#         echo "❌ Failed to copy SDF cache"
-#         exit 1
-#     }
-#     unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/ || {
-#         echo "❌ Failed to extract SDF cache"
-#         exit 1
-#     }
-#     rm /scratch/pramish_paudel/sdf_cache.zip
-#     echo "✅ SDF cache copied"
-# else
-#     echo "✅ SDF cache already exists in scratch"
-# fi
-# echo ""
-# ls /scratch/pramish_paudel/sdf_cache
+echo "Checking SDF cache..."
+if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
+    echo "Copying SDF cache..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/sdf_cache.zip /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy SDF cache"
+        exit 1
+    }
+    unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/ || {
+        echo "❌ Failed to extract SDF cache"
+        exit 1
+    }
+    rm /scratch/pramish_paudel/sdf_cache.zip
+    echo "✅ SDF cache copied"
+else
+    echo "✅ SDF cache already exists in scratch"
+fi
+echo ""
+ls /scratch/pramish_paudel/sdf_cache
 
 # rm -rf /scratch/pramish_paudel/accessibility_cache
 echo "Checking accessibility cache..."
@@ -375,6 +375,7 @@ PYTHONPATH=. python -u main.py +name=test_accessibility_reward \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/accessibility_cache/ \
+    dataset.sdf_cache_dir=/scratch/pramish_paudel/sdf_cache/ \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json

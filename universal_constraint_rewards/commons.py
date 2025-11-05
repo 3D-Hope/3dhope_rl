@@ -172,7 +172,7 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False, room_type
     orientations = scenes[
         :, :, num_classes + 6 : num_classes + 8
     ]  # [cos_theta, sin_theta]
-
+    
     # Descale to world coordinates
     if not parse_only:
         positions = descale_pos(positions_normalized, device=device, room_type=room_type)
@@ -277,10 +277,10 @@ def get_universal_reward(
         reward_components: Dict with individual reward values for analysis
     """
     rewards = {}
-
+    # print(f"[Ashok] Computing universal rewards kwargs has keys: {list(kwargs.keys())}")
     # Define default universal reward functions if not provided
-    if get_reward_functions is None:
-        get_reward_functions = get_all_universal_reward_functions()
+    # if get_reward_functions is None:
+    get_reward_functions = get_all_universal_reward_functions()
 
     # Compute rewards for each function
     for key, value in get_reward_functions.items():
@@ -301,15 +301,14 @@ def get_universal_reward(
     else:
         for key, value in rewards.items():
             reward_components[key] = value
+    universal_importance_weights = universal_importance_weights["importance_weights"]
     # Set default importance weights
     if universal_importance_weights is None:
         universal_importance_weights = {key: 1.0 for key in rewards.keys()}
-    # print(f"[Ashok] importance weights: {universal_importance_weights}")
     # Combine rewards with importance weights
     rewards_sum = 0
 
     for key, value in rewards.items():
         importance = universal_importance_weights.get(key, 1.0)
         rewards_sum += importance * value
-
-    return rewards_sum / sum(universal_importance_weights.values()), reward_components
+    return rewards_sum, reward_components

@@ -628,7 +628,6 @@ def universal_reward(
     if importance_weights is None and cfg and hasattr(cfg, "ddpo"):
         if hasattr(cfg.ddpo, "universal_reward"):
             importance_weights = dict(cfg.ddpo.universal_reward.importance_weights)
-
     # Compute composite reward
     total_rewards, reward_components = get_universal_reward(
         parsed_scene=parsed_scene,
@@ -688,12 +687,18 @@ def physcene_reward(
 
 def composite_reward(
     scenes: torch.Tensor,
-    reward_normalizer,
-    scene_vec_desc: SceneVecDescription,  # not used for outs but here for legacy reasons
+    scene_vec_desc: SceneVecDescription,
     cfg: DictConfig,
+    room_type: str,
+    reward_normalizer,
     get_reward_functions: dict,
-    room_type: str = "bedroom",
-    **kwargs,
+    floor_polygons,
+    indices,
+    is_val,
+    sdf_cache_dir,
+    sdf_cache,
+    accessibility_cache,
+    floor_plan_args,
 ) -> tuple[torch.Tensor, dict]:
     """
     Compute composite reward (general scene quality) plus task-specific reward.
@@ -728,14 +733,23 @@ def composite_reward(
     # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
     # task_weight = task_cfg.get('task_weight', 2.0)
     room_type = task_cfg.get("room_type", "bedroom")
-    importance_weights = task_cfg.get("importance_weights", None)
-
-    # Convert importance_weights from DictConfig to dict if needed
-    if importance_weights is not None:
-        importance_weights = dict(importance_weights)
+    
+    weights_path = task_cfg.get("weights_path", None)
+    
+    # Read json
+    with open(weights_path, "r") as f:
+        import json
+        importance_weights = json.load(f)
+    
+    if task_cfg.get("room_type") == "bedroom":
+        num_classes = 22
+    elif task_cfg.get("room_type") == "livingroom":
+        num_classes = 25
+    else:
+        raise ValueError(f"Unknown room type: {task_cfg.get('room_type')}")
 
     # Get number of classes from config
-    num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
+    # num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
     parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes, room_type=room_type)
     # print(f"[Ashok] parsed scene {parsed_scene}")
@@ -747,20 +761,29 @@ def composite_reward(
         parsed_scene=parsed_scene,
         reward_normalizer=reward_normalizer,
         num_classes=num_classes,
-        importance_weights=importance_weights,
+        universal_importance_weights=importance_weights,
         room_type=room_type,
-        **kwargs,
+        floor_polygons=floor_polygons,
+        indices=indices,
+        is_val=is_val,
+        sdf_cache=sdf_cache,
+        floor_plan_args=floor_plan_args,
+        accessibility_cache=accessibility_cache,
     )
 
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
-        num_classes=num_classes,
-        dynamic_importance_weights=None,  # TODO: add dynamic importance weights from LLM
-        room_type=room_type,
         reward_normalizer=reward_normalizer,
         get_reward_functions=get_reward_functions,
+        num_classes=num_classes,
+        dynamic_importance_weights=importance_weights,
         config=cfg,
-        **kwargs,
+        floor_polygons=floor_polygons,
+        indices=indices,
+        is_val=is_val,
+        sdf_cache_dir=sdf_cache_dir,
+        sdf_cache=sdf_cache,
+        accessibility_cache=accessibility_cache,
     )
 
     total_rewards = universal_total + dynamic_total

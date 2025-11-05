@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=rl_training
+#SBATCH --job-name=test_accessibility_reward
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
@@ -37,19 +37,59 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 1: Copy model checkpoint
 # ═══════════════════════════════════════════════════════════════════════════════════
-echo "STAGE 1: Checking model checkpoint..."
-if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
-    echo "Copying model checkpoint..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy model checkpoint"
+# echo "STAGE 1: Checking model checkpoint..."
+# if [ ! -f "/scratch/pramish_paudel/model.ckpt" ]; then
+#     echo "Copying model checkpoint..."
+#     rsync -aHzv --progress /home/pramish_paudel/3dhope_data/model.ckpt /scratch/pramish_paudel/ || {
+#         echo "❌ Failed to copy model checkpoint"
+#         exit 1
+#     }
+#     echo "✅ Model checkpoint copied"
+# else
+#     echo "✅ Model checkpoint already exists in scratch"
+# fi
+# echo ""
+
+# Move SDF cache
+# rm -rf /scratch/pramish_paudel/sdf_cache
+echo "Checking SDF cache..."
+if [ ! -f "/scratch/pramish_paudel/sdf_cache" ]; then
+    echo "Copying SDF cache..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/sdf_cache.zip /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy SDF cache"
         exit 1
     }
-    echo "✅ Model checkpoint copied"
+    unzip /scratch/pramish_paudel/sdf_cache.zip -d /scratch/pramish_paudel/ || {
+        echo "❌ Failed to extract SDF cache"
+        exit 1
+    }
+    rm /scratch/pramish_paudel/sdf_cache.zip
+    echo "✅ SDF cache copied"
 else
-    echo "✅ Model checkpoint already exists in scratch"
+    echo "✅ SDF cache already exists in scratch"
 fi
 echo ""
+ls /scratch/pramish_paudel/sdf_cache
 
+# rm -rf /scratch/pramish_paudel/accessibility_cache
+echo "Checking accessibility cache..."
+if [ ! -f "/scratch/pramish_paudel/accessibility_cache" ]; then
+    echo "Copying accessibility cache..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/accessibility_cache.zip /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy accessibility cache"
+        exit 1
+    }
+    unzip /scratch/pramish_paudel/accessibility_cache.zip -d /scratch/pramish_paudel/ || {
+        echo "❌ Failed to extract accessibility cache"
+        exit 1
+    }
+    rm /scratch/pramish_paudel/accessibility_cache.zip
+    echo "✅ accessibility cache copied"
+else
+    echo "✅ accessibility cache already exists in scratch"
+fi
+echo ""
+ls /scratch/pramish_paudel/accessibility_cache
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 2: Copy and extract dataset
 # ═══════════════════════════════════════════════════════════════════════════════════
@@ -296,20 +336,20 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=2_stage_rl_baseline_with_dynamic_constraint_reward_tv_reg_50 \
-    resume=xn1h20rz \
+PYTHONPATH=. python -u main.py +name=test_accessibility_reward \
+    load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_flux_transformer \
+    algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2000000 \
+    experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=50.0 \
@@ -321,7 +361,7 @@ PYTHONPATH=. python -u main.py +name=2_stage_rl_baseline_with_dynamic_constraint
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
-    algorithm.custom.loss=true \
+    algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
     algorithm.validation.num_samples_to_visualize=0 \
     algorithm.validation.num_directives_to_generate=0 \
@@ -329,19 +369,17 @@ PYTHONPATH=. python -u main.py +name=2_stage_rl_baseline_with_dynamic_constraint
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
-    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=2.0 \
-    algorithm.ddpo.dynamic_constraint_rewards.dynamic_weight=1.0 \
+    algorithm.ddpo.use_universal_reward=True \
     experiment.training.precision=bf16-mixed \
     experiment.validation.precision=bf16-mixed \
     experiment.test.precision=bf16-mixed \
-    experiment.matmul_precision=medium
+    experiment.matmul_precision=medium \
+    dataset.accessibility_cache_dir=/scratch/pramish_paudel/accessibility_cache/ \
+    dataset.sdf_cache_dir=/scratch/pramish_paudel/sdf_cache/ \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.room_type=bedroom \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json
 
-    
 
 # Check exit status
 echo ""

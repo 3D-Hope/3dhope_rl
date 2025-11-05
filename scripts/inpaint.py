@@ -304,12 +304,21 @@ def main(cfg: DictConfig) -> None:
     ), f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
     with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
         pickle.dump(sampled_scenes, f)
-    sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
+    
     if cfg.dataset.data.room_type == "livingroom":
         n_classes = 25
     else:
         n_classes = 22
     # SAUGAT
+    
+    mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
+    # Filter scenes
+    sampled_scenes = sampled_scenes[mask]
+    # Filter corresponding dataset indices so they align with the kept scenes
+    mask_np = mask.detach().cpu().numpy().astype(bool)
+    sampled_indices = [idx for idx, keep in zip(sampled_indices, mask_np) if keep]
+    
+    sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
 
     print(f"[DEBUG] sampled scenes np: {sampled_scenes_np[0]}")
     bbox_params_list = []
