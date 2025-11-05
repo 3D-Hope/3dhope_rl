@@ -47,7 +47,6 @@ PYTHONPATH=. python -u main.py +name=test_inpaint_rl \
     dataset.data.dataset_directory=livingroom \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
     dataset.data.room_type=livingroom \
-    algorithm.predict.inpaint_masks='{ceiling_lamp: 4}' \
     algorithm.ddpo.use_inpaint=True
 
 # python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
