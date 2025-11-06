@@ -150,7 +150,7 @@ echo "✅ Unzipping done."
 
 # Clone necessary repositories
 echo "🚀 Cloning repositories..."
-git clone https://github.com/3D-Hope/3dhope_rl/
+# git clone https://github.com/3D-Hope/3dhope_rl/
 git clone https://github.com/3D-Hope/ThreedFront/
 
 # Install project dependencies
