@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=universal_living
+#SBATCH --job-name=universal_bedroom
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
@@ -51,70 +51,70 @@ echo ""
 # echo ""
 
 # Move SDF cache
-rm -rf /scratch/pramish_paudel/living_sdf_cache
-if [ ! -d "/scratch/pramish_paudel/living_sdf_cache" ]; then
+rm -rf /scratch/pramish_paudel/bedroom_sdf_cache
+if [ ! -d "/scratch/pramish_paudel/bedroom_sdf_cache" ]; then
     echo "Copying SDF cache..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/living_sdf_cache.zip /scratch/pramish_paudel/ || {
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/ || {
         echo "❌ Failed to copy SDF cache"
         exit 1
     }
 
     echo "Extracting SDF cache..."
-    unzip -o /scratch/pramish_paudel/living_sdf_cache.zip -d /scratch/pramish_paudel/ || {
+    unzip -o /scratch/pramish_paudel/bedroom_sdf_cache.zip -d /scratch/pramish_paudel/ || {
         echo "❌ Failed to extract SDF cache"
         exit 1
     }
 
-    rm /scratch/pramish_paudel/living_sdf_cache.zip
+    rm /scratch/pramish_paudel/bedroom_sdf_cache.zip
     echo "✅ SDF cache copied"
 else
     echo "✅ SDF cache already exists in scratch"
 fi
 
-ls /scratch/pramish_paudel/living_sdf_cache
+ls /scratch/pramish_paudel/bedroom_sdf_cache
 
 
-rm -rf /scratch/pramish_paudel/living_accessibility_cache
+rm -rf /scratch/pramish_paudel/bedroom_accessibility_cache
 echo "Checking accessibility cache..."
-if [ ! -d "/scratch/pramish_paudel/living_accessibility_cache" ]; then
+if [ ! -d "/scratch/pramish_paudel/bedroom_accessibility_cache" ]; then
     echo "Copying accessibility cache..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/living_accessibility_cache.zip /scratch/pramish_paudel/ || {
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/ || {
         echo "❌ Failed to copy accessibility cache"
         exit 1
     }
-    unzip -o /scratch/pramish_paudel/living_accessibility_cache.zip -d /scratch/pramish_paudel/ || {
+    unzip -o /scratch/pramish_paudel/bedroom_accessibility_cache.zip -d /scratch/pramish_paudel/ || {
         echo "❌ Failed to extract accessibility cache"
         exit 1
     }
-    rm /scratch/pramish_paudel/living_accessibility_cache.zip
+    rm /scratch/pramish_paudel/bedroom_accessibility_cache.zip
     echo "✅ accessibility cache copied"
 else
     echo "✅ accessibility cache already exists in scratch"
 fi
 echo ""
-ls /scratch/pramish_paudel/living_accessibility_cache
+ls /scratch/pramish_paudel/bedroom_accessibility_cache
 
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 2: Copy and extract dataset
 # ═══════════════════════════════════════════════════════════════════════════════════
-echo "STAGE 2: Checking livingroom dataset..."
-if [ ! -d "/scratch/pramish_paudel/livingroom" ]; then
-    echo "Copying livingroom dataset..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/livingroom.zip /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy livingroom dataset"
+echo "STAGE 2: Checking bedroom dataset..."
+if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
+    echo "Copying bedroom dataset..."
+    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/ || {
+        echo "❌ Failed to copy bedroom dataset"
         exit 1
     }
 
     echo "Extracting dataset..."
     cd /scratch/pramish_paudel/
-    unzip -oq livingroom.zip || {
-        echo "❌ Failed to extract livingroom dataset"
+    unzip -oq bedroom.zip || {
+        echo "❌ Failed to extract bedroom dataset"
         exit 1
     }
-    rm livingroom.zip
-    echo "✅ livingroom dataset extracted"
+    rm bedroom.zip
+    echo "✅ bedroom dataset extracted"
 else
-    echo "✅ livingroom dataset already exists in scratch"
+    echo "✅ bedroom dataset already exists in scratch"
 fi
 echo ""
 
@@ -379,7 +379,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom \
     experiment.test.precision=bf16-mixed \
     experiment.matmul_precision=medium \
     algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/universal_bedroom_stats.json \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
@@ -389,7 +389,8 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom \
     dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
     dataset.data.dataset_directory=bedroom \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
-    dataset.data.room_type=bedroom
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=True
 
 
 # Check exit status

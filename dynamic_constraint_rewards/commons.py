@@ -149,11 +149,12 @@ def get_reward_stats_from_baseline_helper(cfg: DictConfig, load = None, inpaint_
     # print(f"[Ashok] Baseline stats: {stats}")
     return stats
 
-def get_reward_stats_from_dataset_helper(cfg: DictConfig, reward_code_dir: str = None):
+def get_reward_stats_from_dataset_helper(cfg: DictConfig, reward_code_dir: str = None, threshold_dict=None):
     get_reward_functions, _ = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
     stats = get_reward_stats_from_dataset(
-        get_reward_functions,
+        reward_functions=get_reward_functions,
         config=cfg,
+        threshold_dict=threshold_dict,
     )
     return stats
 
@@ -186,8 +187,8 @@ def get_stats_from_initial_rewards(reward_functions, cfg=None, load=None, reward
     threshold_dict = {}
     for reward in reward_functions["rewards"]:
         threshold_dict[reward["name"]] = reward["success_threshold"]
-    print(threshold_dict)
-    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir=reward_code_dir)
+    print("Ashok Threshold dict: ", threshold_dict)
+    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir=reward_code_dir, threshold_dict=threshold_dict)
     baseline_stats = get_reward_stats_from_baseline_helper(cfg, load=load, inpaint_masks=inpaint_masks, threshold_dict=threshold_dict, reward_code_dir=reward_code_dir)  
     print(f"Dataset stats: {dataset_stats}")
     print(f"Baseline stats: {baseline_stats}")

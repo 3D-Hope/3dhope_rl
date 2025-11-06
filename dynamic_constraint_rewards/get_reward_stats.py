@@ -397,9 +397,12 @@ def get_reward_stats_from_baseline(
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
         # Support for threshold: if reward_func is tuple/list, unpack
-        threshold = threshold_dict.get(reward_name, None)
+        reward_name_base = "_".join(reward_name.split("_")[1:])
+        threshold = threshold_dict.get(reward_name_base)
         if threshold is None:
+            print(f"Threshold for {reward_name_base} is not found in threshold_dict baseline")
             threshold = 0.0
+        print(f"Threshold for {reward_name_base} baseline: {threshold}")
 
         rewards = reward_func(
             parsed_scenes,
@@ -452,6 +455,7 @@ def get_reward_stats_from_dataset(
     reward_functions: Dict[str, Callable],
     config: DictConfig = None,
     num_scenes: int | None = None,
+    threshold_dict=None,
 ) -> Dict[str, Dict[str, float]]:
     """
     Load scenes from ground truth dataset and compute reward statistics.
@@ -545,17 +549,17 @@ def get_reward_stats_from_dataset(
     txt_dir = os.path.join(base_dir, "reward_analysis_txt")
     os.makedirs(txt_dir, exist_ok=True)
 
+        
     # Compute rewards for each function, and return enhanced statistics similar to baseline
     for reward_name, reward_func in reward_functions.items():
         print(f"Computing rewards for: {reward_name}")
-
-        # Allow (func, threshold) tuples just like baseline
-        threshold = None
-        func = reward_func
-        if isinstance(reward_func, (tuple, list)) and len(reward_func) == 2:
-            func, threshold = reward_func
-
-        rewards = func(
+        reward_name_base = "_".join(reward_name.split("_")[1:])
+        threshold = threshold_dict.get(reward_name_base)
+        if threshold is None:
+            print(f"Threshold for {reward_name_base} is not found in threshold_dict dataset")
+            threshold = 0.0
+        print(f"Threshold for {reward_name_base} dataset: {threshold}")
+        rewards = reward_func(
             parsed_scenes,
             idx_to_labels=idx_to_labels,
             room_type=room_type,
@@ -578,9 +582,6 @@ def get_reward_stats_from_dataset(
         # Convert to numpy array
         rewards_array = rewards.cpu().numpy() if isinstance(rewards, torch.Tensor) else np.array(rewards)
 
-        # Use default threshold if not provided
-        if threshold is None:
-            threshold = 0.7
 
         # Enhanced analysis identical to baseline helper
         stats = compute_enhanced_stats(rewards_array, threshold, reward_name)
@@ -904,10 +905,10 @@ def main(cfg: DictConfig):
     get_reward_stats_from_baseline_for_normalizer(
         reward_functions=reward_functions,
         config=cfg,
-        load="cu8sru1y",
-        dataset_max_num_objects_per_scene=21,
+        load=cfg.load,
+        dataset_max_num_objects_per_scene=cfg.dataset.max_num_objects_per_scene,
         algorithm_custom_old=True,
-        inpaint_dict=inpaint_dict,
+        # inpaint_dict=inpaint_dict,
         # num_scenes=300,
     )
     
@@ -915,4 +916,4 @@ if __name__ == "__main__":
     main()
     
     
-# python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=5 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 dataset.sdf_cache_dir=./living_sdf_cache/ dataset.accessibility_cache_dir=./living_accessibility_cache/
+# python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 dataset.sdf_cache_dir=./living_sdf_cache/ dataset.accessibility_cache_dir=./living_accessibility_cache/
