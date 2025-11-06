@@ -255,7 +255,7 @@ def get_universal_reward(
     parsed_scene,
     reward_normalizer,
     num_classes=22,
-    universal_importance_weights=None,
+    importance_weights=None,
     get_reward_functions=None,
     **kwargs,
 ):
@@ -267,7 +267,7 @@ def get_universal_reward(
     Args:
         parsed_scene: Dict returned by parse_and_descale_scenes()
         num_classes: Number of object classes (default: 22)
-        universal_importance_weights: Dict mapping reward names to importance weights
+        importance_weights: Dict mapping reward names to importance weights
         reward_normalizer:  normalizer to scale rewards to [0, 1] range
         get_reward_functions: Dict of reward functions to compute (if None, uses defaults)
         **kwargs: Additional arguments passed to individual reward functions
@@ -276,6 +276,8 @@ def get_universal_reward(
         total_reward: Combined reward normalized by sum of importance weights
         reward_components: Dict with individual reward values for analysis
     """
+    # print("[Ashok] importance_weights in universal reward:", importance_weights)
+    importance_weights = importance_weights["importance_weights"]
     rewards = {}
     # print(f"[Ashok] Computing universal rewards kwargs has keys: {list(kwargs.keys())}")
     # Define default universal reward functions if not provided
@@ -301,14 +303,9 @@ def get_universal_reward(
     else:
         for key, value in rewards.items():
             reward_components[key] = value
-    universal_importance_weights = universal_importance_weights["importance_weights"]
-    # Set default importance weights
-    if universal_importance_weights is None:
-        universal_importance_weights = {key: 1.0 for key in rewards.keys()}
-    # Combine rewards with importance weights
     rewards_sum = 0
 
     for key, value in rewards.items():
-        importance = universal_importance_weights.get(key, 1.0)
+        importance = importance_weights[key]
         rewards_sum += importance * value
     return rewards_sum, reward_components

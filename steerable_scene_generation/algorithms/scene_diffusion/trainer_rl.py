@@ -487,7 +487,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     scene_vec_desc=self.scene_vec_desc,
                     cfg=self.cfg,
                     room_type=room_type,
-                    importance_weights=importance_weights,
+                    # importance_weights=importance_weights,
                     floor_polygons=[
                         self.dataset.get_floor_polygon_points(idx)
                         for idx in cond_dict["idx"]

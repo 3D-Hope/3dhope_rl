@@ -591,7 +591,6 @@ def universal_reward(
     indices,
     cfg=None,
     room_type: str = "bedroom",
-    importance_weights: dict = None,
     **kwargs,
 ) -> tuple[torch.Tensor, dict]:
     """
@@ -611,7 +610,6 @@ def universal_reward(
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
         cfg (DictConfig, optional): Configuration object.
         room_type (str): Type of room for must-have furniture ('bedroom', 'living_room', etc.)
-        importance_weights (dict, optional): Importance multipliers for each reward component.
             If None, uses defaults from config or commons.py.
 
     Returns:
@@ -625,9 +623,27 @@ def universal_reward(
     num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
     # Use importance weights from config if not provided
-    if importance_weights is None and cfg and hasattr(cfg, "ddpo"):
-        if hasattr(cfg.ddpo, "universal_reward"):
-            importance_weights = dict(cfg.ddpo.universal_reward.importance_weights)
+    task_cfg = cfg.ddpo.dynamic_constraint_rewards
+
+    # Get task-specific settings
+    # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
+    # task_weight = task_cfg.get('task_weight', 2.0)
+    room_type = task_cfg.get("room_type", "bedroom")
+    
+    weights_path = task_cfg.get("weights_path", None)
+    
+    # Read json
+    with open(weights_path, "r") as f:
+        import json
+        importance_weights = json.load(f)
+    # print("[Ashok] Importance weights for universal reward:", importance_weights, "json ", weights_path)
+    if task_cfg.get("room_type") == "bedroom":
+        num_classes = 22
+    elif task_cfg.get("room_type") == "livingroom":
+        num_classes = 25
+    else:
+        raise ValueError(f"Unknown room type: {task_cfg.get('room_type')}")
+
     # Compute composite reward
     total_rewards, reward_components = get_universal_reward(
         parsed_scene=parsed_scene,
@@ -761,7 +777,7 @@ def composite_reward(
         parsed_scene=parsed_scene,
         reward_normalizer=reward_normalizer,
         num_classes=num_classes,
-        universal_importance_weights=importance_weights,
+        importance_weights=importance_weights,
         room_type=room_type,
         floor_polygons=floor_polygons,
         indices=indices,
