@@ -213,7 +213,6 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 6: Setup project directory and dependencies
 # ═════════════════════════════════════════════════════════════════════════
-══════════
 echo "STAGE 6: Installing project dependencies..."
 cd ~/codes/3dhope_rl/ || {
     echo "❌ Failed to change to project directory"
