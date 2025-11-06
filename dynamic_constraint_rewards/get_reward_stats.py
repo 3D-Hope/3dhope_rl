@@ -908,7 +908,7 @@ def main(cfg: DictConfig):
         load=cfg.load,
         dataset_max_num_objects_per_scene=cfg.dataset.max_num_objects_per_scene,
         algorithm_custom_old=True,
-        # inpaint_dict=inpaint_dict,
+        inpaint_dict=inpaint_dict,
         # num_scenes=300,
     )
     

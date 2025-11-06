@@ -251,6 +251,9 @@ python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugat
 python ../ThreedFront/scripts/render_results.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-10-31/19-40-48/sampled_scenes_results.pkl --no_texture
 
 
+zip -r bedroom_accessibility_cache.zip bedroom_accessibility_cache/
+zip -r bedroom_sdf_cache.zip bedroom_sdf_cache/
+
 
 
 srun --partition=debug --gres=gpu:a6000:1 --time=04:00:00 --pty bash
@@ -267,9 +270,9 @@ rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/s
 
 
 
-rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_accessibility_cache.zip insait:/home/pramish_paudel/3dhope_data/ 
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_accessibility_cache.zip insait:/home/pramish_paudel/3dhope_data/ 
 
-rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/living_sdf_cache.zip insait:/home/pramish_paudel/3dhope_data/  
+rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_sdf_cache.zip insait:/home/pramish_paudel/3dhope_data/  
 ---
 {0: 'armchair', 1: 'bookshelf', 2: 'cabinet', 3: 'ceiling_lamp', 4: 'chair', 5: 'children_cabinet', 6: 'coffee_table', 7: 'desk', 8: 'double_bed', 9: 'dressing_chair', 10: 'dressing_table', 11: 'kids_bed', 12: 'nightstand', 13: 'pendant_lamp', 14: 'shelf', 15: 'single_bed', 16: 'sofa', 17: 'stool', 18: 'table', 19: 'tv_stand', 20: 'wardrobe'}
 
@@ -1258,3 +1261,118 @@ python dynamic_constraint_rewards/run_llm_pipeline.py dataset=custom_scene datas
 
 
 python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=5 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0
+
+
+
+
+
+
+
+scp ajad@10.144.126.219:/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_sdf_cache.zip pulchowk@113.199.192.32:/home/pulchowk/3dhope_rl
+scp ajad@10.144.126.219:/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_accessibility_cache.zip pulchowk@113.199.192.32:/home/pulchowk/3dhope_rl
+
+
+PYTHONPATH=. python -u main.py +name=universal_bedroom \
+    load=rrudae6n \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.data.path_to_processed_data=/home/pulchowk/ThreedFront \
+    dataset.data.path_to_dataset_files=/home/pulchowk/ThreedFront/dataset_files \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=True \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=1020000 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=4 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=True \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.use_universal_reward=True \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=./dynamic_constraint_rewards/stats.json \
+    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
+    algorithm.custom.num_classes=22 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.obj_vec_len=30 \
+    algorithm.custom.obj_diff_vec_len=30 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.dataset_directory=bedroom \
+    dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=True
+
+<!-- Get Stats Bedroom -->
+python dynamic_constraint_rewards/get_reward_stats.py load=rrudae6n \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/ \
+    dataset.data.path_to_dataset_files=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files/\
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=True \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    experiment.training.max_steps=1020000 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=128 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=True \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json \
+    dataset.sdf_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_accessibility_cache/ \
+    algorithm.custom.num_classes=22 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.obj_vec_len=30 \
+    algorithm.custom.obj_diff_vec_len=30 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.dataset_directory=bedroom \
+    dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+    algorithm.custom.old=True \
+    dataset.data.room_type=bedroom
+
+

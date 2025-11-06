@@ -190,7 +190,7 @@ def get_statistics_for_final_rewards(cfg, load):
     for reward in reward_functions["rewards"]:
         threshold_dict[reward["name"]] = reward["success_threshold"]
     print(threshold_dict)
-    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir="dynamic_reward_functions_final")
+    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir="dynamic_reward_functions_final", threshold_dict=threshold_dict)
     baseline_stats = get_reward_stats_from_baseline_helper(cfg, load=load, inpaint_masks=inpaint_masks, threshold_dict=threshold_dict, reward_code_dir="dynamic_reward_functions_final")  
     print(f"Dataset stats: {dataset_stats}")
     print(f"Baseline stats: {baseline_stats}")
@@ -204,9 +204,17 @@ def main(cfg: DictConfig):
     register_resolvers()
     OmegaConf.resolve(cfg)
     
-    USER_PROMPT = "A classroom for 10 students."
+    # USER_PROMPT = "A classroom for 10 students."
+    USER_PROMPT = "A bedroom with ceiling lamp above each corner of the bed."
     
-    run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="cu8sru1y")
+    
+    # Bedroom
+    run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="rrudae6n")
+    # get_statistics_for_final_rewards(cfg, load="rrudae6n")
+    
+    
+    # Livingroom
+    # run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="cu8sru1y")
     # get_statistics_for_final_rewards(cfg, load="cu8sru1y")
     
 if __name__ == "__main__":

@@ -1,3 +1,3 @@
 
-    User Prompt: A classroom for 10 students.
+    User Prompt: A bedroom with ceiling lamp above each corner of the bed.
     
