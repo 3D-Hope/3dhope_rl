@@ -329,17 +329,6 @@ pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
 
-echo "✅ All dependencies installed and configured"
-# 🚀 Run training
-echo ""
-echo "════════════════════════════════════════════════════════════════════════════════"
-echo "STAGE 7: Starting RL training..."
-echo "Training started at: $(date)"
-echo "════════════════════════════════════════════════════════════════════════════════"
-echo ""
-
-export PYTHONUNBUFFERED=1
-
 PYTHONPATH=. python -u main.py +name=universal_living \
     load=cu8sru1y \
     dataset=custom_scene \
@@ -389,7 +378,10 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
     dataset.data.dataset_directory=livingroom \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
-    dataset.data.room_type=livingroom
+    dataset.data.room_type=livingroom \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions_final \
+    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
+    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json
 
 
 # Check exit status

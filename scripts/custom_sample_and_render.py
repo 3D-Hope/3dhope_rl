@@ -49,6 +49,7 @@ os.environ[
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
+#TODO: look at the living room dataset. is any scene corrupted why giving nan?
 def main(cfg: DictConfig) -> None:
     if not is_rank_zero:
         raise ValueError(

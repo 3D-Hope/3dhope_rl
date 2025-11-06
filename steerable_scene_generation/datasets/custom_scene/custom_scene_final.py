@@ -780,3 +780,35 @@ class CustomDataset(BaseDataset):
     ) -> None:
         # Not used in ThreedFront-backed implementation
         return
+
+
+from omegaconf import DictConfig, OmegaConf
+from steerable_scene_generation.utils.omegaconf import register_resolvers
+import hydra
+
+@hydra.main(version_base=None, config_path="../configurations", config_name="config")
+#TODO: look at the living room dataset. is any scene corrupted why giving nan?
+
+def main(cfg: DictConfig) -> None:
+    # Resolve the config.
+    register_resolvers()
+    OmegaConf.resolve(cfg)
+    
+    
+    dataset = CustomDataset(
+        cfg=cfg.dataset,
+        split=["train", "val", "test"],
+        ckpt_path=None,
+    )
+    
+    print(f"Dataset length: {len(dataset)}")
+    
+    
+    
+    
+
+if __name__ == "__main__":
+    main()
+    
+    
+    

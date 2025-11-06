@@ -212,7 +212,8 @@ echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 6: Setup project directory and dependencies
-# ═══════════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════
+══════════
 echo "STAGE 6: Installing project dependencies..."
 cd ~/codes/3dhope_rl/ || {
     echo "❌ Failed to change to project directory"
@@ -390,7 +391,11 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom \
     dataset.data.dataset_directory=bedroom \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
-    algorithm.custom.old=True
+    algorithm.custom.old=True \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions_final \
+    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
+    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json
+
 
 
 # Check exit status

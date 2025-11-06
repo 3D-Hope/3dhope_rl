@@ -380,6 +380,8 @@ PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
+    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
+    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
@@ -391,7 +393,8 @@ PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=True \
-    algorithm.ddpo.use_inpaint=True
+    algorithm.ddpo.use_inpaint=True \
+
 
 
 # Check exit status
