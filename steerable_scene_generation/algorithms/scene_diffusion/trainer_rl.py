@@ -306,7 +306,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     eta=self.cfg.noise_schedule.ddim.eta,
                     mask=inpainting_masks if use_inpaint else None,
                 )
-
+            if torch.isnan(xt_next).any():
+                print(f"[Ashok] NaNs detected in xt_next at timestep {t},")
             # If inpainting, keep unmasked values fixed to originals
             if use_inpaint:
                 xt = torch.where(inpainting_masks, xt_next, original_scenes)
