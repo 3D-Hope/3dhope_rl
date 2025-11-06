@@ -270,6 +270,8 @@ def main(cfg: DictConfig) -> None:
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
         
+        if torch.isnan(sampled_scenes).any():
+            print("[WARNING] NaN values found in sampled scenes!")
         # Remove samples that contain any NaN and keep indices in sync
         mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
         # Filter scenes
