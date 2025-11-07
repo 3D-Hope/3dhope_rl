@@ -55,10 +55,11 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
 
         # REINFORCE loss.
         loss = -torch.mean(torch.sum(trajectories_log_props, dim=1) * advantages)
-
+        print(f"[Ashok] reinforce loss values: {loss.item()}")
         # DDPM loss for regularization.
         if self.cfg.ddpo.ddpm_reg_weight > 0.0:
-            # print(f"[Ashok] reg ddpm loss values: {self.compute_ddpm_loss(batch)}")
-            loss += self.compute_ddpm_loss(batch) * self.cfg.ddpo.ddpm_reg_weight
+            ddpm_loss = self.compute_ddpm_loss(batch)
+            loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
+            print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()}")
 
         return loss

@@ -4,7 +4,7 @@
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=48G
-#SBATCH --time=23:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -340,8 +340,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=universal_bedroom \
-    load=rrudae6n \
+PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg1 \
+    load=fhfnf4xi \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -356,7 +356,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    algorithm.ddpo.ddpm_reg_weight=1.0 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
