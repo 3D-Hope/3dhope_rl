@@ -825,7 +825,8 @@ def get_reward_stats_from_baseline_for_normalizer(
         ]
     }
     reward_stats = {}
-    stats_json = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json"
+    stats_json = config.algorithm.ddpo.dynamic_constraint_rewards.stats_path
+    print(f"Stats JSON: {stats_json}")
     os.makedirs(os.path.dirname(stats_json), exist_ok=True)
 
     for reward_name, reward_func in reward_functions.items():
@@ -890,10 +891,10 @@ def main(cfg: DictConfig):
     from universal_constraint_rewards.commons import get_all_universal_reward_functions
     from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
     user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
-    dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
+    # dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
     
     reward_functions = get_all_universal_reward_functions()
-    reward_functions.update(dynamic_rewards)
+    # reward_functions.update(dynamic_rewards)
     print(f"Reward functions to analyze: {list(reward_functions.keys())}")
     if cfg.algorithm.ddpo.use_inpaint:
         inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 

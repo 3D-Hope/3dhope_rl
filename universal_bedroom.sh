@@ -340,7 +340,7 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg1 \
+PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg40 \
     load=fhfnf4xi \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -356,7 +356,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg1 \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=1.0 \
+    algorithm.ddpo.ddpm_reg_weight=40 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
@@ -374,12 +374,9 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg1 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     algorithm.ddpo.use_universal_reward=True \
-    experiment.training.precision=bf16-mixed \
-    experiment.validation.precision=bf16-mixed \
-    experiment.test.precision=bf16-mixed \
-    experiment.matmul_precision=medium \
     algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/universal_bedroom_stats.json \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
@@ -390,10 +387,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg1 \
     dataset.data.dataset_directory=bedroom \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
-    algorithm.custom.old=True \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions_final \
-    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
-    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json
+    algorithm.custom.old=True
 
 
 
