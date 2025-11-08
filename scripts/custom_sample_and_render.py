@@ -49,7 +49,6 @@ os.environ[
 
 
 @hydra.main(version_base=None, config_path="../configurations", config_name="config")
-#TODO: look at the living room dataset. is any scene corrupted why giving nan?
 def main(cfg: DictConfig) -> None:
     if not is_rank_zero:
         raise ValueError(
@@ -284,7 +283,7 @@ def main(cfg: DictConfig) -> None:
         print(f"Remaining samples: {sampled_scenes.shape[0]} out of {num_scenes_to_sample}")
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
-        print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
+        # print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
         bbox_params_list = []
         if cfg.dataset.data.room_type == "livingroom":
             n_classes = 25

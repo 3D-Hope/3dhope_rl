@@ -894,13 +894,15 @@ def main(cfg: DictConfig):
     reward_functions = get_all_universal_reward_functions()
     reward_functions.update(dynamic_rewards)
     print(f"Reward functions to analyze: {list(reward_functions.keys())}")
-    
-    inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 
-    with open(inpaint_path, "r") as f:
-        inpaint_info = json.load(f)
-    inpaint_dict = inpaint_info["inpaint"]
-    inpaint_dict = str(inpaint_dict).replace("'", '')
-    print(f"Loaded inpaint masks from: {inpaint_path}, inpaint dict {inpaint_dict}")
+    if cfg.algorithm.ddpo.use_inpaint:
+        inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 
+        with open(inpaint_path, "r") as f:
+            inpaint_info = json.load(f)
+        inpaint_dict = inpaint_info["inpaint"]
+        inpaint_dict = str(inpaint_dict).replace("'", '')
+        print(f"Loaded inpaint masks from: {inpaint_path}, inpaint dict {inpaint_dict}")
+    else:
+        inpaint_dict = None
     
     get_reward_stats_from_baseline_for_normalizer(
         reward_functions=reward_functions,

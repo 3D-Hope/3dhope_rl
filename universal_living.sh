@@ -356,6 +356,7 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
+    algorithm.classifier_free_guidance.weight=0 \
     algorithm.validation.num_samples_to_visualize=0 \
     algorithm.validation.num_directives_to_generate=0 \
     algorithm.test.num_samples_to_render=0 \

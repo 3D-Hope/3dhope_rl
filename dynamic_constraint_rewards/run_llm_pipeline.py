@@ -209,13 +209,13 @@ def main(cfg: DictConfig):
     
     
     # Bedroom
-    run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="rrudae6n")
+    # run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="rrudae6n")
     # get_statistics_for_final_rewards(cfg, load="rrudae6n")
     
     
     # Livingroom
     # run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="cu8sru1y")
-    # get_statistics_for_final_rewards(cfg, load="cu8sru1y")
+    get_statistics_for_final_rewards(cfg, load="w0gmpwep")
     
 if __name__ == "__main__":
     main()

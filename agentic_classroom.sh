@@ -339,7 +339,7 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=universal_living \
+PYTHONPATH=. python -u main.py +name=agentic_classroom \
     load=cu8sru1y \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -357,7 +357,7 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=0.0 \
     experiment.reset_lr_scheduler=True \
-    experiment.training.lr=1e-6 \
+    experiment.training.lr=1e-5 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=500 \
@@ -373,10 +373,6 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    experiment.training.precision=bf16-mixed \
-    experiment.validation.precision=bf16-mixed \
-    experiment.test.precision=bf16-mixed \
-    experiment.matmul_precision=medium \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
     algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
@@ -391,7 +387,8 @@ PYTHONPATH=. python -u main.py +name=universal_living \
     dataset.data.dataset_directory=livingroom \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
     dataset.data.room_type=livingroom \
-    algorithm.ddpo.use_inpaint=True
+    algorithm.ddpo.use_inpaint=True \
+    seed=1
 
 
 

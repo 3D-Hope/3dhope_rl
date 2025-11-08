@@ -17,7 +17,6 @@ from physcene_utils import (
     get_textured_objects,
     map_to_image_coordinate,
 )
-from scipy.ndimage import binary_dilation
 from threed_front.datasets.threed_future_dataset import ThreedFutureDataset
 from threed_front.evaluation import ThreedFrontResults
 from threed_front.utils import PATH_TO_PICKLED_3D_FUTURE_MODEL_REMESH as PATH_TO_PICKLED_3D_FUTURE_MODEL

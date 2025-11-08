@@ -2,7 +2,6 @@ PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
     load=cu8sru1y \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/3d_front_data \
     dataset.max_num_objects_per_scene=21 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
@@ -30,7 +29,7 @@ PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.use_universal_reward=True \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.stats_path=dynamic_constraint_rewards/stats.json \
     dataset.sdf_cache_dir=./living_sdf_cache/ \
@@ -43,7 +42,8 @@ PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
     dataset.data.dataset_directory=livingroom \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
     dataset.data.room_type=livingroom \
-    algorithm.ddpo.use_inpaint=True
+    algorithm.ddpo.use_inpaint=True \
+    algorithm.custom.old=True
 
 # python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
 #     load=cu8sru1y \

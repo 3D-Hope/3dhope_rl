@@ -654,9 +654,7 @@ def universal_reward(
         **kwargs,
     )
 
-    print(f"[Ashok] Universal reward components:")
-    for name, values in reward_components.items():
-        print(f"  {name}: {values}")
+
     print(f"[Ashok] Total universal rewards: {total_rewards}")
 
     return total_rewards, reward_components
@@ -805,7 +803,7 @@ def composite_reward(
     total_rewards = universal_total + dynamic_total
     reward_components = universal_components.copy()
     reward_components.update(dynamic_components)
-
+    print(f"[Ashok] composite reward components: {reward_components.keys()}")
     return total_rewards, reward_components
 
 

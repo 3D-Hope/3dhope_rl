@@ -10,7 +10,8 @@ BASE_DIR="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ste
 # Array of pickle files to evaluate with floor conditioning info
 # Format: "pkl_file|use_floor"
 PKL_FILES_WITH_FLAGS=(
-    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-04/20-44-55/sampled_scenes_results.pkl|with_floor" # # mi floor living no obj
+    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-07/17-00-02/sampled_scenes_results.pkl|with_floor" # mi floor universal bedroom
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-04/20-44-55/sampled_scenes_results.pkl|with_floor" # # mi floor living no obj
     # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-11-45/sampled_scenes_results.pkl|with_floor" # mi floor obj living
     # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-01-54/sampled_scenes_results.pkl|with_floor" # mi floor no obj living
     # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-08-05/sampled_scenes_results.pkl|no_floor"  # mi no floor obj living(still training 80k epochs)
@@ -93,30 +94,30 @@ process_entry() {
 
     # Remove PNG files in the directory containing the PKL file (if any)
     # local PKL_DIR
-    PKL_DIR=$(dirname "$PKL_FILE")
-    if compgen -G "$PKL_DIR/*.png" > /dev/null; then
-        echo "[Job ${IDX}] Removing PNG files in $PKL_DIR" | tee -a "$LOG_FILE" "$JOB_LOG"
-        rm -f "$PKL_DIR"/*.png
-    fi
+    # PKL_DIR=$(dirname "$PKL_FILE")
+    # if compgen -G "$PKL_DIR/*.png" > /dev/null; then
+    #     echo "[Job ${IDX}] Removing PNG files in $PKL_DIR" | tee -a "$LOG_FILE" "$JOB_LOG"
+    #     rm -f "$PKL_DIR"/*.png
+    # fi
 
-    # -------- Render Phase --------
-    START_TIME_RENDER=$(date +%s)
-    if [ "$FLOOR_FLAG" = "with_floor" ]; then
-        RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --retrieve_by_size)
-    else
-        RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --without_floor)
-    fi
+    # # -------- Render Phase --------
+    # START_TIME_RENDER=$(date +%s)
+    # if [ "$FLOOR_FLAG" = "with_floor" ]; then
+    #     RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --retrieve_by_size)
+    # else
+    #     RENDER_CMD=(python scripts/render_results.py "$PKL_FILE" --no_texture --without_floor)
+    # fi
 
-    echo "[Job ${IDX}] Running render: ${RENDER_CMD[*]}" | tee -a "$LOG_FILE" "$JOB_LOG"
-    if "${RENDER_CMD[@]}" >> "$JOB_LOG" 2>&1; then
-        END_TIME_RENDER=$(date +%s)
-        DURATION_RENDER=$((END_TIME_RENDER - START_TIME_RENDER))
-        echo "[Job ${IDX}] ✅ Rendered in ${DURATION_RENDER}s [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
-    else
-        echo "[Job ${IDX}] ❌ Rendering FAILED for $PKL_FILE" | tee -a "$LOG_FILE" "$JOB_LOG"
-        echo >&3  # Release semaphore token
-        return
-    fi
+    # echo "[Job ${IDX}] Running render: ${RENDER_CMD[*]}" | tee -a "$LOG_FILE" "$JOB_LOG"
+    # if "${RENDER_CMD[@]}" >> "$JOB_LOG" 2>&1; then
+    #     END_TIME_RENDER=$(date +%s)
+    #     DURATION_RENDER=$((END_TIME_RENDER - START_TIME_RENDER))
+    #     echo "[Job ${IDX}] ✅ Rendered in ${DURATION_RENDER}s [${FLOOR_FLAG}]" | tee -a "$LOG_FILE" "$JOB_LOG"
+    # else
+    #     echo "[Job ${IDX}] ❌ Rendering FAILED for $PKL_FILE" | tee -a "$LOG_FILE" "$JOB_LOG"
+    #     echo >&3  # Release semaphore token
+    #     return
+    # fi
 
     # -------- Evaluation Phase --------
     START_TIME_EVAL=$(date +%s)
@@ -131,7 +132,7 @@ process_entry() {
     if ! python scripts/compute_fid_scores.py "$PKL_FILE" \
         --output_directory ./fid_tmps \
         --no_texture \
-        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ \
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/bedroom/ \
         $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
@@ -141,7 +142,7 @@ process_entry() {
         --compute_kid \
         --output_directory ./fid_tmps \
         --no_texture \
-        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ \
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/bedroom/ \
         $FLOOR_EVAL_FLAG >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
@@ -173,7 +174,7 @@ process_entry() {
         --output_directory ./classifier_tmps \
         --no_texture \
         $FLOOR_EVAL_FLAG \
-        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/livingroom/ >> "$JOB_LOG" 2>&1; then
+        --dataset_directory /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/bedroom/ >> "$JOB_LOG" 2>&1; then
         EVAL_SUCCESS=false
     fi
 
