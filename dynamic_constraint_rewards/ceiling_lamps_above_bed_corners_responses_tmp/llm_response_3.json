@@ -45,6 +45,7 @@
         }
     ],
     "inpaint": {
-        "ceiling_lamp": 4
+        "ceiling_lamp": 4,
+        "double_bed,single_bed,kids_bed": 1
     }
 }

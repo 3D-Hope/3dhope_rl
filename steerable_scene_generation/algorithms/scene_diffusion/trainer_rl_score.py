@@ -60,6 +60,6 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         if self.cfg.ddpo.ddpm_reg_weight > 0.0:
             ddpm_loss = self.compute_ddpm_loss(batch)
             loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
-            print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()}")
+            print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}")
 
         return loss

@@ -889,7 +889,8 @@ def main(cfg: DictConfig):
     OmegaConf.resolve(cfg)
     from universal_constraint_rewards.commons import get_all_universal_reward_functions
     from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
-    dynamic_rewards, _ = import_dynamic_reward_functions("dynamic_reward_functions_final")
+    user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
+    dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
     
     reward_functions = get_all_universal_reward_functions()
     reward_functions.update(dynamic_rewards)

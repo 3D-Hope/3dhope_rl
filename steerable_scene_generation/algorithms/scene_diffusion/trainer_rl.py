@@ -36,6 +36,7 @@ from .ddpo_helpers import (
     prompt_following_reward,
     universal_reward,
 )
+import random
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
 
@@ -50,6 +51,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         cfg is a DictConfig object defined by
         `configurations/algorithm/scene_diffuser_base_continous.yaml`.
         """
+        random.seed(cfg.seed)
         super().__init__(cfg, dataset=dataset)
 
         # Variable for storing the reward computation cache.
@@ -101,10 +103,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             self.reward_normalizer = None
 
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
+            user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
             (
                 self.get_reward_functions,
                 self.test_reward_functions,
-            ) = import_dynamic_reward_functions("dynamic_reward_functions_final")
+            ) = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
@@ -209,6 +212,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
         if use_inpaint:
             # Build label->idx map from room type labels
+            # print(f"[Ashok] room_type: {room_type}")
             
             label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
             label_to_idx = {v: k for k, v in label_map.items()}
@@ -220,9 +224,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 num_classes = len(label_map) + 1  # +1 for empty
                 
             inpaint_path = self.cfg.ddpo.dynamic_constraint_rewards.inpaint_path
+            # print(f"[Ashok] inpaint_path: {inpaint_path}")
             with open(inpaint_path, "r") as f:
                 import json
                 inpaint_cfg = json.load(f)
+            print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
             inpaint_cfg = inpaint_cfg["inpaint"]
 
 
@@ -249,8 +255,22 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
 
             hardcoded_count = 0
+            dataset_stat_dir = os.path.join(self.cfg.dataset.data.path_to_processed_data, self.cfg.dataset.data.room_type, "dataset_stats.txt")
+            
+            with open(dataset_stat_dir, "r") as f:
+                import json
+                dataset_stats = json.load(f)
+            class_frequencies = dataset_stats["class_frequencies"]   
+            
+            
             # DictConfig and dict both support .items()
             for label_name, count in inpaint_cfg.items():
+                labels = label_name.split(",")
+                if len(labels) == 1:
+                    label_name = labels[0]
+                else:
+                    weights = [class_frequencies[label_name] for label_name in labels]
+                    label_name = random.choices(labels, weights=weights, k=1)[0]
                 class_idx = int(label_to_idx[str(label_name)])
                 count = int(count)
                 end = hardcoded_count + count
@@ -308,6 +328,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 )
             if torch.isnan(xt_next).any():
                 print(f"[Ashok] NaNs detected in xt_next at timestep {t},")
+                xt_next = torch.nan_to_num(xt_next)
             # If inpainting, keep unmasked values fixed to originals
             if use_inpaint:
                 xt = torch.where(inpainting_masks, xt_next, original_scenes)

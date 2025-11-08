@@ -71,16 +71,17 @@ def create_scene_diffuser_midiffusion(
                 self.txt_encoder = None
                 self.floor_encoder = None
                 context_dim = 0
-
-            network_dim = {
-                "objectness_dim": 0,  # Not used by our scene representation
-                "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
-                "translation_dim": self.scene_vec_desc.get_translation_vec_len(),
-                "size_dim": 0,  # Not used by our scene representation
-                "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
-                "objfeat_dim": 0,  # Not used by our scene representation
-            }
-            if self.cfg.custom.loss:
+            if self.cfg.custom.old and self.cfg.dataset.data.room_type =="bedroom":
+                network_dim = {
+                    "objectness_dim": 0,  # Not used by our scene representation
+                    "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
+                    "translation_dim": self.scene_vec_desc.get_translation_vec_len(),
+                    "size_dim": 0,  # Not used by our scene representation
+                    "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
+                    "objfeat_dim": 0,  # Not used by our scene representation
+                }
+            # if self.cfg.custom.loss :
+            else:
                 network_dim = {
                     "objectness_dim": 0,  # Not used by our scene representation
                     "class_dim": self.cfg.custom.num_classes,
@@ -167,19 +168,13 @@ def create_scene_diffuser_midiffusion(
                         print(f"[WARNING] NaN detected in cond_dict['{k}']!")
                         print(f"[DEBUG] cond_dict['{k}'] min: {v[~torch.isnan(v)].min()}")
                         print(f"[DEBUG] cond_dict['{k}'] max: {v[~torch.isnan(v)].max()}")
+                        cond_dict[k] = torch.nan_to_num(v)
             # Check for NaN in input and replace with zeros
             if torch.isnan(noisy_scenes).any():
                 print(f"[WARNING] NaN detected in noisy_scenes! Replacing with zeros.")
-                nan_mask = torch.isnan(noisy_scenes)
-                noisy_scenes = torch.where(nan_mask, torch.zeros_like(noisy_scenes), noisy_scenes)
+                noisy_scenes = torch.nan_to_num(noisy_scenes)
             
-            # Clamp to reasonable range to prevent extreme values
-            max_val = 1e6
-            noisy_scenes = torch.clamp(noisy_scenes, -max_val, max_val)
-            if torch.isnan(noisy_scenes).any():
-                print(f"[DEBUG] noisy_scenes has NaN: {torch.isnan(noisy_scenes).any()}")
-                print(f"[DEBUG] noisy_scenes min: {noisy_scenes.min()}, max: {noisy_scenes.max()}")
-                print(f"[DEBUG] timesteps has NaN: {torch.isnan(timesteps.float()).any()}")
+        
             
             # Context: Text OR Floor (mutually exclusive)
             context = None
@@ -222,8 +217,9 @@ def create_scene_diffuser_midiffusion(
             
             if torch.isnan(predicted_noise).any():
                 print(f"[WARNING] NaN detected in predicted_noise!")
-                print(f"[DEBUG] predicted_noise min: {predicted_noise[~torch.isnan(predicted_noise)].min()}")
-                print(f"[DEBUG] predicted_noise max: {predicted_noise[~torch.isnan(predicted_noise)].max()}")
+                # print(f"[DEBUG] predicted_noise min: {predicted_noise[~torch.isnan(predicted_noise)].min()}")
+                # print(f"[DEBUG] predicted_noise max: {predicted_noise[~torch.isnan(predicted_noise)].max()}")
+                predicted_noise = torch.nan_to_num(predicted_noise)
 
             return predicted_noise
 

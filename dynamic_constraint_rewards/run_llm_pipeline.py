@@ -50,6 +50,7 @@ def call_llm(use_openai, use_gemini, llm_instruction, llm_user_prompt):
         raise ValueError("Invalid LLM provider")
 
 def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=False, get_stats=False, load=None):
+    user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
     base_dir = os.path.dirname(__file__)
     llm_instruction_1, llm_user_prompt_1 = create_prompt_1(user_prompt, room_type)
     
@@ -102,17 +103,17 @@ def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=F
 
 
         
-    saved_reward_functions = save_reward_functions(reward_functions, reward_code_dir="dynamic_reward_functions_initial")
+    saved_reward_functions = save_reward_functions(reward_functions, reward_code_dir=f"{user_query}_dynamic_reward_functions_initial")
     
     if not saved_reward_functions:
         raise ValueError("Failed to save reward functions")
     
-    verified_tests = verify_tests_for_reward_function(room_type, reward_code_dir="dynamic_reward_functions_initial")
+    verified_tests = verify_tests_for_reward_function(room_type, user_query, reward_code_dir=f"{user_query}_dynamic_reward_functions_initial")
     if not verified_tests:
         raise ValueError("Failed to verify tests for reward functions")
     
     if get_stats:
-        dataset_stats, baseline_stats = get_stats_from_initial_rewards(reward_functions, cfg, load=load, reward_code_dir="dynamic_reward_functions_initial")
+        dataset_stats, baseline_stats = get_stats_from_initial_rewards(reward_functions, cfg, load=load, reward_code_dir=f"{user_query}_dynamic_reward_functions_initial")
         if dataset_stats is None or baseline_stats is None:
             raise ValueError("Failed to get stats from initial rewards")
         
@@ -143,11 +144,11 @@ def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=F
                 json.dump(final_constraints_and_dynamic_rewards, f)
         print(f"[Ashok] Saved final constraints and dynamic rewards to {os.path.join(responses_tmp_dir, 'llm_response_3.json')}")
             
-    saved_final_constraints_and_dynamic_rewards = save_reward_functions(final_constraints_and_dynamic_rewards, reward_code_dir="dynamic_reward_functions_final")
+    saved_final_constraints_and_dynamic_rewards = save_reward_functions(final_constraints_and_dynamic_rewards, reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
     if not saved_final_constraints_and_dynamic_rewards:
         raise ValueError("Failed to save final constraints and dynamic rewards")
       
-    verified_tests = verify_tests_for_reward_function(room_type, reward_code_dir="dynamic_reward_functions_final")
+    verified_tests = verify_tests_for_reward_function(room_type, user_query, reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
     if not verified_tests:
         raise ValueError("Failed to verify tests for final constraints and dynamic rewards")
     print("Tests verified for final constraints and dynamic rewards")
@@ -179,6 +180,7 @@ def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=F
     print("Successfully completed the task")
     
 def get_statistics_for_final_rewards(cfg, load):
+    user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
     from dynamic_constraint_rewards.commons import get_reward_stats_from_dataset_helper, get_reward_stats_from_baseline_helper
     base_dir = os.path.dirname(__file__)
     reward_functions = json.load(open(os.path.join(base_dir, "responses_tmp", "llm_response_3.json")))
@@ -190,8 +192,8 @@ def get_statistics_for_final_rewards(cfg, load):
     for reward in reward_functions["rewards"]:
         threshold_dict[reward["name"]] = reward["success_threshold"]
     print(threshold_dict)
-    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir="dynamic_reward_functions_final", threshold_dict=threshold_dict)
-    baseline_stats = get_reward_stats_from_baseline_helper(cfg, load=load, inpaint_masks=inpaint_masks, threshold_dict=threshold_dict, reward_code_dir="dynamic_reward_functions_final")  
+    dataset_stats = get_reward_stats_from_dataset_helper(cfg, reward_code_dir=f"{user_query}_dynamic_reward_functions_final", threshold_dict=threshold_dict)
+    baseline_stats = get_reward_stats_from_baseline_helper(cfg, load=load, inpaint_masks=inpaint_masks, threshold_dict=threshold_dict, reward_code_dir=f"{user_query}_dynamic_reward_functions_final")  
     print(f"Dataset stats: {dataset_stats}")
     print(f"Baseline stats: {baseline_stats}")
 

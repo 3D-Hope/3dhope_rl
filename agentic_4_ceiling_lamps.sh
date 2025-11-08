@@ -341,7 +341,7 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
-    load=w0gmpwep \
+    load=toid1beb \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -356,7 +356,7 @@ PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    algorithm.ddpo.ddpm_reg_weight=0.0 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
@@ -379,9 +379,6 @@ PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
     experiment.matmul_precision=medium \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
-    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
-    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
@@ -394,7 +391,9 @@ PYTHONPATH=. python -u main.py +name=agentic_4_ceiling_lamps \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=True \
     algorithm.ddpo.use_inpaint=True \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_code_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/dynamic_reward_functions_final
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=ceiling_lamps_above_bed_corners
+
 
 # Check exit status
 echo ""

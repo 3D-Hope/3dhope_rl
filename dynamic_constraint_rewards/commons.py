@@ -120,10 +120,10 @@ def get_dynamic_reward(
     return rewards_sum , reward_components
 
     
-def verify_tests_for_reward_function(room_type: str, reward_code_dir: str = None) -> bool:
+def verify_tests_for_reward_function(room_type: str, user_query: str, reward_code_dir: str = None) -> bool:
     if reward_code_dir is None:
         raise ValueError("reward_code_dir is required")
-    _, test_reward_functions = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
+    _, test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")  
     floor_polygons = [[-3,-3],[-3,3],[3,3],[3,-3]]
     for test_reward_function_name, test_reward_function in test_reward_functions.items():
         # try:

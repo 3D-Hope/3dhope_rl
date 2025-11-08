@@ -357,7 +357,7 @@ PYTHONPATH=. python -u main.py +name=agentic_classroom \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=0.0 \
     experiment.reset_lr_scheduler=True \
-    experiment.training.lr=1e-5 \
+    experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=500 \
@@ -374,9 +374,6 @@ PYTHONPATH=. python -u main.py +name=agentic_classroom \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/stats.json \
-    algorithm.ddpo.dynamic_constraint_rewards.weights_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_4.json \
-    algorithm.ddpo.dynamic_constraint_rewards.inpaint_path=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards/responses_tmp/llm_response_3.json \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/living_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/living_accessibility_cache/ \
     algorithm.custom.num_classes=25 \
@@ -388,8 +385,9 @@ PYTHONPATH=. python -u main.py +name=agentic_classroom \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
     dataset.data.room_type=livingroom \
     algorithm.ddpo.use_inpaint=True \
-    seed=1
-
+    experiment.seed=1 \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=classroom
 
 
 # Check exit status

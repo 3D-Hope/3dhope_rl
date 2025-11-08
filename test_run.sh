@@ -43,7 +43,8 @@ PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
     dataset.data.room_type=livingroom \
     algorithm.ddpo.use_inpaint=True \
-    algorithm.custom.old=True
+    algorithm.custom.old=True \
+    experiment.seed=1
 
 # python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
 #     load=cu8sru1y \
