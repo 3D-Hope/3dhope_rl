@@ -90,7 +90,14 @@ def create_scene_diffuser_midiffusion(
                     "angle_dim": self.cfg.custom.angle_dim,
                     "objfeat_dim": self.cfg.custom.objfeat_dim,  # Not used by our scene representation
                 }
-
+            # network_dim = {
+            #         "objectness_dim": 0,  # Not used by our scene representation
+            #         "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
+            #         "translation_dim": self.scene_vec_desc.get_translation_vec_len(),
+            #         "size_dim": 0,  # Not used by our scene representation
+            #         "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
+            #         "objfeat_dim": 0,  # Not used by our scene representation
+            #     }
             self.model = MIDiffusionContinuous(
                 network_dim=network_dim,
                 seperate_all=self.cfg.model.seperate_all,

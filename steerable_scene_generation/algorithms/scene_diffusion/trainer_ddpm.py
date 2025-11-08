@@ -347,7 +347,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         Returns the loss.
         """
         scenes = batch["scenes"]
-        if int(self.cfg.custom.objfeat_dim) == 0:
+        if int(self.cfg.custom.objfeat_dim) == 0 and self.cfg.custom.use_objfeats:
             scenes = scenes[:, :, : -int(32)]  # Remove objfeat part
         # print(f"[Ashok] ddpm forward shape of scenes {scenes.shape}")
         # Sample noise to add to the scenes.

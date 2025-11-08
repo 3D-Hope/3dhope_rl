@@ -86,7 +86,7 @@ def descale_pos(positions, pos_min=None, pos_max=None, device="cuda", room_type=
     if pos_min is None:
         if room_type == "bedroom":
             pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
-        elif room_type == "livingroom":
+        elif room_type == "livingroom": #TODO: Update these values
             pos_min = torch.tensor([-5.672918693230125, 0.0375, -5.716401580065309], device=device)
         else:
             raise ValueError(f"Unknown room type: {room_type}")
@@ -126,7 +126,7 @@ def descale_size(sizes, size_min=None, size_max=None, device="cuda", room_type="
     if size_min is None:
         if room_type == "bedroom":
             size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
-        elif room_type == "livingroom":
+        elif room_type == "livingroom":#TODO: Update these values
             size_min = torch.tensor([  0.03998999999999997,0.020000020334800084,0.0328434999999998,], device=device)
         else:
             raise ValueError(f"Unknown room type: {room_type}")

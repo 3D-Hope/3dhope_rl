@@ -457,6 +457,8 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
 
         # Initialize with random noise for masked regions.
         xt = self.sample_continuous_noise_prior(scenes.shape)  # Shape (B, N, V)
+        
+        print(f"[Ashok] xt noise shape {xt.shape}, scenes shape {scenes.shape}, inpainting mask shape {inpainting_masks.shape}")
         xt = torch.where(inpainting_masks, xt, scenes)  # Apply mask
 
         if self.cfg.classifier_free_guidance.use:

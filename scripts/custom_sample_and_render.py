@@ -270,8 +270,6 @@ def main(cfg: DictConfig) -> None:
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
         
-        if torch.isnan(sampled_scenes).any():
-            print("[WARNING] NaN values found in sampled scenes!")
         # Remove samples that contain any NaN and keep indices in sync
         mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
         # Filter scenes
@@ -283,7 +281,7 @@ def main(cfg: DictConfig) -> None:
         print(f"Remaining samples: {sampled_scenes.shape[0]} out of {num_scenes_to_sample}")
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
-        # print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
+        print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
         bbox_params_list = []
         if cfg.dataset.data.room_type == "livingroom":
             n_classes = 25

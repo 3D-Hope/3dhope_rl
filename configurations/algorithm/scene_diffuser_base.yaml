@@ -182,6 +182,7 @@ predict:
 
 custom:
   loss: true
+  use_objfeats: true
   obj_vec_len: 30
   obj_diff_vec_len: 30
   save_pickle: true

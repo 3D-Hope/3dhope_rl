@@ -204,6 +204,8 @@ def main(cfg: DictConfig) -> None:
     idx_to_labels_room_type = idx_to_labels[cfg.dataset.data.room_type]
     label_to_idx_room_type = {v: k for k, v in idx_to_labels_room_type.items()}
     print(f"[DEBUG] label_to_idx_room_type: {label_to_idx_room_type}")
+    inpaint_masks_final = {}
+
 
     # Build experiment and get diffuser
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
@@ -211,15 +213,42 @@ def main(cfg: DictConfig) -> None:
     if cfg.algorithm.predict.inpaint_masks is not None:
         print(f"[DEBUG] Inpaint masks: {cfg.algorithm.predict.inpaint_masks}")
         print(f"[DEBUG] Type of inpaint masks: {type(cfg.algorithm.predict.inpaint_masks)}")
-        val = cfg.algorithm.predict.inpaint_masks
-        if isinstance(val, DictConfig):
-            inpaint_masks = OmegaConf.to_container(val, resolve=True)  # -> plain dict
-        elif isinstance(val, str):
-            inpaint_masks = yaml.safe_load(val)
-        to_hardcode = {int(label_to_idx_room_type[k]): v for k, v in inpaint_masks.items()}
+        if cfg.algorithm.predict.inpaint_masks is not None:
+            val = cfg.algorithm.predict.inpaint_masks
+            if isinstance(val, DictConfig):
+                inpaint_masks = OmegaConf.to_container(val, resolve=True)  # -> plain dict
+            elif isinstance(val, str):
+                inpaint_masks = yaml.safe_load(val)
+        inpaint_masks_final = inpaint_masks
     else:
-        inpaint_masks = None
+        inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path
+        with open(inpaint_path, "r") as f:
+            import json
+            inpaint_cfg = json.load(f)
+        inpaint_masks = inpaint_cfg["inpaint"]
+        print(f"[DEBUG] Inpaint masks: {inpaint_masks}")
+        
+        dataset_stat_dir = os.path.join(cfg.dataset.data.path_to_processed_data, cfg.dataset.data.room_type, "dataset_stats.txt")
+        import random
+        with open(dataset_stat_dir, "r") as f:
+            import json
+            dataset_stats = json.load(f)
+        class_frequencies = dataset_stats["class_frequencies"]  
+        for label_name, count in inpaint_masks.items():
+            labels = label_name.split(",")
+            if len(labels) == 1:
+                label_name = labels[0]
+            else:
+                weights = [class_frequencies[label_name] for label_name in labels]
+                label_name = random.choices(labels, weights=weights, k=1)[0]
+            inpaint_masks_final[label_name] = count
+            
+    print(f"[DEBUG] Inpaint masks final: {inpaint_masks_final}")
+    
+    if inpaint_masks_final is None:
         to_hardcode = None
+    else:
+        to_hardcode = {int(label_to_idx_room_type[k]): v for k, v in inpaint_masks_final.items()}
     # SAUGAT
     sampled_scene_batches = experiment.exec_task(
         "inpaint",

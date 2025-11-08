@@ -846,9 +846,10 @@ python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBacku
 
 <!-- Training Midiffusion -->
 
-PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline_livingroom \
+PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline_livingroom_debug \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront \
     dataset._name=custom_scene \
     dataset.max_num_objects_per_scene=21 \
     dataset.model_path_vec_len=25 \
@@ -860,10 +861,8 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline_livingroom 
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.classifier_free_guidance.weight=0 \
     algorithm.custom.loss=true \
-
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    
     algorithm.validation.num_samples_to_render=0 \
     algorithm.validation.num_samples_to_visualize=0 \
     algorithm.validation.num_directives_to_generate=0 \
@@ -873,13 +872,46 @@ PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline_livingroom 
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     dataset.data.dataset_directory=livingroom \
     dataset.data.room_type=livingroom \
-    algorithm.custom.objfeat_dim=0 \
     algorithm.custom.num_classes=25 \
     algorithm.custom.obj_vec_len=33 \
     algorithm.custom.obj_diff_vec_len=33 \
     dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
     dataset.data.annotation_file=livingroom_threed_front_splits.csv \
-    experiment.training.checkpointing.every_n_train_steps=1000
+    experiment.training.checkpointing.every_n_train_steps=1000 \
+    algorithm.custom.use_objfeats=False
+
+python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=25 \
+    load=vl32cr71 \
+    dataset=custom_scene \
+    dataset.data.dataset_directory=livingroom \
+    dataset.data.annotation_file=livingroom_threed_front_splits.csv \
+    dataset.data.room_type=livingroom \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset._name=custom_scene \
+    dataset.max_num_objects_per_scene=21 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    algorithm.ema.use=True \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=0 \
+    algorithm.custom.obj_vec_len=33 \
+    algorithm.custom.obj_diff_vec_len=33 \
+    algorithm.custom.loss=true \
+    algorithm.custom.num_classes=25 \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront \
+    algorithm.custom.use_objfeats=False
+
+
 
 
 PYTHONPATH=. python -u main.py +name=continuous_midiffusion_baseline_bedroom \
@@ -925,7 +957,7 @@ python ../ThreedFront/scripts/render_results.py  /media/ajad/YourBook/AshokSauga
 <!-- inpainting -->
 
 
-python scripts/inpaint.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 algorithm.custom.old=true algorithm.custom.objfeat_dim=0
+python scripts/inpaint.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 algorithm.custom.old=true algorithm.custom.objfeat_dim=0 algorithm.ddpo.
 
 python scripts/custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=1 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30
 
@@ -1332,21 +1364,138 @@ PYTHONPATH=. python -u main.py +name=dynamic_bedroom \
     algorithm.custom.old=True
 
 <!-- Get Stats Bedroom -->
-python dynamic_constraint_rewards/get_reward_stats.py load=rrudae6n \
+python dynamic_constraint_rewards/get_reward_stats.py load=9nsshfmp \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData/ \
-    dataset.data.path_to_dataset_files=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files/\
+    dataset._name=custom_scene \
+    algorithm=scene_diffuser_midiffusion
+
+python dynamic_constraint_rewards/get_reward_stats.py load=fhfnf4xi dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+dataset.data.room_type=bedroom \
+dataset.model_path_vec_len=30 \
+dataset.data.dataset_directory=bedroom \
+dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+dataset.max_num_objects_per_scene=12 \
+algorithm.custom.objfeat_dim=0 \
+algorithm.custom.obj_vec_len=30 \
+algorithm.custom.obj_diff_vec_len=30 \
+algorithm.custom.num_classes=22 \
+dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+algorithm.validation.num_samples_to_render=0 \
+algorithm.validation.num_samples_to_visualize=0 \
+algorithm.validation.num_directives_to_generate=0 \
+algorithm.test.num_samples_to_render=0 \
+algorithm.test.num_samples_to_visualize=0 \
+algorithm.test.num_directives_to_generate=0 \
+algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+dataset.sdf_cache_dir=./bedroom_sdf_cache \
+dataset.accessibility_cache_dir=./bedroom_accessibility_cache \
+dataset.max_num_objects_per_scene=12 \
+algorithm=scene_diffuser_midiffusion \
+algorithm.classifier_free_guidance.use=False \
+algorithm.ema.use=True \
+algorithm.trainer=rl_score \
+algorithm.noise_schedule.scheduler=ddim \
+experiment.training.max_steps=1020000 \
+experiment.validation.limit_batch=1 \
+experiment.validation.val_every_n_step=50 \
+algorithm.ddpo.ddpm_reg_weight=50.0 \
+experiment.reset_lr_scheduler=True \
+experiment.training.lr=1e-6 \
+experiment.lr_scheduler.num_warmup_steps=250 \
+algorithm.ddpo.batch_size=128 \
+experiment.training.checkpointing.every_n_train_steps=500 \
+algorithm.num_additional_tokens_for_sampling=0 \
+algorithm.ddpo.n_timesteps_to_sample=100 \
+experiment.find_unused_parameters=True \
+algorithm.custom.loss=True \
+algorithm.validation.num_samples_to_render=0 \
+algorithm.validation.num_samples_to_visualize=0 \
+algorithm.validation.num_directives_to_generate=0 \
+algorithm.test.num_samples_to_render=0 \
+algorithm.test.num_samples_to_visualize=0 \
+algorithm.test.num_directives_to_generate=0 \
+algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+algorithm.classifier_free_guidance.use_floor=True \
+algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom \
+dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
+algorithm.custom.num_classes=22 \
+algorithm.custom.objfeat_dim=0 \
+algorithm.custom.obj_vec_len=30 \
+algorithm.custom.obj_diff_vec_len=30 \
+dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+dataset.data.dataset_directory=bedroom \
+dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+algorithm.custom.old=True \
+dataset.data.room_type=bedroom
+
+
+
+
+
+<!-- Universal Bedroom -->
+PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg40 \
+    load=fhfnf4xi \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    algorithm.ddpo.ddpm_reg_weight=40 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=2 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=True \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.ddpo.use_universal_reward=True \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom \
+    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
+    algorithm.custom.num_classes=22 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.obj_vec_len=30 \
+    algorithm.custom.obj_diff_vec_len=30 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.dataset_directory=bedroom \
+    dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=True
+
+python scripts/custom_sample_and_render.py +num_scenes=1000 load=2wyavm20 \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=True \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=1020000 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=40 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
@@ -1363,15 +1512,12 @@ python dynamic_constraint_rewards/get_reward_stats.py load=rrudae6n \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    experiment.training.precision=bf16-mixed \
-    experiment.validation.precision=bf16-mixed \
-    experiment.test.precision=bf16-mixed \
-    experiment.matmul_precision=medium \
+    algorithm.ddpo.use_universal_reward=True \
     algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards/stats.json \
-    dataset.sdf_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_sdf_cache/ \
-    dataset.accessibility_cache_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/bedroom_accessibility_cache/ \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom \
+    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
     algorithm.custom.objfeat_dim=0 \
     algorithm.custom.obj_vec_len=30 \
@@ -1379,8 +1525,10 @@ python dynamic_constraint_rewards/get_reward_stats.py load=rrudae6n \
     dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
     dataset.data.dataset_directory=bedroom \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
-    algorithm.custom.old=True \
-    dataset.data.room_type=bedroom
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=True
+
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-08/18-43-49/sampled_scenes_results.pkl --no_texture --retrieve_by_size
 
 
 python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 \
@@ -1421,13 +1569,66 @@ python scripts/custom_sample_and_render.py load=fhfnf4xi dataset=custom_scene da
 python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-07/17-08-40/sampled_scenes_results.pkl --no_texture --retrieve_by_size
 
 <!-- agentic ceiling lamp -->
+<!-- Ashok here -->
 python scripts/custom_sample_and_render.py load=w0gmpwep dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.custom.objfeat_dim=0 algorithm.custom.old=True
 
 python scripts/inpaint.py load=w0gmpwep dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 algorithm.custom.old=true algorithm.custom.objfeat_dim=0 algorithm.predict.inpaint_masks='{ceiling_lamp: 4}' algorithm.ddpo.use_inpaint=True
 
+<!-- yo wala -->
+python scripts/inpaint.py load=f5610ht4 +num_scenes=32 dataset=custom_scene \
+    dataset.max_num_objects_per_scene=12 \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    algorithm.ema.use=true \
+    algorithm.trainer=rl_score \
+    experiment.find_unused_parameters=true \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=true \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    dataset.model_path_vec_len=30 \
+    algorithm.ddpo.ddpm_reg_weight=0.0 \
+    algorithm.ddpo.batch_size=256 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    algorithm.custom.loss=true \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    experiment.training.precision=bf16-mixed \
+    experiment.validation.precision=bf16-mixed \
+    experiment.test.precision=bf16-mixed \
+    experiment.matmul_precision=medium \
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
+    algorithm.custom.num_classes=22 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.use_objfeats=false \
+    algorithm.custom.obj_vec_len=30 \
+    algorithm.custom.obj_diff_vec_len=30 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.dataset_directory=bedroom \
+    dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=true \
+    algorithm.ddpo.use_inpaint=True \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=ceiling_lamps_above_bed_corners \
+    algorithm.classifier_free_guidance.weight=1
+
+
+
 python ../ThreedFront/scripts/render_results_better.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-07/17-12-03/sampled_scenes_results.pkl --no_texture --retrieve_by_size
 
 
+
+python scripts/inpaint.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.model_path_vec_len=30 algorithm.custom.old=true algorithm.custom.objfeat_dim=0 algorithm.ddpo.dynamic_constraint_rewards.user_query=ceiling_lamps_above_bed_corners
 
 
 
@@ -1635,3 +1836,107 @@ PYTHONPATH=. python -u main.py +name=agentic_classroom_debug \
     dataset.data.room_type=livingroom \
     algorithm.ddpo.use_inpaint=True \
     experiment.seed=1
+
+
+
+
+
+<!-- agentic ceiling lamp -->
+python scripts/custom_sample_and_render.py +num_scene=100 \
+    load=f5610ht4 \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.ema.use=True \
+    algorithm.trainer=rl_score \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    experiment.training.max_steps=1020000 \
+    experiment.validation.limit_batch=1 \
+    experiment.validation.val_every_n_step=50 \
+    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    experiment.reset_lr_scheduler=True \
+    experiment.training.lr=1e-6 \
+    experiment.lr_scheduler.num_warmup_steps=250 \
+    algorithm.ddpo.batch_size=2 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.num_additional_tokens_for_sampling=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
+    experiment.find_unused_parameters=True \
+    algorithm.custom.loss=True \
+    algorithm.validation.num_samples_to_render=0 \
+    algorithm.validation.num_samples_to_visualize=0 \
+    algorithm.validation.num_directives_to_generate=0 \
+    algorithm.test.num_samples_to_render=0 \
+    algorithm.test.num_samples_to_visualize=0 \
+    algorithm.test.num_directives_to_generate=0 \
+    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query=ceiling_lamps_above_bed_corners \
+    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
+    algorithm.custom.num_classes=22 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.obj_vec_len=30 \
+    algorithm.custom.obj_diff_vec_len=30 \
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm \
+    dataset.data.dataset_directory=bedroom \
+    dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
+    dataset.data.room_type=bedroom \
+    algorithm.custom.old=True \
+    algorithm.ddpo.use_inpaint=True
+
+
+
+
+
+python scripts/custom_sample_and_render.py \
+    load=fhfnf4xi \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    +num_scenes=1000 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=1 \
+    algorithm.custom.loss=true \
+    algorithm.ema.use=True \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.old=True
+
+
+
+python scripts/custom_sample_and_render.py \
+    load=rrudae6n \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    +num_scenes=10 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=1 \
+    algorithm.custom.loss=true \
+    algorithm.ema.use=True \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.old=True \
+    algorithm.custom.loss=True
+
+
+python scripts/custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
+
+
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-08/19-41-59/sampled_scenes_results.pkl
