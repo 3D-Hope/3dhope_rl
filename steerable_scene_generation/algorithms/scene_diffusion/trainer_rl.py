@@ -228,7 +228,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             with open(inpaint_path, "r") as f:
                 import json
                 inpaint_cfg = json.load(f)
-            print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
+            # print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
             inpaint_cfg = inpaint_cfg["inpaint"]
 
 
