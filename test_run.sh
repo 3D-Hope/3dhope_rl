@@ -43,7 +43,8 @@ PYTHONPATH=. python -u main.py +name=test_bedroom_agentic \
     dataset.data.dataset_directory=bedroom \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
-    algorithm.custom.old=True 
+    algorithm.custom.old=True \
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=False
 
 # PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
 #     load=cu8sru1y \

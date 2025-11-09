@@ -606,6 +606,7 @@ def get_reward_stats_from_baseline_for_normalizer(
     load: str = "rrudae6n",
     dataset: str = "custom_scene",
     config: DictConfig = None,
+    reward_functions_initial: Dict[str, Callable] = None,
     dataset_processed_scene_data_path: str = "data/metadatas/custom_scene_metadata.json",
     dataset_max_num_objects_per_scene: int = 12,
     num_scenes: int = 1000,
@@ -827,6 +828,7 @@ def get_reward_stats_from_baseline_for_normalizer(
         ]
     }
     reward_stats = {}
+    reward_stats_initial = {}
     user_query = config.algorithm.ddpo.dynamic_constraint_rewards.user_query
     user_query = user_query.replace(' ', '_').replace('.', '')
     stats_json = os.path.join(config.algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
@@ -880,8 +882,49 @@ def get_reward_stats_from_baseline_for_normalizer(
         json.dump(reward_stats, f, indent=2)
         
     print(f"Saved reward stats to: {stats_json}")
+    
+    stats_json_initial = os.path.join(config.algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats_initial.json")
+    for reward_name, reward_func in reward_functions_initial.items():
+        print(f"Computing rewards for: {reward_name}")
+        rewards = reward_func(
+            parsed_scenes,
+            idx_to_labels=idx_to_labels,
+            room_type=room_type,
+            max_objects=max_objects,
+            num_classes=num_classes,
+            floor_polygons=[
+                torch.tensor(
+                    custom_dataset.get_floor_polygon_points(idx),
+                    device=parsed_scenes["device"],
+                )
+                for idx in indices
+            ],
+            indices=indices,
+            is_val=True,
+            sdf_cache=sdf_cache,
+            accessibility_cache=accessibility_cache,
+            floor_plan_args=floor_plan_args,
+        )
+        rewards_array = np.array(rewards)
+        reward_stats_initial[reward_name] = {
+            "min": float(np.min(rewards_array)),
+            "max": float(np.max(rewards_array)),
+            "mean": float(np.mean(rewards_array)),
+            "median": float(np.median(rewards_array)),
+            "stddev": float(np.std(rewards_array)),
+            "percentile_1": float(np.percentile(rewards_array, 1)),
+            "percentile_5": float(np.percentile(rewards_array, 5)),
+            "percentile_25": float(np.percentile(rewards_array, 25)),
+            "percentile_75": float(np.percentile(rewards_array, 75)),
+            "percentile_95": float(np.percentile(rewards_array, 95)),
+            "percentile_99": float(np.percentile(rewards_array, 99)),
+            "num_scenes": len(rewards_array),
+        }
+    with open(stats_json_initial, "w") as f:
+        json.dump(reward_stats_initial, f, indent=2)
+    print(f"Saved initial reward stats to: {stats_json_initial}")
 
-    return stats_json
+    return reward_stats, reward_stats_initial
 
 
 from omegaconf import DictConfig, OmegaConf
@@ -897,9 +940,12 @@ def main(cfg: DictConfig):
     user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
     user_query = user_query.replace(' ', '_').replace('.', '')
     reward_functions = get_all_universal_reward_functions()
+    reward_functions_initial = get_all_universal_reward_functions()
     if cfg.algorithm.ddpo.dynamic_constraint_rewards.use:
         dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
+        dynamic_rewards_initial, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_initial")
         reward_functions.update(dynamic_rewards)
+        reward_functions_initial.update(dynamic_rewards_initial)
     print(f"Reward functions to analyze: {list(reward_functions.keys())}")
     if cfg.algorithm.ddpo.use_inpaint:
         inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 
@@ -911,8 +957,9 @@ def main(cfg: DictConfig):
     else:
         inpaint_dict = None
     
-    get_reward_stats_from_baseline_for_normalizer(
+    reward_stats, reward_stats_initial = get_reward_stats_from_baseline_for_normalizer(
         reward_functions=reward_functions,
+        reward_functions_initial=reward_functions_initial,
         config=cfg,
         load=cfg.load,
         dataset_max_num_objects_per_scene=cfg.dataset.max_num_objects_per_scene,

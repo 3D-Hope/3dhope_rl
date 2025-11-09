@@ -62,7 +62,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         ):
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
             user_query = user_query.replace(' ', '_').replace('.', '')
-            stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
+            
+            if self.cfg.ddpo.dynamic_constraint_rewards.agentic:#during universal only training, this flag should be set
+                stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
+            else:
+                stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats_initial.json")
+                
             self.reward_normalizer = RewardNormalizer(
                 baseline_stats_path=stats_path
             )
@@ -105,10 +110,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
-            (
-                self.get_reward_functions,
-                self.test_reward_functions,
-            ) = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_final")
+            
+            if self.cfg.ddpo.dynamic_constraint_rewards.agentic:
+                self.get_reward_functions, self.test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_final")
+            else:
+                self.get_reward_functions, self.test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_initial")
+                
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None

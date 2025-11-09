@@ -32,7 +32,7 @@ ddpo:
       must_have_furniture: 1.0  # Room must be functional
       non_penetration: 1.0      # No overlapping objects
       object_count: 1.0         # Realistic clutter level
-    
+    agentic: true
     # Importance weights for individual dynamic rewards (applied within dynamic_reward)
     # These are applied AFTER normalization to [0, 1] range
     # Will be merged with any weights suggested by LLM

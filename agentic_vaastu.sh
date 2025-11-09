@@ -356,7 +356,7 @@ PYTHONPATH=. python -u main.py +name=agentic_vaastu \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=0.0 \
+    algorithm.ddpo.ddpm_reg_weight=50.0 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \

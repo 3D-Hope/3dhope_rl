@@ -1948,7 +1948,7 @@ python scripts/custom_sample_and_render.py \
 python scripts/custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
 
 
-python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/06-16-12/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/08-26-08/sampled_scenes_results.pkl
 
 python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/06-16-12/sampled_scenes_results.pkl
 
