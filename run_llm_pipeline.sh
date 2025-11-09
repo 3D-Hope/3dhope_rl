@@ -44,7 +44,7 @@ python dynamic_constraint_rewards/get_reward_stats.py load=fhfnf4xi dataset=cust
     algorithm.custom.obj_vec_len=30 \
     algorithm.custom.obj_diff_vec_len=30 \
     algorithm.custom.old=True \
-    algorithm.ddpo.dynamic_constraint_rewards.user_query="I want to follow Vaastu for bedroom layout. The beds headboard should face east." \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query="A kids bedroom where table top not reachable by a kid of 2 years old." \
     algorithm.ddpo.dynamic_constraint_rewards.use=True
 
 
