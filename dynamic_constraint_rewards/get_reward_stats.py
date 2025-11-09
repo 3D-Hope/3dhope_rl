@@ -583,6 +583,8 @@ def get_reward_stats_from_dataset(
 
         # Convert to numpy array
         rewards_array = rewards.cpu().numpy() if isinstance(rewards, torch.Tensor) else np.array(rewards)
+        
+        print(f"Reward {reward_name}: {rewards}")
 
 
         # Enhanced analysis identical to baseline helper

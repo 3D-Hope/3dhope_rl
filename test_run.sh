@@ -32,7 +32,6 @@ PYTHONPATH=. python -u main.py +name=test_bedroom_agentic \
     algorithm.classifier_free_guidance.use_floor=True \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
-    algorithm.ddpo.dynamic_constraint_rewards.user_query="I want to follow Vaastu for bedroom layout. The beds headboard should face east." \
     dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=./bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
@@ -44,7 +43,9 @@ PYTHONPATH=. python -u main.py +name=test_bedroom_agentic \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=True \
-    algorithm.ddpo.dynamic_constraint_rewards.agentic=False
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=False \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query="A kids bedroom for 2 years old kid."
+
 
 # PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \
 #     load=cu8sru1y \

@@ -341,9 +341,9 @@ def create_prompt_1(user_prompt, room_type):
     ### Dataset: 3D-FRONT
     {dataset_facts}
 
-    Note: While generating constraints, no need to verify these facts with you constraints, focus on the constraints other than these facts.
+    Note: While generating constraints, no need to verify these facts with your constraints, focus on the constraints other than these facts.
 
-    In this task, you are provided with a user prompt and a dataset context. Your task is to decompose the user prompt into verifiable constraints with Python reward functions.
+    In this task, you are provided with a user prompt and a dataset context. Your task is to decompose the user prompt into verifiable constraints.
 
     Here is the dataset information in JSON format about the specific room type: {room_type} you will be working on:
     ```json
@@ -446,16 +446,7 @@ def create_prompt_2(user_prompt, constraints, room_type):
     Also, passing all required parameters to the utlity functions is a must
     (Example: don't miss room_type for create_scene_for_testing)
 
-    Also, Given the reward constraints, analyze and if there are constraints like: a scene must have n number of objects of a particular class, then inpaint those objects. To inpaint, pass the class labels and counts in the json format as specified below.
 
-    Example: If R1 = "a scene must have exactly 4 ceiling lamps", R2 = "a scene must have exactly 2 nightstands", then inpaint the objects with:
-
-    ```
-    "inpaint": {{
-    "ceiling_lamp": 4,
-    "nightstand": 2
-    }}
-    ```
 
     Also, success_threshold is a float type, that indicates the constraint is satisfied (if unnormalized_raw_reward_value >= success_threshold)
 
@@ -491,17 +482,10 @@ def create_prompt_2(user_prompt, constraints, room_type):
         "code": "Python Code implementing get_reward and test_reward functions as per the template",
         "success_threshold": "Value in terms of raw reward units as implemented in Python code indicating satisfactory fulfillment of the constraint. This will be used to calculate success rate."
         }}
-    ],
-    "inpaint": {{
-    "class_label1": count1,
-    "class_label2": count2,
-    ...,
-    "class_labeln": countn
-    }}
+    ]
     }}
     ```
 
-    NOTE: Even if you have inpainted objects due to some constraints, keep those constraints in the rewards list.
     NOTE: If you are passing any other arguments other than specified in the function descriptions, make sure to get it from the kwargs dictionary. (kwargs.get("argument_name"))
     NOTE: You should use the utility functions exactly as the docstrings provided, all arguments should be passed in the same order as in the docstrings. (followed by kwargs if required)
     """
@@ -532,8 +516,8 @@ def create_prompt_3(user_prompt, constraints, reward_functions, room_type):
     You are an expert in 3D scene generation, interior design, and reinforcement learning.
     Your task is to analyze the user prompt, initial constraints, initial reward functions and the statistics of those reward functions on entire dataset as well as on synthetic scenes generated from baseline model (1000 scenes). Then, return the new constraints, new reward functions based on the analysis.
 
-    Now, as an rl expert in reward shaping if the original reward functions is reasonably learnable then keep them else create easier sub-constraints and make new rewards which are easier for the current baseline model to learn.
-
+    Now, as an rl expert in reward shaping, think about the curriculum to teach the baseline diffusion model using rl post training. We do rl post training iteratively according to the curriculum. For now you have to prepare reward functions for the first iteration of rl post training. after finishing first iteration of rl post training, you will analyze the results and prepare for the next iteration of rl post training. Our goal is to gradually improve the model to satisfy the user prompt strictly this iterative agentic approach should achieve better results than trying to achieve everything in one go.
+    
     ## CONTEXT
 
     ### Dataset: 3D-FRONT
@@ -575,16 +559,6 @@ def create_prompt_3(user_prompt, constraints, reward_functions, room_type):
     Also, passing all required parameters to the utlity functions is a must
     (Example: don't miss room_type for create_scene_for_testing)
 
-    Also, Given the reward constraints, analyze and if there are constraints like: a scene must have n number of objects of a particular class, then inpaint those objects. To inpaint, pass the class labels and counts in the json format as specified below.
-
-    Example: If R1 = "a scene must have exactly 4 ceiling lamps", R2 = "a scene must have exactly 2 nightstands", then inpaint the objects with:
-
-    ```
-    "inpaint": {{
-    "ceiling_lamp": 4,
-    "nightstand": 2
-    }}
-    ```
 
     Also, success_threshold is a float type, that indicates the constraint is satisfied (if unnormalized_raw_reward_value >= success_threshold)
     ---
@@ -636,25 +610,23 @@ def create_prompt_3(user_prompt, constraints, reward_functions, room_type):
 
     Ignore the nan values in the statistics(if any).
 
-    ---
-    If rewards given in input has inpaint info as "inpaint": {{
-    "class_label1": count1,
-    "class_label2": count2,
-    ...,
-    "class_labeln": countn
-    }}
-    
-    this means that we got the statistics from baseline model generated scenes by hardcoding those objects and inpainted rest of the scene. it was not the distribution learned by the pretrianed model from the dataset. But still we need to keep the reward functions for those constraints in the output rewards list because model may generate more objects of that class than the inpainted count and we need to penalize that.
-
     Very Very Important, all rewards should be bounded and within a reasonable range even if some samples are anamolous.
     Never ever give huge numbers like ('inf') in the rewards. even anomalous samples should be given rewards that are worse but capped at some reasonable value.    
     
     Very Very Important, you should be mindful of the scale of the rewards for different test cases according to the particular reward function. ocassionally the assertions may fail because you expected different magnitude of the reward not because the scene does not satisfy the constraint. Therefore, in case of such assertions fails you need to print the informative message mentioning the expected and actual reward values for each test case so that you can debug and adjust the reward function accordingly in the next iteration.
+    
+    NOTE: Very important, while generating new constraints and reward functions, only provide those for the stage1 of curriculum you generated.
     ---
     Only return the following JSON response (nothing else), follow this structure strictly:
 
     ```json
     {{
+    "curriculum": {{
+       "stage1": "description of what to focus on in this stage",
+        "stage2": "description of what to focus on in this stage",
+        ...
+        "stagen": "description of what to focus on in this stage" 
+    }},
     "constraints": [
         {{
         "id": "SC1",
@@ -699,8 +671,7 @@ def create_prompt_3(user_prompt, constraints, reward_functions, room_type):
     ],
     }}
     ```
-
-    NOTE: Even if you have inpainted objects due to some constraints, keep those constraints in the rewards list.
+    
     NOTE: If you are passing any other arguments other than specified in the function descriptions, make sure to get it from the kwargs dictionary. (kwargs.get("argument_name"))
     NOTE: You should use the utility functions exactly as the docstrings provided, all arguments should be passed in the same order as in the docstrings. (followed by kwargs if required)
     """
