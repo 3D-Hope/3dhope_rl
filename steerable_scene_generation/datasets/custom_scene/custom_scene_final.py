@@ -340,11 +340,15 @@ class CustomDataset(BaseDataset):
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         raw_item = self._get_item(idx)
-        
-        # ===== ANALYSIS CODE: Detect problematic scenes =====
-        self._analyze_scene_quality(raw_item, idx)
-        # ===================================================
-        
+        # print(f"[Ashok] keys: {raw_item.keys()}")
+        # import sys; sys.exit();
+        # for key in raw_item.keys():
+        #     try:
+        #         print(f"[Ashok] shape of {key}: {raw_item[key].shape}")
+        #     except Exception as e:
+        #         pass
+        # import sys; sys.exit();
+        # print(f"[Ashok] raw_item: {raw_item}")
         scene_tensor = self._to_scene_tensor(raw_item)
 
         item: dict[str, Any] = {
@@ -397,98 +401,6 @@ class CustomDataset(BaseDataset):
             "floor_plan_vertices": raw_item["floor_plan_vertices"],
             "room_outer_box": raw_item["room_outer_box"],
         }
-
-    def _analyze_scene_quality(self, raw_item: dict, idx: int) -> None:
-        """
-        Analyzes a scene for quality issues including NaN, Inf, and out-of-range values.
-        Logs warnings for problematic scenes and stores them in an analysis report.
-        """
-        import numpy as np
-        
-        # Initialize analysis storage on first call
-        if not hasattr(self, '_scene_analysis_report'):
-            self._scene_analysis_report = {
-                'problematic_indices': [],
-                'issue_summary': {}
-            }
-        
-        issues = []
-        issue_details = {}
-        
-        # Analyze each component
-        components_to_check = {
-            'class_labels': raw_item.get('class_labels'),
-            'translations': raw_item.get('translations'),
-            'sizes': raw_item.get('sizes'),
-            'angles': raw_item.get('angles'),
-            'objfeats_32': raw_item.get('objfeats_32'),
-            'objfeats': raw_item.get('objfeats'),
-            'floor_polygon_points': raw_item.get('floor_polygon_points'),
-            'floor_plan_centroid': raw_item.get('floor_plan_centroid'),
-            'floor_plan_vertices': raw_item.get('floor_plan_vertices'),
-            'room_outer_box': raw_item.get('room_outer_box'),
-        }
-        
-        for component_name, component_data in components_to_check.items():
-            if component_data is None:
-                continue
-            
-            # Convert to numpy if tensor
-            if isinstance(component_data, torch.Tensor):
-                data_np = component_data.cpu().numpy()
-            else:
-                data_np = np.asarray(component_data)
-            
-            # Check for NaN
-            nan_count = np.isnan(data_np).sum()
-            if nan_count > 0:
-                issues.append(f"NaN in {component_name}")
-                issue_details[component_name] = {'nan_count': int(nan_count), 'shape': data_np.shape}
-            
-            # Check for Inf
-            inf_count = np.isinf(data_np).sum()
-            if inf_count > 0:
-                issues.append(f"Inf in {component_name}")
-                issue_details[component_name] = {'inf_count': int(inf_count), 'shape': data_np.shape}
-            
-            # Check for extremely large values (potential overflow risk)
-            max_val = np.nanmax(np.abs(data_np))
-            if max_val > 1e6:
-                issues.append(f"Extreme values in {component_name} (max abs: {max_val:.2e})")
-                issue_details[component_name] = {'max_abs': float(max_val), 'shape': data_np.shape}
-            
-            # Check for all zeros
-            if np.allclose(data_np, 0):
-                issues.append(f"All zeros in {component_name}")
-                issue_details[component_name] = {'status': 'all_zeros', 'shape': data_np.shape}
-            
-            # For positional data, check ranges
-            if component_name in ['translations', 'sizes', 'floor_polygon_points', 'floor_plan_vertices']:
-                if np.any(data_np < -1e3) or np.any(data_np > 1e3):
-                    issues.append(f"Out-of-range values in {component_name}")
-                    issue_details[component_name] = {
-                        'min': float(np.nanmin(data_np)),
-                        'max': float(np.nanmax(data_np)),
-                        'shape': data_np.shape
-                    }
-        
-        # Store the analysis report
-        if issues:
-            self._scene_analysis_report['problematic_indices'].append(idx)
-            self._scene_analysis_report['issue_summary'][idx] = {
-                'fpbpn': raw_item.get('fpbpn', 'unknown'),
-                'issues': issues,
-                'details': issue_details,
-                'num_objects': len(raw_item.get('class_labels', []))
-            }
-            
-            # Log warning
-            console_logger.warning(
-                f"[Scene {idx}] Problematic data detected:\n"
-                f"  FPBPN: {raw_item.get('fpbpn', 'unknown')}\n"
-                f"  Issues: {', '.join(issues)}\n"
-                f"  Details: {issue_details}"
-            )
 
     def _to_scene_tensor(self, item: dict) -> torch.Tensor:
         """
@@ -584,89 +496,6 @@ class CustomDataset(BaseDataset):
             data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
 
         return data
-
-    def get_analysis_report(self) -> dict:
-        """
-        Returns a comprehensive analysis report of all problematic scenes encountered
-        during data loading. Should be called after iterating through the dataset.
-        """
-        if not hasattr(self, '_scene_analysis_report'):
-            return {'status': 'No issues found', 'problematic_scenes': 0}
-        
-        report = self._scene_analysis_report.copy()
-        report['num_problematic_scenes'] = len(report['problematic_indices'])
-        report['percentage_problematic'] = (
-            100.0 * report['num_problematic_scenes'] / len(self)
-            if len(self) > 0 else 0.0
-        )
-        
-        return report
-
-    def save_analysis_report(self, output_path: str = None) -> str:
-        """
-        Saves the scene quality analysis report to a JSON file.
-        
-        Args:
-            output_path: Path to save the report. If None, saves to ./scene_analysis_report.json
-        
-        Returns:
-            str: Path where the report was saved
-        """
-        if output_path is None:
-            output_path = "./scene_analysis_report.json"
-        
-        report = self.get_analysis_report()
-        
-        # Convert numpy types to native Python types for JSON serialization
-        def convert_to_serializable(obj):
-            import numpy as np
-            if isinstance(obj, (np.integer, np.floating)):
-                return obj.item()
-            elif isinstance(obj, (list, tuple)):
-                return [convert_to_serializable(item) for item in obj]
-            elif isinstance(obj, dict):
-                return {k: convert_to_serializable(v) for k, v in obj.items()}
-            return obj
-        
-        report = convert_to_serializable(report)
-        
-        with open(output_path, 'w') as f:
-            json.dump(report, f, indent=2)
-        
-        console_logger.info(f"Analysis report saved to {output_path}")
-        return output_path
-
-    def print_analysis_summary(self) -> None:
-        """
-        Prints a human-readable summary of the analysis report.
-        """
-        report = self.get_analysis_report()
-        
-        print("\n" + "="*80)
-        print("SCENE QUALITY ANALYSIS REPORT")
-        print("="*80)
-        print(f"Total scenes in dataset: {len(self)}")
-        print(f"Problematic scenes: {report.get('num_problematic_scenes', 0)}")
-        print(f"Percentage problematic: {report.get('percentage_problematic', 0):.2f}%")
-        
-        if report.get('num_problematic_scenes', 0) > 0:
-            print("\nProblematic scene indices:", report.get('problematic_indices', []))
-            print("\nDetailed issues by scene:")
-            print("-" * 80)
-            
-            for idx, issue_info in report.get('issue_summary', {}).items():
-                print(f"\nScene index: {idx}")
-                print(f"  FPBPN: {issue_info.get('fpbpn', 'unknown')}")
-                print(f"  Number of objects: {issue_info.get('num_objects', 'unknown')}")
-                print(f"  Issues: {', '.join(issue_info.get('issues', []))}")
-                if issue_info.get('details'):
-                    print(f"  Details:")
-                    for component, detail in issue_info['details'].items():
-                        print(f"    - {component}: {detail}")
-        else:
-            print("\n✓ No issues detected!")
-        
-        print("="*80 + "\n")
 
     @staticmethod
     def sample_data_dict(data: dict[str, Any], num_items: int) -> dict[str, Any]:
@@ -951,49 +780,3 @@ class CustomDataset(BaseDataset):
     ) -> None:
         # Not used in ThreedFront-backed implementation
         return
-
-
-from omegaconf import DictConfig, OmegaConf
-from steerable_scene_generation.utils.omegaconf import register_resolvers
-import hydra
-
-@hydra.main(version_base=None, config_path="../../../configurations", config_name="config")
-#TODO: look at the living room dataset. is any scene corrupted why giving nan?
-
-def main(cfg: DictConfig) -> None:
-    # Resolve the config.
-    register_resolvers()
-    OmegaConf.resolve(cfg)
-    
-    
-    dataset = CustomDataset(
-        cfg=cfg.dataset,
-        split=["train", "val", "test"],
-        ckpt_path=None,
-    )
-    
-    print(f"Dataset length: {len(dataset)}")
-    
-    # ===== ANALYSIS: Iterate through dataset to find problematic scenes =====
-    print("\n" + "="*80)
-    print("ANALYZING DATASET FOR QUALITY ISSUES")
-    print("="*80)
-    
-    for i in range(len(dataset)):
-        if i % max(1, len(dataset) // 10) == 0:
-            print(f"Progress: {i}/{len(dataset)} scenes analyzed...")
-        _ = dataset[i]  # This will trigger the analysis in __getitem__
-    
-    # Print and save the analysis report
-    dataset.print_analysis_summary()
-    report_path = dataset.save_analysis_report(
-        output_path="./scene_quality_analysis.json"
-    )
-    print(f"\nAnalysis report saved to: {report_path}")
-    print("="*80 + "\n")
-
-if __name__ == "__main__":
-    main()
-    
-    
-    

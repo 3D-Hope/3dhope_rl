@@ -36,7 +36,6 @@ from .ddpo_helpers import (
     prompt_following_reward,
     universal_reward,
 )
-import random
 from .scene_diffuser_base_continous import SceneDiffuserBaseContinous
 from .trainer_ddpm import compute_ddpm_loss
 
@@ -51,7 +50,6 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         cfg is a DictConfig object defined by
         `configurations/algorithm/scene_diffuser_base_continous.yaml`.
         """
-        random.seed(cfg.seed)
         super().__init__(cfg, dataset=dataset)
 
         # Variable for storing the reward computation cache.
@@ -62,8 +60,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             or self.cfg.ddpo.use_universal_reward
             and not self.cfg.ddpo.universal_reward.use_physcene_reward
         ):
+            user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
+            user_query = user_query.replace(' ', '_').replace('.', '')
+            stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
             self.reward_normalizer = RewardNormalizer(
-                self.cfg.ddpo.dynamic_constraint_rewards.stats_path
+                baseline_stats_path=stats_path
             )
             if not hasattr(self.cfg.dataset, "sdf_cache_dir") or not os.path.exists(
                 self.cfg.dataset.sdf_cache_dir
@@ -107,7 +108,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             (
                 self.get_reward_functions,
                 self.test_reward_functions,
-            ) = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
+            ) = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_final")
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
@@ -223,7 +224,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             else:
                 num_classes = len(label_map) + 1  # +1 for empty
                 
-            inpaint_path = self.cfg.ddpo.dynamic_constraint_rewards.inpaint_path
+            user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
+            user_query = user_query.replace(' ', '_').replace('.', '')
+            inpaint_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_3.json")
             # print(f"[Ashok] inpaint_path: {inpaint_path}")
             with open(inpaint_path, "r") as f:
                 import json

@@ -49,13 +49,14 @@ def call_llm(use_openai, use_gemini, llm_instruction, llm_user_prompt):
     else:
         raise ValueError("Invalid LLM provider")
 
-def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=False, get_stats=False, load=None):
-    user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
+def run_llm_pipeline(room_type, cfg, use_gemini=False, use_openai=False, get_stats=False, load=None):
     base_dir = os.path.dirname(__file__)
+    user_prompt = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
     llm_instruction_1, llm_user_prompt_1 = create_prompt_1(user_prompt, room_type)
-    
-    prompts_tmp_dir = os.path.join(base_dir, "prompts_tmp")
-    responses_tmp_dir = os.path.join(base_dir, "responses_tmp")
+    user_query = user_prompt.replace(" ", "_")
+    user_query = user_query.replace(".", "")
+    prompts_tmp_dir = os.path.join(base_dir, f"{user_query}_prompts_tmp")
+    responses_tmp_dir = os.path.join(base_dir, f"{user_query}_responses_tmp")
     os.makedirs(prompts_tmp_dir, exist_ok=True)
     os.makedirs(responses_tmp_dir, exist_ok=True)
     with open(os.path.join(prompts_tmp_dir, "llm_instruction_1.md"), "w") as f:
@@ -107,7 +108,6 @@ def run_llm_pipeline(user_prompt, room_type, cfg, use_gemini=False, use_openai=F
     
     if not saved_reward_functions:
         raise ValueError("Failed to save reward functions")
-    
     verified_tests = verify_tests_for_reward_function(room_type, user_query, reward_code_dir=f"{user_query}_dynamic_reward_functions_initial")
     if not verified_tests:
         raise ValueError("Failed to verify tests for reward functions")
@@ -183,7 +183,7 @@ def get_statistics_for_final_rewards(cfg, load):
     user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
     from dynamic_constraint_rewards.commons import get_reward_stats_from_dataset_helper, get_reward_stats_from_baseline_helper
     base_dir = os.path.dirname(__file__)
-    reward_functions = json.load(open(os.path.join(base_dir, "responses_tmp", "llm_response_3.json")))
+    reward_functions = json.load(open(os.path.join(base_dir, f"{user_query}_responses_tmp", "llm_response_3.json")))
     inpaint_masks = reward_functions["inpaint"]
     inpaint_masks = str(inpaint_masks).replace("'", '')
     print(inpaint_masks)
@@ -207,19 +207,21 @@ def main(cfg: DictConfig):
     OmegaConf.resolve(cfg)
     
     # USER_PROMPT = "A classroom for 10 students."
-    USER_PROMPT = "A bedroom with ceiling lamp above each corner of the bed."
-    
+    # USER_PROMPT = "A bedroom with ceiling lamp above each corner of the bed."
+    USER_PROMPT = "I want to follow Vaastu for bedroom layout. The bed's headboard should face east."
     
     # Bedroom
-    # run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="rrudae6n")
-    # get_statistics_for_final_rewards(cfg, load="rrudae6n")
+    run_llm_pipeline(cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="fhfnf4xi")
+    # get_statistics_for_final_rewards(cfg, load="fhfnf4xi")
     
     
     # Livingroom
     # run_llm_pipeline(USER_PROMPT, cfg.dataset.data.room_type, cfg, use_openai=False, get_stats=False, load="cu8sru1y")
-    get_statistics_for_final_rewards(cfg, load="w0gmpwep")
+    # get_statistics_for_final_rewards(cfg, load="w0gmpwep")
     
 if __name__ == "__main__":
     main()
+    
+# python dynamic_constraint_rewards/run_llm_pipeline.py dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 dataset.data.room_type=bedroom dataset.model_path_vec_len=30 dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData dataset.data.dataset_directory=bedroom dataset.data.annotation_file=bedroom_threed_front_splits_original.csv dataset.max_num_objects_per_scene=12 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=30 algorithm.custom.obj_diff_vec_len=30 algorithm.custom.num_classes=22 dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 algorithm.custom.old=True algorithm.ddpo.dynamic_constraint_rewards.user_query="I want to follow Vaastu for bedroom layout. The bed's headboard should face east." algorithm.ddpo.dynamic_constraint_rewards.use=True
     
 # python dynamic_constraint_rewards/run_llm_pipeline.py dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/MiData dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0

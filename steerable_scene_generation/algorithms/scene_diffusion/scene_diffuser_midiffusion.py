@@ -169,17 +169,17 @@ def create_scene_diffuser_midiffusion(
                 # Broadcast to batch dimension.
                 timesteps = timesteps.expand(noisy_scenes.size(0))  # Shape (B,)
 
-            for k, v in cond_dict.items():
-                if torch.is_tensor(v):
-                    if torch.isnan(v).any():
-                        print(f"[WARNING] NaN detected in cond_dict['{k}']!")
-                        print(f"[DEBUG] cond_dict['{k}'] min: {v[~torch.isnan(v)].min()}")
-                        print(f"[DEBUG] cond_dict['{k}'] max: {v[~torch.isnan(v)].max()}")
-                        cond_dict[k] = torch.nan_to_num(v)
-            # Check for NaN in input and replace with zeros
-            if torch.isnan(noisy_scenes).any():
-                print(f"[WARNING] NaN detected in noisy_scenes! Replacing with zeros.")
-                noisy_scenes = torch.nan_to_num(noisy_scenes)
+            # for k, v in cond_dict.items():
+            #     if torch.is_tensor(v):
+            #         if torch.isnan(v).any():
+            #             print(f"[WARNING] NaN detected in cond_dict['{k}']!")
+            #             print(f"[DEBUG] cond_dict['{k}'] min: {v[~torch.isnan(v)].min()}")
+            #             print(f"[DEBUG] cond_dict['{k}'] max: {v[~torch.isnan(v)].max()}")
+            #             cond_dict[k] = torch.nan_to_num(v)
+            # # Check for NaN in input and replace with zeros
+            # if torch.isnan(noisy_scenes).any():
+            #     print(f"[WARNING] NaN detected in noisy_scenes! Replacing with zeros.")
+            #     noisy_scenes = torch.nan_to_num(noisy_scenes)
             
         
             
@@ -222,11 +222,11 @@ def create_scene_diffuser_midiffusion(
                 noisy_scenes, time=timesteps, context=context, context_cross=None
             )  # Shape (B, N, V)
             
-            if torch.isnan(predicted_noise).any():
-                print(f"[WARNING] NaN detected in predicted_noise!")
-                # print(f"[DEBUG] predicted_noise min: {predicted_noise[~torch.isnan(predicted_noise)].min()}")
-                # print(f"[DEBUG] predicted_noise max: {predicted_noise[~torch.isnan(predicted_noise)].max()}")
-                predicted_noise = torch.nan_to_num(predicted_noise)
+            # if torch.isnan(predicted_noise).any():
+            #     print(f"[WARNING] NaN detected in predicted_noise!")
+            #     # print(f"[DEBUG] predicted_noise min: {predicted_noise[~torch.isnan(predicted_noise)].min()}")
+            #     # print(f"[DEBUG] predicted_noise max: {predicted_noise[~torch.isnan(predicted_noise)].max()}")
+            #     predicted_noise = torch.nan_to_num(predicted_noise)
 
             return predicted_noise
 

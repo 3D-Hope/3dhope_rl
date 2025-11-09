@@ -1,7 +1,7 @@
 """
 Helpers for the DDPO algorithm (https://arxiv.org/abs/2305.13301).
 """
-
+import os
 import math
 import multiprocessing
 
@@ -629,8 +629,9 @@ def universal_reward(
     # task_reward_type = task_cfg.get('task_reward_type', 'has_sofa')
     # task_weight = task_cfg.get('task_weight', 2.0)
     room_type = task_cfg.get("room_type", "bedroom")
-    
-    weights_path = task_cfg.get("weights_path", None)
+    user_query = cfg.ddpo.dynamic_constraint_rewards.user_query
+    user_query = user_query.replace(' ', '_').replace('.', '')
+    weights_path = os.path.join(cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_4.json")
     
     # Read json
     with open(weights_path, "r") as f:
@@ -748,7 +749,10 @@ def composite_reward(
     # task_weight = task_cfg.get('task_weight', 2.0)
     room_type = task_cfg.get("room_type", "bedroom")
     
-    weights_path = task_cfg.get("weights_path", None)
+    user_query = cfg.ddpo.dynamic_constraint_rewards.user_query
+    user_query = user_query.replace(' ', '_').replace('.', '')
+    
+    weights_path = os.path.join(cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_4.json")
     
     # Read json
     with open(weights_path, "r") as f:

@@ -87,10 +87,10 @@ class SceneDiffuserBaseContinous(SceneDiffuserBase, ABC):
             )
         )  # Shape (B, N, V)
 
-        if torch.isnan(xt).any():
-            print(f"[WARNING] NaN detected in xt!")
-            print(f"[DEBUG] xt min: {xt[~torch.isnan(xt)].min()}")
-            print(f"[DEBUG] xt max: {xt[~torch.isnan(xt)].max()}")
+        # if torch.isnan(xt).any():
+        #     print(f"[WARNING] NaN detected in xt!")
+        #     print(f"[DEBUG] xt min: {xt[~torch.isnan(xt)].min()}")
+        #     print(f"[DEBUG] xt max: {xt[~torch.isnan(xt)].max()}")
 
         for t in tqdm(
             self.noise_scheduler.timesteps, desc="Sampling scenes", leave=False

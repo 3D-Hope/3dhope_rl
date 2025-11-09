@@ -235,6 +235,7 @@ def main(cfg: DictConfig) -> None:
 
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
+    
 
     try:
         print("[DEBUG] Starting to sample scenes...")

@@ -13,7 +13,7 @@ data:
     path_to_dataset_files: "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ThreedFront/dataset_files"
     dataset_directory: "bedroom" # need to change to livingroom
     dataset_type: "cached_threedfront"
-    encoding_type: "cached_diffusion_cosin_angle_wocm_no_prm"
+    encoding_type: "cached_diffusion_cosin_angle_wocm"
 
     annotation_file: "bedroom_threed_front_splits_original.csv" # need to change to livingroom_threed_front_splits.csv
     augmentations: ["fixed_rotations"]

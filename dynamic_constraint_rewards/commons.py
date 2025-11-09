@@ -123,7 +123,7 @@ def get_dynamic_reward(
 def verify_tests_for_reward_function(room_type: str, user_query: str, reward_code_dir: str = None) -> bool:
     if reward_code_dir is None:
         raise ValueError("reward_code_dir is required")
-    _, test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")  
+    _, test_reward_functions = import_dynamic_reward_functions(reward_code_dir=reward_code_dir)  
     floor_polygons = [[-3,-3],[-3,3],[3,3],[3,-3]]
     for test_reward_function_name, test_reward_function in test_reward_functions.items():
         # try:
@@ -180,10 +180,11 @@ def save_reward_functions(reward_functions, reward_code_dir: str = None):
 def get_stats_from_initial_rewards(reward_functions, cfg=None, load=None, reward_code_dir: str = None):  
     if cfg is None:
         raise ValueError("cfg is required")
-    inpaint_masks = reward_functions["inpaint"]
-    inpaint_masks = str(inpaint_masks).replace("'", '')
-    print(inpaint_masks)
-    print(type(inpaint_masks))
+    # inpaint_masks = reward_functions["inpaint"]
+    # inpaint_masks = str(inpaint_masks).replace("'", '')
+    # print(inpaint_masks)
+    # print(type(inpaint_masks))
+    inpaint_masks = None
     threshold_dict = {}
     for reward in reward_functions["rewards"]:
         threshold_dict[reward["name"]] = reward["success_threshold"]

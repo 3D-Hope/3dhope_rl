@@ -22,6 +22,8 @@ dataset_facts = """
     - Ceiling objects are at y ≈ ceiling_height (typically 2.8m)
     - Floor objects have y ≈ object_height/2
     - Ignore empty slots (is_empty == True) in calculations
+    - East direction is along +X axis and West direction is along -X axis
+    - North direction is along +Z axis and South direction is along -Z axis
     """
 
 scene_representation = """
@@ -513,9 +515,10 @@ def create_prompt_3(user_prompt, constraints, reward_functions, room_type):
     import os
     stats = ""
     base_dir = os.path.dirname(__file__)
-    for txt_file in os.listdir(os.path.join(base_dir, "reward_analysis_txt")):
+    user_query = user_prompt.replace(' ', '_').replace('.', '')
+    for txt_file in os.listdir(os.path.join(base_dir, f"{user_query}_reward_analysis_txt")):
         if txt_file.endswith(".txt"):
-            with open(os.path.join(os.path.join(base_dir, "reward_analysis_txt"), txt_file), "r") as f:
+            with open(os.path.join(os.path.join(base_dir, f"{user_query}_reward_analysis_txt"), txt_file), "r") as f:
                 content = f.read()
                 stats += f"\n\n--- Stats from {txt_file} ---\n"
                 stats += content

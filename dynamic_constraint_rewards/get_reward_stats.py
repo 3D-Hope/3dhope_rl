@@ -391,7 +391,8 @@ def get_reward_stats_from_baseline(
 
     # Prepare output directories
     base_dir = os.path.dirname(__file__)
-    txt_dir = os.path.join(base_dir, "reward_analysis_txt")
+    user_query = config.algorithm.ddpo.dynamic_constraint_rewards.user_query
+    txt_dir = os.path.join(base_dir, f"{user_query.replace(' ', '_').replace('.', '')}_reward_analysis_txt")
     os.makedirs(txt_dir, exist_ok=True)
 
     for reward_name, reward_func in reward_functions.items():
@@ -546,7 +547,8 @@ def get_reward_stats_from_dataset(
 
     # Prepare output directories (mirror baseline behaviour)
     base_dir = os.path.dirname(__file__)
-    txt_dir = os.path.join(base_dir, "reward_analysis_txt")
+    user_query = config.algorithm.ddpo.dynamic_constraint_rewards.user_query
+    txt_dir = os.path.join(base_dir, f"{user_query.replace(' ', '_').replace('.', '')}_reward_analysis_txt")
     os.makedirs(txt_dir, exist_ok=True)
 
         
@@ -825,7 +827,9 @@ def get_reward_stats_from_baseline_for_normalizer(
         ]
     }
     reward_stats = {}
-    stats_json = config.algorithm.ddpo.dynamic_constraint_rewards.stats_path
+    user_query = config.algorithm.ddpo.dynamic_constraint_rewards.user_query
+    user_query = user_query.replace(' ', '_').replace('.', '')
+    stats_json = os.path.join(config.algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
     print(f"Stats JSON: {stats_json}")
     os.makedirs(os.path.dirname(stats_json), exist_ok=True)
 
@@ -891,10 +895,11 @@ def main(cfg: DictConfig):
     from universal_constraint_rewards.commons import get_all_universal_reward_functions
     from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
     user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query
-    # dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
-    
+    user_query = user_query.replace(' ', '_').replace('.', '')
     reward_functions = get_all_universal_reward_functions()
-    # reward_functions.update(dynamic_rewards)
+    if cfg.algorithm.ddpo.dynamic_constraint_rewards.use:
+        dynamic_rewards, _ = import_dynamic_reward_functions(reward_code_dir=f"{user_query}_dynamic_reward_functions_final")
+        reward_functions.update(dynamic_rewards)
     print(f"Reward functions to analyze: {list(reward_functions.keys())}")
     if cfg.algorithm.ddpo.use_inpaint:
         inpaint_path = cfg.algorithm.ddpo.dynamic_constraint_rewards.inpaint_path 
@@ -912,7 +917,7 @@ def main(cfg: DictConfig):
         load=cfg.load,
         dataset_max_num_objects_per_scene=cfg.dataset.max_num_objects_per_scene,
         algorithm_custom_old=True,
-        inpaint_dict=inpaint_dict,
+        inpaint_dict=None,
         # num_scenes=300,
     )
     
