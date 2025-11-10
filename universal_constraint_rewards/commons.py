@@ -300,6 +300,7 @@ def get_universal_reward(
                 key
             ] = value  # viz raw values to avoid weird normalized values in curves
             rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
+            print(f"[Ashok] Normalized reward for {key}: {rewards[key]}")
     else:
         for key, value in rewards.items():
             reward_components[key] = value

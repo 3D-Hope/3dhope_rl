@@ -97,6 +97,7 @@ def get_dynamic_reward(
         for key, value in rewards.items():
             reward_components[key] = value
             rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
+            print(f"[Ashok] Normalized reward for {key}: {rewards[key]}")
     else:
         for key, value in rewards.items():
             reward_components[key] = value

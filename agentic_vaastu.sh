@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vaastu
+#SBATCH --job-name=vaastu2
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
@@ -340,8 +340,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=vaastu \
-    load=fhfnf4xi \
+PYTHONPATH=. python -u main.py +name=vaastu2 \
+    load=cmdpm5nv \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
