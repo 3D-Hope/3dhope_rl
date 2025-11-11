@@ -32,7 +32,10 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
         desk_count = utility_functions["get_object_count_in_a_scene"]["function"](
             scene_one_hot, "desk", idx_to_labels
         )
-        
+        table_count = utility_functions["get_object_count_in_a_scene"]["function"](
+            scene_one_hot, "table", idx_to_labels
+        )
+        desk_count += table_count
         # Reward is 1.0 if at least one desk present
         if desk_count >= 1:
             rewards[b] = 1.0
