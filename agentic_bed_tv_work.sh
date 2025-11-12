@@ -14,6 +14,7 @@ trap 'echo "❌ Error on line $LINENO. Exit code: $?" >&2' ERR
 
 # Create logs directory if it doesn't exist
 mkdir -p logs
+export WANDB_ENTITY="078bct021-ashok-d"
 
 # Print debug information
 echo "════════════════════════════════════════════════════════════════════════════════"
@@ -341,7 +342,8 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
-    load=fhfnf4xi \
+    load=/home/pramish_paudel/codes/3dhope_rl/checkpoints/pramish-paudel-insait/3dhope_rl/nylmdurl/model.ckpt
+ \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
