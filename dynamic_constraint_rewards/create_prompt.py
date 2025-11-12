@@ -741,6 +741,80 @@ def create_prompt_4(user_prompt, final_constraints_and_dynamic_rewards, room_typ
     return llm_instruction_4, llm_user_prompt_4
 
 
+def create_prompt_5(user_prompt, reward_reflection):
+    llm_instruction_5 = f"""
+    # TASK: Generating a list of reward functions to follow the user instruction.
+    
+    We have successfully trained a RL policy of stage 1 of the provided curriculum using the provided reward function code.
+    
+    Please carefully analyze the policy feedback and return the new constraints and reward functions for next stage of the curriculum that
+    can better solve the task.
+    
+    ## YOUR TASK
+    Only return the following JSON response (nothing else), follow this structure strictly:
+    
+    # TODO: Finalize this format
+    ```json
+    {{
+    "curriculum": {{
+       "stage1": "description of what to focus on in this stage",
+        "stage2": "description of what to focus on in this stage",
+        ...
+        "stagen": "description of what to focus on in this stage" 
+    }},
+    "constraints": [
+        {{
+        "id": "SC1_stage2",
+        "name": "descriptive_snake_case_name",
+        "description": "Detailed description of the constraint in natural language explaining what needs to be satisfied in the scene."
+        }},
+        {{
+        "id": "SC2_stage2",
+        "name": "descriptive_snake_case_name",
+        "description": "Detailed description of the constraint in natural language explaining what needs to be satisfied in the scene."
+        }},
+        ...
+        {{
+        "id": "SCn_stage2",
+        "name": "descriptive_snake_case_name",
+        "description": "Detailed description of the constraint in natural language explaining what needs to be satisfied in the scene."
+        }}
+    ]
+    "rewards": [
+        {{
+        "id": "SR1_stage2",
+        "constraint_id": "SC1_stage2",
+        "name": "descriptive_snake_case_name",
+        "code": "Python Code implementing get_reward and test_reward functions as per the template",
+        "success_threshold": "Value in terms of raw reward units as implemented in Python code indicating satisfactory fulfillment of the constraint. This will be used to calculate success rate."
+        }},
+        {{
+        "id": "SR2_stage2",
+        "constraint_id": "SC2_stage2",
+        "name": "descriptive_snake_case_name",
+        "code": "Python Code implementing get_reward and test_reward functions as per the template",
+        "success_threshold": "Value in terms of raw reward units as implemented in Python code indicating satisfactory fulfillment of the constraint. This will be used to calculate success rate."
+        }},
+        ...
+        {{
+        "id": "SRn_stage2",
+        "constraint_id": "SCn_stage2",
+        "name": "descriptive_snake_case_name",
+        "code": "Python Code implementing get_reward and test_reward functions as per the template",
+        "success_threshold": "Value in terms of raw reward units as implemented in Python code indicating satisfactory fulfillment of the constraint. This will be used to calculate success rate."
+        }}
+    ],
+    }}
+    ```
+    
+    
+    """
+    llm_user_prompt_5 = f"""
+        User Prompt: {user_prompt}
+        Reward Reflection: {reward_reflection}
+        # TODO: What to add here?
+    """
+    return llm_instruction_5, llm_user_prompt_5
 
 
 

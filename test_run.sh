@@ -1,5 +1,8 @@
-PYTHONPATH=. python -u main.py +name=test_bedroom_agentic \
-    load=fhfnf4xi \
+#!/usr/bin/env bash
+    # load=fhfnf4xi \
+# PYTHONPATH=. python dynamic_constraint_rewards/get_reward_stats.py \
+PYTHONPATH=. python main.py +name=test_bed_tv_work \
+    load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/model.ckpt \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
@@ -43,8 +46,10 @@ PYTHONPATH=. python -u main.py +name=test_bedroom_agentic \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=True \
-    algorithm.ddpo.dynamic_constraint_rewards.agentic=False \
-    algorithm.ddpo.dynamic_constraint_rewards.user_query="A kids bedroom for 2 years old kid."
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
+    algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
+    algorithm.ddpo.dynamic_constraint_rewards.dynamic_only=True
 
 
 # PYTHONPATH=. python -u main.py +name=test_no_mix_precision_rl \

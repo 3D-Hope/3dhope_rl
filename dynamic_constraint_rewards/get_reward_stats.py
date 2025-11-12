@@ -974,4 +974,22 @@ if __name__ == "__main__":
     main()
     
     
-# python dynamic_constraint_rewards/get_reward_stats.py load=cu8sru1y dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 dataset.sdf_cache_dir=./living_sdf_cache/ dataset.accessibility_cache_dir=./living_accessibility_cache/
+# python dynamic_constraint_rewards/get_reward_stats.py load=python scripts/custom_sample_and_render.py \
+    # load=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/model.ckpt \
+    # dataset=custom_scene \
+    # dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    # dataset.max_num_objects_per_scene=12 \
+    # +num_scenes=1000 \
+    # algorithm=scene_diffuser_midiffusion \
+    # algorithm.trainer=ddpm \
+    # experiment.find_unused_parameters=True \
+    # algorithm.classifier_free_guidance.use=False \
+    # algorithm.classifier_free_guidance.use_floor=True \
+    # algorithm.classifier_free_guidance.weight=1 \
+    # algorithm.custom.loss=true \
+    # algorithm.ema.use=True \
+    # algorithm.noise_schedule.scheduler=ddim \
+    # algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    # algorithm.custom.objfeat_dim=0 \
+    # algorithm.custom.old=True \
+    # algorithm.custom.loss=True dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset._name=custom_scene +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=0 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150  dataset.data.room_type=livingroom dataset.model_path_vec_len=30 dataset.data.dataset_directory=livingroom dataset.data.annotation_file=livingroom_threed_front_splits.csv dataset.max_num_objects_per_scene=21 algorithm.custom.objfeat_dim=0 algorithm.custom.obj_vec_len=65 algorithm.custom.obj_diff_vec_len=65 algorithm.custom.num_classes=25 dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm algorithm.validation.num_samples_to_render=0 algorithm.validation.num_samples_to_visualize=0 algorithm.validation.num_directives_to_generate=0 algorithm.test.num_samples_to_render=0 algorithm.test.num_samples_to_visualize=0 algorithm.test.num_directives_to_generate=0 algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 dataset.sdf_cache_dir=./living_sdf_cache/ dataset.accessibility_cache_dir=./living_accessibility_cache/
