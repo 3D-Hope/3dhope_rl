@@ -773,21 +773,20 @@ def composite_reward(
     # print(f"[Ashok] parsed scene {parsed_scene}")
     # for key in parsed_scene:
     #     print(f"[Ashok] datatype of {key} is {type(parsed_scene[key])}")
-
-    # 1. Compute composite reward (general scene quality)
-    universal_total, universal_components = get_universal_reward(
-        parsed_scene=parsed_scene,
-        reward_normalizer=reward_normalizer,
-        num_classes=num_classes,
-        importance_weights=importance_weights,
-        room_type=room_type,
-        floor_polygons=floor_polygons,
-        indices=indices,
-        is_val=is_val,
-        sdf_cache=sdf_cache,
-        floor_plan_args=floor_plan_args,
-        accessibility_cache=accessibility_cache,
-    )
+    if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:  # 1. Compute composite reward (general scene quality)
+        universal_total, universal_components = get_universal_reward(
+            parsed_scene=parsed_scene,
+            reward_normalizer=reward_normalizer,
+            num_classes=num_classes,
+            importance_weights=importance_weights,
+            room_type=room_type,
+            floor_polygons=floor_polygons,
+            indices=indices,
+            is_val=is_val,
+            sdf_cache=sdf_cache,
+            floor_plan_args=floor_plan_args,
+            accessibility_cache=accessibility_cache,
+        )
 
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scene=parsed_scene,
@@ -803,11 +802,14 @@ def composite_reward(
         sdf_cache=sdf_cache,
         accessibility_cache=accessibility_cache,
     )
-
-    total_rewards = universal_total + dynamic_total
-    reward_components = universal_components.copy()
-    reward_components.update(dynamic_components)
-    print(f"[Ashok] composite reward components: {reward_components.keys()}")
+    if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:
+        total_rewards = universal_total + dynamic_total
+        reward_components = universal_components.copy()
+        reward_components.update(dynamic_components)
+    else:
+        total_rewards = dynamic_total
+        reward_components = dynamic_components
+    # print(f"[Ashok] composite reward components: {reward_components.keys()}")
     return total_rewards, reward_components
 
 
