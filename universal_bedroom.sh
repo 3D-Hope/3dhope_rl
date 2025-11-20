@@ -343,7 +343,7 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
-    resume=yry1s6wk \
+    load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -360,7 +360,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100 \
     experiment.reset_lr_scheduler=False \
-    experiment.training.lr=1e-5 \
+    experiment.training.lr=1e-6 \
     experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     algorithm.ddpo.batch_size=128 \
