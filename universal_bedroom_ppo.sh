@@ -3,7 +3,7 @@
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:2
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=12G
+#SBATCH --mem-per-cpu=20G
 #SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -363,8 +363,8 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_ppo \
     experiment.training.lr=1e-6 \
     experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=32 \
-    experiment.training.checkpointing.every_n_train_steps=1000 \
+    algorithm.ddpo.batch_size=128 \
+    experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
