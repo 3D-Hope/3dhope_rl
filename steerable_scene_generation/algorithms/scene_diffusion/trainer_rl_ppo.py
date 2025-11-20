@@ -35,6 +35,7 @@ class SceneDiffuserTrainerPPO(SceneDiffuserTrainerRL):
         self.trajectories_log_props = None
         self.advantages = None
         self.timesteps = None
+        self.cond_dict = None
 
     def recompute_trajectory_data(
         self, batch: Dict[str, torch.Tensor], phase: str = "training"
@@ -89,6 +90,7 @@ class SceneDiffuserTrainerPPO(SceneDiffuserTrainerRL):
             self.trajectories_log_props = trajectories_log_props
             self.advantages = advantages
             self.timesteps = timesteps
+            self.cond_dict = cond_dict
 
     def forward(
         self,
@@ -140,7 +142,7 @@ class SceneDiffuserTrainerPPO(SceneDiffuserTrainerRL):
             # Use the same advantage for all timesteps in the trajectory.
             advantage = self.advantages  # Shape (B,)
 
-            residual = self.predict_noise(sample, t)  # Shape (B, N, V)
+            residual = self.predict_noise(sample, t, cond_dict=self.cond_dict)  # Shape (B, N, V)
 
             # Compute the log probability.
             if isinstance(self.noise_scheduler, DDPMScheduler):
@@ -200,3 +202,4 @@ class SceneDiffuserTrainerPPO(SceneDiffuserTrainerRL):
         self.trajectories_log_props = None
         self.advantages = None
         self.timesteps = None
+        self.cond_dict = None
