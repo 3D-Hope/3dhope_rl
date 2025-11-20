@@ -78,7 +78,7 @@ def compute_aabb_penetration_depth(centers1, sizes1, centers2, sizes2):
     return penetration_depth
 
 
-def compute_non_penetration_reward(parsed_scene, **kwargs):
+def compute_non_penetration_reward(parsed_scenes, **kwargs):
     """
     Calculate reward based on non-penetration constraint using penetration depth.
 
@@ -86,21 +86,21 @@ def compute_non_penetration_reward(parsed_scene, **kwargs):
     When objects overlap, we get positive penetration depth, so reward is negative.
 
     Args:
-        parsed_scene: Dict returned by parse_and_descale_scenes()
+        parsed_scenes: Dict returned by parse_and_descale_scenes()
 
     Returns:
         rewards: Tensor of shape (B,) with non-penetration rewards for each scene
     """
     room_type = kwargs["room_type"]
-    positions = parsed_scene["positions"]
-    sizes = parsed_scene["sizes"]
-    object_indices = parsed_scene["object_indices"]
-    is_empty = parsed_scene["is_empty"]
+    positions = parsed_scenes["positions"]
+    sizes = parsed_scenes["sizes"]
+    object_indices = parsed_scenes["object_indices"]
+    is_empty = parsed_scenes["is_empty"]
     batch_size = positions.shape[0]
     device = positions.device
     
     # print(f"Parsed scene: pos {positions[:10]} sizes: {sizes[:10]}")
-    # print(f"Parsed scene: {parsed_scene}")
+    # print(f"Parsed scene: {parsed_scenes}")
 
     # Identify ceiling objects (they don't participate in ground-level collisions)
     ceiling_indices = [
@@ -135,12 +135,14 @@ def compute_non_penetration_reward(parsed_scene, **kwargs):
     # Divide by 2 because each pair is counted twice (i,j) and (j,i)
     total_penetration = masked_penetration.sum(dim=[1, 2]) / 2.0  # (B,)
 
-    # Convert to reward (negative of total penetration depth)
-    # Following original authors: reward = sum(distances) where distances are negative
-    # Here: reward = -penetration_depth (more penetration = more negative)
-    reward = -total_penetration
-    # import sys; sys.exit()
-    return reward
+    # Convert to reward: +1 if no penetration, else -penetration_depth
+    # This provides a clear positive signal for valid scenes and negative for invalid ones
+    rewards = torch.where(
+        total_penetration == 0,
+        torch.ones_like(total_penetration),
+        -total_penetration
+    )
+    return rewards
 
 
 def test_non_penetration_reward():

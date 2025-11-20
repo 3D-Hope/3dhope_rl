@@ -29,10 +29,7 @@ ddpo:
     
     # Importance weights for individual universal rewards (applied within universal_reward)
     # These are applied AFTER normalization to [0, 1] range
-    universal_importance_weights:
-      must_have_furniture: 1.0  # Room must be functional
-      non_penetration: 1.0      # No overlapping objects
-      object_count: 1.0         # Realistic clutter level
+    
     agentic: true
     # Importance weights for individual dynamic rewards (applied within dynamic_reward)
     # These are applied AFTER normalization to [0, 1] range
@@ -80,10 +77,12 @@ ddpo:
     # These are applied AFTER normalization to [-1, 0] range.
     # All rewards are normalized first, then weighted by importance.
     importance_weights:
-      must_have_furniture: 1.0  # Highest: room must be functional
-      gravity: 1.0              # Critical: no floating furniture
-      non_penetration: 1.0      # Critical: no overlapping objects
-      object_count: 1.0         # Important: realistic clutter level
+      universal_importance_weights:
+      must_have_furniture: 1.0  # Room must be functional
+      non_penetration: 1.0      # No overlapping objects
+      not_out_of_bounds: 1.0    # Objects must be within room boundaries
+      accessibility: 1.0        # Furniture must be accessible
+      object_count: 1.0         # Realistic clutter level     # Important: realistic clutter level
 
 # Whether to only diffuse over the continuous/ discrete part while taking the other part
 # from the dataset.

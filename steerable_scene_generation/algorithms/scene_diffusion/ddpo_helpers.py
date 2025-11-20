@@ -586,7 +586,7 @@ def has_sofa_reward(
 
 
 def universal_reward(
-    parsed_scene: dict,
+    parsed_scenes: dict,
     scene_vec_desc: SceneVecDescription,
     indices,
     cfg=None,
@@ -606,7 +606,7 @@ def universal_reward(
     All rewards are normalized to [-1, 0] range, then weighted by importance.
 
     Args:
-        parsed_scene (dict): The parsed scene to score.
+        parsed_scenes (dict): The parsed scene to score.
         scene_vec_desc (SceneVecDescription): The description of the scene vector structure.
         cfg (DictConfig, optional): Configuration object.
         room_type (str): Type of room for must-have furniture ('bedroom', 'living_room', etc.)
@@ -647,7 +647,7 @@ def universal_reward(
 
     # Compute composite reward
     total_rewards, reward_components = get_universal_reward(
-        parsed_scene=parsed_scene,
+        parsed_scenes=parsed_scenes,
         num_classes=num_classes,
         importance_weights=importance_weights,
         room_type=room_type,
@@ -769,13 +769,13 @@ def composite_reward(
     # Get number of classes from config
     # num_classes = cfg.custom.num_classes if cfg and hasattr(cfg, "custom") else 22
 
-    parsed_scene = parse_and_descale_scenes(scenes, num_classes=num_classes, room_type=room_type)
-    # print(f"[Ashok] parsed scene {parsed_scene}")
-    # for key in parsed_scene:
-    #     print(f"[Ashok] datatype of {key} is {type(parsed_scene[key])}")
+    parsed_scenes = parse_and_descale_scenes(scenes, num_classes=num_classes, room_type=room_type)
+    # print(f"[Ashok] parsed scene {parsed_scenes}")
+    # for key in parsed_scenes:
+    #     print(f"[Ashok] datatype of {key} is {type(parsed_scenes[key])}")
     if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:  # 1. Compute composite reward (general scene quality)
         universal_total, universal_components = get_universal_reward(
-            parsed_scene=parsed_scene,
+            parsed_scenes=parsed_scenes,
             reward_normalizer=reward_normalizer,
             num_classes=num_classes,
             importance_weights=importance_weights,
@@ -789,8 +789,8 @@ def composite_reward(
         )
 
     dynamic_total, dynamic_components = get_dynamic_reward(
-        parsed_scene=parsed_scene,
-        reward_normalizer=reward_normalizer,
+        parsed_scenes=parsed_scenes,
+        reward_normalizer=None,
         get_reward_functions=get_reward_functions,
         num_classes=num_classes,
         dynamic_importance_weights=importance_weights,

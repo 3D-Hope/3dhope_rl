@@ -469,7 +469,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             )
 
             # Parse and descale scenes
-            parsed_scene = parse_and_descale_scenes(x0, num_classes=num_classes, room_type=room_type)
+            parsed_scenes = parse_and_descale_scenes(x0, num_classes=num_classes, room_type=room_type)
 
             if self.cfg.ddpo.universal_reward.use_physcene_reward:
                 # TODO: Get floor plan args from dataset, how do we get the dataset here? we need get_floor_plan_args from custom dataset here to get the values for each scene in the batch
@@ -490,7 +490,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 }
                 # Compute physcene reward
                 rewards, reward_components = physcene_reward(
-                    parsed_scene=parsed_scene,
+                    parsed_scenes=parsed_scenes,
                     reward_normalizer=self.reward_normalizer,
                     scene_vec_desc=self.scene_vec_desc,
                     cfg=self.cfg,
@@ -514,7 +514,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             else:
                 # Compute universal reward with all physics constraints
                 rewards, reward_components = universal_reward(
-                    parsed_scene=parsed_scene,
+                    parsed_scenes=parsed_scenes,
                     reward_normalizer=self.reward_normalizer,
                     scene_vec_desc=self.scene_vec_desc,
                     cfg=self.cfg,

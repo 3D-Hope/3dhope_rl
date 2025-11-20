@@ -40,7 +40,7 @@ def import_dynamic_reward_functions(reward_code_dir: str):
 
 
 def get_dynamic_reward(
-    parsed_scene,
+    parsed_scenes,
     reward_normalizer,
     get_reward_functions,
     num_classes=22,
@@ -79,7 +79,7 @@ def get_dynamic_reward(
     num_classes = all_rooms_info[room_type]["num_classes_with_empty"]
     for key, value in get_reward_functions.items():
         reward = value(
-            parsed_scene,
+            parsed_scenes,
             idx_to_labels=idx_to_label,
             room_type=room_type,
             floor_polygons=floor_polygons,

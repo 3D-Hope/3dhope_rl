@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=universal_bedroom
+#SBATCH --job-name=universal_bedroom_nov20_reinforce
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
@@ -340,8 +340,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg40 \
-    load=fhfnf4xi \
+PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
+    load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -353,17 +353,18 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_round2_reg40 \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1020000 \
+    experiment.training.max_steps=1050000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=40 \
+    algorithm.ddpo.ddpm_reg_weight=100 \
     experiment.reset_lr_scheduler=True \
-    experiment.training.lr=1e-6 \
+    experiment.training.lr=1e-5 \
+    experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=128 \
-    experiment.training.checkpointing.every_n_train_steps=500 \
+    algorithm.ddpo.batch_size=256 \
+    experiment.training.checkpointing.every_n_train_steps=1000 \
     algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=100 \
+    algorithm.ddpo.n_timesteps_to_sample=0 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \

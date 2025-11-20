@@ -71,7 +71,7 @@ training:
     weight_decay: 0.0
     # schedule
     schedule: 'step'
-    lr: 0.0002
+    lr: 0.0002 #these should no be used. we only use values rom experiment config
     lr_step: 10000
     lr_decay: 0.5
 

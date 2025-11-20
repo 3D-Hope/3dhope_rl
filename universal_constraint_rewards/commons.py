@@ -252,7 +252,7 @@ def get_all_universal_reward_functions():
 
 
 def get_universal_reward(
-    parsed_scene,
+    parsed_scenes,
     reward_normalizer,
     num_classes=22,
     importance_weights=None,
@@ -265,7 +265,7 @@ def get_universal_reward(
     This function computes predefined universal reward functions and combines them.
 
     Args:
-        parsed_scene: Dict returned by parse_and_descale_scenes()
+        parsed_scenes: Dict returned by parse_and_descale_scenes()
         num_classes: Number of object classes (default: 22)
         importance_weights: Dict mapping reward names to importance weights
         reward_normalizer:  normalizer to scale rewards to [0, 1] range
@@ -278,35 +278,40 @@ def get_universal_reward(
     """
     # print("[Ashok] importance_weights in universal reward:", importance_weights)
     importance_weights = importance_weights["importance_weights"]
-    rewards = {}
+    # rewards = {}
     # print(f"[Ashok] Computing universal rewards kwargs has keys: {list(kwargs.keys())}")
     # Define default universal reward functions if not provided
     # if get_reward_functions is None:
     get_reward_functions = get_all_universal_reward_functions()
+    rewards_sum = 0.0
+    reward_components = {}
+    
 
     # Compute rewards for each function
     for key, value in get_reward_functions.items():
-        reward = value(parsed_scene, **kwargs)
-        rewards[key] = reward
-
+        if key not in importance_weights or importance_weights[key] == 0:
+            continue  # Skip rewards with zero importance weight
+        reward = value(parsed_scenes, **kwargs)
+        # rewards[key] = reward
+        reward_components[key] = reward
+        rewards_sum += importance_weights[key] * reward
         print(f"[Ashok] Raw reward for {key}: {reward}")
-        rewards[key] = reward
     # Normalize rewards if normalizer is provided
-    reward_normalizer = None
-    reward_components = {}
-    if reward_normalizer is not None:
-        for key, value in rewards.items():
-            reward_components[
-                key
-            ] = value  # viz raw values to avoid weird normalized values in curves
-            rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
-            print(f"[Ashok] Normalized reward for {key}: {rewards[key]}")
-    else:
-        for key, value in rewards.items():
-            reward_components[key] = value
-    rewards_sum = 0
+    # reward_normalizer = None
+    # if reward_normalizer is not None:
+    #     for key, value in rewards.items():
+    #         reward_components[
+    #             key
+    #         ] = value  # viz raw values to avoid weird normalized values in curves
+    #         rewards[key] = reward_normalizer.normalize(key, torch.tensor(value))
+    #         print(f"[Ashok] Normalized reward for {key}: {rewards[key]}")
+    # else:
+    #     for key, value in rewards.items():
+    #         reward_components[key] = value
+    # rewards_sum = 0
 
-    for key, value in rewards.items():
-        importance = importance_weights[key]
-        rewards_sum += importance * value
+    # for key, value in rewards.items():
+    #     importance = importance_weights[key]
+    #     rewards_sum += importance * value
+        
     return rewards_sum, reward_components
