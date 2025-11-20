@@ -359,7 +359,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100 \
-    experiment.reset_lr_scheduler=False \
+    experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \

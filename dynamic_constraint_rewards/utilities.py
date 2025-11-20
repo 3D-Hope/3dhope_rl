@@ -99,7 +99,8 @@ def get_object_count_in_a_scene(one_hot, class_label, idx_to_labels):
     labels_to_idx = {v: int(k) for k, v in idx_to_labels.items()}
     count = 0
     for i in range(one_hot.shape[1]):
-        if one_hot[0, i, labels_to_idx[class_label]] == 1.0:
+        # print(f"one hot at index {i}: tv stand idx {labels_to_idx[class_label]}, one hot argmax {one_hot[0, i].argmax().item()}")
+        if labels_to_idx[class_label] == one_hot[0, i].argmax().item():
             count += 1
     return count
 
