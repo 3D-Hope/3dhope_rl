@@ -366,7 +366,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=1000 \
     algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=0 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
