@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=universal_bedroom_nov20_reinforce
+#SBATCH --job-name=universal_bedroom_nov20_ppo
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:2
 #SBATCH --cpus-per-task=16
@@ -342,7 +342,7 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
+PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_ppo \
     load=rrudae6n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -352,7 +352,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
-    algorithm.trainer=rl_score \
+    algorithm.trainer=rl_ppo \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=1100000 \
@@ -363,7 +363,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     experiment.training.lr=1e-5 \
     experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=128 \
+    algorithm.ddpo.batch_size=32 \
     experiment.training.checkpointing.every_n_train_steps=1000 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
