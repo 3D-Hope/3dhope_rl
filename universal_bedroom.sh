@@ -354,7 +354,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1050000 \
+    experiment.training.max_steps=1100000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100 \
