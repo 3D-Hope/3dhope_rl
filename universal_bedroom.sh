@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=universal_bedroom_nov20_reinforce
 #SBATCH --partition=batch
-#SBATCH --gpus=h200:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=48G
+#SBATCH --gpus=h200:2
+#SBATCH --cpus-per-task=16
+#SBATCH --mem-per-cpu=12G
 #SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -33,6 +33,15 @@ echo ""
 echo "System information:"
 free -h
 df -h /scratch/pramish_paudel
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 0: Check GPU
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 5: Checking GPU availability..."
+nvidia-smi || {
+    echo "⚠️  GPU check failed, but continuing..."
+}
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════════
@@ -202,14 +211,6 @@ echo "  Pip path: $(which pip)"
 echo ""
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════════════
-# STAGE 5: Check GPU
-# ═══════════════════════════════════════════════════════════════════════════════════
-echo "STAGE 5: Checking GPU availability..."
-nvidia-smi || {
-    echo "⚠️  GPU check failed, but continuing..."
-}
-echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 6: Setup project directory and dependencies
@@ -362,7 +363,7 @@ PYTHONPATH=. python -u main.py +name=universal_bedroom_nov20_reinforce \
     experiment.training.lr=1e-5 \
     experiment.training.weight_decay=1e-4 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=128 \
+    algorithm.ddpo.batch_size=192 \
     experiment.training.checkpointing.every_n_train_steps=1000 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=0 \
