@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=agentic_bed_tv_work
 #SBATCH --partition=batch
-#SBATCH --gpus=h200:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=48G
-#SBATCH --time=20:00:00
+#SBATCH --gpus=h200:2
+#SBATCH --cpus-per-task=16
+#SBATCH --mem-per-cpu=20G
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -342,8 +342,7 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
-    load=/home/pramish_paudel/codes/3dhope_rl/checkpoints/pramish-paudel-insait/3dhope_rl/nylmdurl/model.ckpt
- \
+    load=0kz0t9w7 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -358,11 +357,11 @@ PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
     experiment.training.max_steps=1050000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    algorithm.ddpo.ddpm_reg_weight=100.0 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=256 \
+    algorithm.ddpo.batch_size=128 \
     experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \

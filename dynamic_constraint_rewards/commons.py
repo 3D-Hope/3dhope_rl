@@ -102,7 +102,10 @@ def get_dynamic_reward(
         for key, value in rewards.items():
             reward_components[key] = value
     rewards_sum = 0
-    dynamic_importance_weights = dynamic_importance_weights.get("importance_weights", None)
+    try:
+        dynamic_importance_weights = dynamic_importance_weights.get("importance_weights", None)
+    except AttributeError:
+        dynamic_importance_weights = None
     if dynamic_importance_weights is None:
         dynamic_importance_weights = {key: 1.0 for key in rewards.keys()}
 

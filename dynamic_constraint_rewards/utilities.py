@@ -104,6 +104,46 @@ def get_object_count_in_a_scene(one_hot, class_label, idx_to_labels):
             count += 1
     return count
 
+import torch
+
+def get_object_present_reward_potential(one_hot, class_label, idx_to_labels, threshold=0.5):
+    """
+    Calculate reward signal for object present in the scene: +1 if target class is present, else -1 + potential.
+    Potential is (1 - min_distance) to encourage getting closer to detection.
+    
+    Args:
+        one_hot: (B, N, num_classes) - One-hot encoded classes (output from nn model)
+                 Max class has values near 1.0, others near -1.0
+        class_label: string, e.g. "ceiling_lamp"
+        idx_to_labels: dict, {idx: label}
+        threshold: float, score above this is considered "present" (default: 0.5)
+    
+    Returns:
+        rewards: (B,) - For each batch: +1 if class present, else -1 + potential
+    """
+    # Find the class index for the target label
+    label_to_idx = {v: k for k, v in idx_to_labels.items()}
+    
+    if class_label not in label_to_idx:
+        raise ValueError(f"Class label '{class_label}' not found in idx_to_labels")
+    
+    target_idx = label_to_idx[class_label]
+    
+    # Extract the target class scores: (B, N)
+    target_scores = one_hot[:, :, target_idx]
+    
+    # Find max score across N dimension for each batch: (B,)
+    max_scores = torch.max(target_scores, dim=1).values
+    
+    # Calculate rewards
+    rewards = torch.where(
+        max_scores > threshold,
+        1.0,  # Class is present: +1
+        -1.0 + max_scores  # Class absent: -1 + potential (max_score)
+    )
+    
+    return rewards
+
 def has_x_meter_clearance(parsed_scenes, x, direction):
     """
     Check whether there is at least x meters of path clearance around objects.
@@ -117,8 +157,6 @@ def has_x_meter_clearance(parsed_scenes, x, direction):
     """
     raise NotImplementedError("This function is not implemented")
     
-    
-
 # Utility function to create a scene for testing reward functions
 def create_scene_for_testing(room_type, num_objects, class_label_indices, translations, sizes, orientations):
     """
@@ -211,6 +249,10 @@ def get_all_utility_functions(is_prompt=False):
         "get_object_count_in_a_scene": {
             "function": get_object_count_in_a_scene.__name__ if is_prompt else get_object_count_in_a_scene,
             "description": get_object_count_in_a_scene.__doc__,
+        },
+        "get_object_present_reward_potential": {
+            "function": get_object_present_reward_potential.__name__ if is_prompt else get_object_present_reward_potential,
+            "description": get_object_present_reward_potential.__doc__,
         },
         # TODO Not implemented yet
         # "has_x_meter_clearance": {

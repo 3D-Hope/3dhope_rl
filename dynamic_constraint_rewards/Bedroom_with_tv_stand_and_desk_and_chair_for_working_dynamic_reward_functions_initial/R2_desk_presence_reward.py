@@ -22,26 +22,10 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     B = one_hot.shape[0]
     device = parsed_scenes['device']
     
-    rewards = torch.zeros(B, device=device)
-    
-    for b in range(B):
-        # Get one-hot for this scene
-        scene_one_hot = one_hot[b:b+1]  # (1, N, num_classes)
-        
-        # Count desks
-        desk_count = utility_functions["get_object_count_in_a_scene"]["function"](
-            scene_one_hot, "desk", idx_to_labels
+
+    rewards = utility_functions["get_object_present_reward_potential"]["function"](
+            one_hot, "desk", idx_to_labels
         )
-        table_count = utility_functions["get_object_count_in_a_scene"]["function"](
-            scene_one_hot, "table", idx_to_labels
-        )
-        desk_count += table_count
-        # Reward is 1.0 if at least one desk present
-        if desk_count >= 1:
-            rewards[b] = 1.0
-        else:
-            rewards[b] = 0.0
-    
     return rewards
 
 def test_reward(idx_to_labels, room_type, floor_polygons, **kwargs):

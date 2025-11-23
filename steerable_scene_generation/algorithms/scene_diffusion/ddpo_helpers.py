@@ -790,10 +790,10 @@ def composite_reward(
 
     dynamic_total, dynamic_components = get_dynamic_reward(
         parsed_scenes=parsed_scenes,
-        reward_normalizer=None,
+        reward_normalizer=None, # Note: testing without normalizer for dynamic rewards
         get_reward_functions=get_reward_functions,
         num_classes=num_classes,
-        dynamic_importance_weights=importance_weights,
+        dynamic_importance_weights=None, # Note: testing without importance weights for dynamic rewards
         config=cfg,
         floor_polygons=floor_polygons,
         indices=indices,
