@@ -23,7 +23,7 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     device = parsed_scenes['device']
     
     rewards = utility_functions["get_object_present_reward_potential"]["function"](
-        one_hot, "tv_stand", idx_to_labels
+        one_hot, "tv_stand", idx_to_labels, object_indices=parsed_scenes["object_indices"]
     )
         
        
