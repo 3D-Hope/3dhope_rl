@@ -803,7 +803,7 @@ def composite_reward(
         accessibility_cache=accessibility_cache,
     )
     if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:
-        total_rewards = universal_total + dynamic_total
+        total_rewards = cfg.ddpo.dynamic_constraint_rewards.universal_weight * universal_total + cfg.ddpo.dynamic_constraint_rewards.dynamic_weight * dynamic_total
         reward_components = universal_components.copy()
         reward_components.update(dynamic_components)
     else:

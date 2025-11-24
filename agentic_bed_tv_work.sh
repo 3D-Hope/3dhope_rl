@@ -343,6 +343,7 @@ export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
     load=0kz0t9w7 \
+    checkpoint_version=10 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -354,7 +355,7 @@ PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1038350 \
+    experiment.training.max_steps=1008024 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -362,7 +363,7 @@ PYTHONPATH=. python -u main.py +name=agentic_bed_tv_work \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     algorithm.ddpo.batch_size=128 \
-    experiment.training.checkpointing.every_n_train_steps=20 \
+    experiment.training.checkpointing.every_n_train_steps=50 \
     algorithm.num_additional_tokens_for_sampling=0 \
     algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \

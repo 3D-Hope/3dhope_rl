@@ -24,7 +24,7 @@ ddpo:
     weights_path: "${algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir}/${algorithm.ddpo.dynamic_constraint_rewards.user_query}_responses_tmp/llm_response_4.json"
     inpaint_path: "${algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir}/${algorithm.ddpo.dynamic_constraint_rewards.user_query}_responses_tmp/llm_response_3.json"
     # Overall weights for universal vs dynamic rewards
-    universal_weight: 1.0  # Weight for all universal rewards combined
+    universal_weight: 3.0  # Weight for all universal rewards combined
     dynamic_weight: 1.0    # Weight for all dynamic rewards combined
     
     # Importance weights for individual universal rewards (applied within universal_reward)
