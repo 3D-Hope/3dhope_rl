@@ -773,7 +773,7 @@ def composite_reward(
     # print(f"[Ashok] parsed scene {parsed_scenes}")
     # for key in parsed_scenes:
     #     print(f"[Ashok] datatype of {key} is {type(parsed_scenes[key])}")
-    if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:  # 1. Compute composite reward (general scene quality)
+    if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only and cfg.ddpo.dynamic_constraint_rewards.universal_weight > 0:  # 1. Compute composite reward (general scene quality)
         universal_total, universal_components = get_universal_reward(
             parsed_scenes=parsed_scenes,
             reward_normalizer=reward_normalizer,
@@ -787,25 +787,33 @@ def composite_reward(
             floor_plan_args=floor_plan_args,
             accessibility_cache=accessibility_cache,
         )
-
-    dynamic_total, dynamic_components = get_dynamic_reward(
-        parsed_scenes=parsed_scenes,
-        reward_normalizer=None, # Note: testing without normalizer for dynamic rewards
-        get_reward_functions=get_reward_functions,
-        num_classes=num_classes,
-        dynamic_importance_weights=None, # Note: testing without importance weights for dynamic rewards
-        config=cfg,
-        floor_polygons=floor_polygons,
-        indices=indices,
-        is_val=is_val,
-        sdf_cache_dir=sdf_cache_dir,
-        sdf_cache=sdf_cache,
-        accessibility_cache=accessibility_cache,
-    )
+    if cfg.ddpo.dynamic_constraint_rewards.dynamic_weight > 0:  # 2. Compute task-specific reward
+        dynamic_total, dynamic_components = get_dynamic_reward(
+            parsed_scenes=parsed_scenes,
+            reward_normalizer=None, # Note: testing without normalizer for dynamic rewards
+            get_reward_functions=get_reward_functions,
+            num_classes=num_classes,
+            dynamic_importance_weights=None, # Note: testing without importance weights for dynamic rewards
+            config=cfg,
+            floor_polygons=floor_polygons,
+            indices=indices,
+            is_val=is_val,
+            sdf_cache_dir=sdf_cache_dir,
+            sdf_cache=sdf_cache,
+            accessibility_cache=accessibility_cache,
+        )
     if not cfg.ddpo.dynamic_constraint_rewards.dynamic_only:
-        total_rewards = cfg.ddpo.dynamic_constraint_rewards.universal_weight * universal_total + cfg.ddpo.dynamic_constraint_rewards.dynamic_weight * dynamic_total
-        reward_components = universal_components.copy()
-        reward_components.update(dynamic_components)
+        if cfg.ddpo.dynamic_constraint_rewards.universal_weight <= 0:
+            total_rewards = dynamic_total
+            reward_components = dynamic_components.copy()
+            
+        elif cfg.ddpo.dynamic_constraint_rewards.dynamic_weight <= 0:
+            total_rewards = universal_total
+            reward_components = universal_components.copy()
+        else:
+            total_rewards = cfg.ddpo.dynamic_constraint_rewards.universal_weight * universal_total + cfg.ddpo.dynamic_constraint_rewards.dynamic_weight * dynamic_total
+            reward_components = universal_components.copy()
+            reward_components.update(dynamic_components)
     else:
         total_rewards = dynamic_total
         reward_components = dynamic_components
