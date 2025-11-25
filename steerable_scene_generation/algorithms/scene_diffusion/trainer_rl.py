@@ -8,7 +8,7 @@ from diffusers import DDIMScheduler, DDPMScheduler
 from tqdm import tqdm
 
 from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
-from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
+# from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 from universal_constraint_rewards.accessibility_reward import (
     AccessibilityCache,
@@ -68,9 +68,10 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             else:
                 stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats_initial.json")
                 
-            self.reward_normalizer = RewardNormalizer(
-                baseline_stats_path=stats_path
-            )
+            # self.reward_normalizer = RewardNormalizer(
+            #     baseline_stats_path=stats_path
+            # )
+            self.reward_normalizer = None
             if not hasattr(self.cfg.dataset, "sdf_cache_dir") or not os.path.exists(
                 self.cfg.dataset.sdf_cache_dir
             ):

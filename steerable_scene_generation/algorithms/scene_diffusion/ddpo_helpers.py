@@ -755,9 +755,10 @@ def composite_reward(
     weights_path = os.path.join(cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_4.json")
     
     # Read json
-    with open(weights_path, "r") as f:
-        import json
-        importance_weights = json.load(f)
+    # with open(weights_path, "r") as f:
+    #     import json
+    #     importance_weights = json.load(f)
+    importance_weights = None
     
     if task_cfg.get("room_type") == "bedroom":
         num_classes = 22
