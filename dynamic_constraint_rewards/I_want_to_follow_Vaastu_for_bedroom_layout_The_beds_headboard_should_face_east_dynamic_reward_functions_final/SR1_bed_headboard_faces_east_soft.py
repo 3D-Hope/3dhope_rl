@@ -4,15 +4,14 @@ from dynamic_constraint_rewards.utilities import get_all_utility_functions
 
 def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs):
     '''
-    Stage 1 Curriculum: Learn to avoid West (180°) orientation.
+    Reward for bed headboard facing East (theta = 270°).
     
-    Reward structure:
-    - East (0°): 1.0 ✓
-    - South (90°): 0.5 (acceptable)
-    - North (270°): 0.5 (acceptable)
-    - West (180°): 0.0 ✗ (avoid this!)
+    Reward structure with smooth shaping:
+    - Within ±5° of East (270°): +1.0 (perfect)
+    - Gradual decay based on angular distance
+    - Worst at West (90°): approximately -1.0
     
-    Training goal: 80%+ scenes should avoid West orientation
+    Training goal: Beds should face East with headboard orientation
     '''
     
     device = parsed_scenes['device']
@@ -29,6 +28,9 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     # Initialize rewards
     rewards = torch.zeros(B, device=device)
     
+    target_angle = 270.0  # Target: headboard facing East
+    tolerance = 5.0  # ±5 degrees for perfect reward
+    
     for b in range(B):
         # Find bed objects
         bed_mask = torch.zeros(N, dtype=torch.bool, device=device)
@@ -36,30 +38,35 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
             bed_mask |= (object_indices[b] == bed_class) & (~is_empty[b])
         
         if not bed_mask.any():
-            rewards[b] = -0.3  # No bed penalty
+            rewards[b] = -1.0  # No bed penalty
             continue
         
         # Get first bed's orientation
         bed_idx = torch.where(bed_mask)[0][0]
         cos_theta = orientations[b, bed_idx, 0]
+        sin_theta = orientations[b, bed_idx, 1]
+        theta = torch.atan2(sin_theta, cos_theta)  # Radians
+        theta_deg = (torch.rad2deg(theta) % 360).item()  # Degrees in [0, 360)
         
-        # Stage 1 reward: Only penalize West (cos ≈ -1)
-        # East (cos ≈ 1): reward = 1.0
-        # North/South (cos ≈ 0): reward = 0.5
-        # West (cos ≈ -1): reward = 0.0
+        # Calculate angular distance from target (270°)
+        # Handle wraparound: distance should be in [0, 180]
+        diff = abs(theta_deg - target_angle)
+        if diff > 180:
+            diff = 360 - diff
         
-        # Simple linear mapping: reward = (cos + 1) / 2
-        # But clamp minimum at 0.5 for non-West orientations
-        base_reward = (cos_theta + 1.0) / 2.0
-        
-        # Give 0.5 minimum for anything that's not facing West
-        if cos_theta > -0.5:  # Not facing West
-            rewards[b] = torch.max(base_reward, torch.tensor(0.5, device=device))
-        else:  # Facing West
-            rewards[b] = base_reward
+        # Reward shaping based on angular distance
+        if diff <= tolerance:
+            # Within tolerance: perfect reward
+            rewards[b] = 2.0
+        else:
+            # Smooth decay: use cosine-based shaping
+            # At 0°: reward ≈ 0.0
+            # At 90° (opposite): reward ≈ -1.0
+            # At 180° (opposite): reward ≈ -1.0
+            normalized_diff = (diff - tolerance) / (180.0 - tolerance)  # [0, 1]
+            rewards[b] = 1.0 - 2.0 * normalized_diff  # [1.0, -1.0]
     
     return rewards
-
 
 
 def test_reward(idx_to_labels, room_type, floor_polygons, **kwargs):

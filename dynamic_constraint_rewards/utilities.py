@@ -106,27 +106,16 @@ def get_object_count_in_a_scene(one_hot, class_label, idx_to_labels):
 
 import torch
 
-def get_object_present_reward_potential(one_hot, class_label, idx_to_labels, object_indices, count=1, threshold=0.5, overplacement_penalty=5.0):
+def get_object_present_reward_potential(one_hot, class_label, idx_to_labels, 
+                                       object_indices, count=1, threshold=0.5, 
+                                       overplacement_penalty=2.0,
+                                       underplacement_penalty=1.0):
     """
-    Calculate reward signal for object present in the scene: +1 if target class is present, else -1 + potential.
-    Potential is (max_score) to encourage getting closer to detection.
-    Penalizes overplacement (more objects than target count).
-    
-    Args:
-        one_hot: (B, N, num_classes) - One-hot encoded classes (output from nn model)
-                 Max class has values near 1.0, others near -1.0
-        class_label: string, e.g. "ceiling_lamp"
-        idx_to_labels: dict, {idx: label}
-        object_indices: (B, N) tensor - class indices from argmax on one_hot
-        count: int, number of objects required to consider "present" (default: 1)
-        threshold: float, score above this is considered "present" (default: 0.5)
-        overplacement_penalty: float, penalty multiplier for each extra object (default: 5.0)
-    
-    Returns:
-        rewards: (B,) - For each batch: +1 if class present, else -1 + potential
-                        Additional penalty if more than `count` objects detected
+    Reward function with smooth gradients:
+    - Perfect match (exactly `count` objects): +1.0
+    - Too few objects: small negative, scaled by deficit
+    - Too many objects: larger negative, scaled by excess
     """
-    # Find the class index for the target label
     label_to_idx = {v: k for k, v in idx_to_labels.items()}
     
     if class_label not in label_to_idx:
@@ -134,31 +123,27 @@ def get_object_present_reward_potential(one_hot, class_label, idx_to_labels, obj
     
     target_idx = label_to_idx[class_label]
     
-    # Check which objects match target class using argmax indices: (B, N)
+    # Count detections: (B,)
     matches_target = (object_indices == target_idx)
-    
-    # Count detections for each batch: (B,)
     num_detections = torch.sum(matches_target, dim=1).float()
     
-    # Extract the target class scores: (B, N)
-    target_scores = one_hot[:, :, target_idx]
+    # Calculate deviation from target count
+    deviation = num_detections - count
     
-    # Find max score across N dimension for each batch: (B,)
-    max_scores = torch.max(target_scores, dim=1).values
-    
-    # Calculate overplacement penalty
-    excess = torch.clamp(num_detections - count, min=0)
-    penalty = excess * overplacement_penalty
-    
-    # Calculate rewards
+    # Shaped reward with asymmetric penalties
     rewards = torch.where(
-        max_scores > threshold,
-        1.0 - penalty,  # Class is present: +1, minus penalty if overplaced
-        -1.0 + max_scores  # Class absent: -1 + potential
+        deviation == 0,
+        torch.ones_like(num_detections),  # Perfect: +1.0
+        torch.where(
+            deviation < 0,
+            # Too few: -0.5 per missing object (less harsh)
+            deviation * underplacement_penalty,  # e.g., -1 TV: -0.5, -2 TVs: -1.0
+            # Too many: -2.0 per extra object (more harsh)
+            -deviation * overplacement_penalty  # e.g., +1 TV: -2.0, +2 TVs: -4.0
+        )
     )
     
     return rewards
-
 
 def has_x_meter_clearance(parsed_scenes, x, direction):
     """
