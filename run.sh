@@ -1,6 +1,6 @@
 source .venv/bin/activate
 
-PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=0 \
+PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=1 \
 load=bgdrozky \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -17,6 +17,7 @@ algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
 algorithm.ema.use=True \
 dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+experiment.seed=21
 # python scripts/custom_sample_and_render.py \
 #     load=0kz0t9w7 \
 #     checkpoint_version=15 \

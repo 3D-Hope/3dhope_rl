@@ -1,13 +1,8 @@
 """
-Script to generate denoising trajectory for a single scene and save each timestep
-as a separate scene in a pickle file (as if they were different scenes).
-All scenes will use the same dataset index for conditioning.
+Script to generate denoising trajectories for multiple scenes in batch and save each trajectory
+as a separate pickle file.
 
-Usage:
-    python scripts/generate_and_save_trajectory.py \
-        load=<checkpoint_path> \
-        scene_idx=0 \
-        output_path=trajectory_scenes.pkl
+
 """
 
 import logging
@@ -61,11 +56,12 @@ def main(cfg: DictConfig) -> None:
             "Try export CUDA_VISIBLE_DEVICES=0."
         )
 
-    # Set random seed.
-    seed = 42
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
+    # Get batch size and base seed
+    batch_size = cfg.get("batch_size", 4)
+    base_seed = cfg.get("base_seed", None)
+    if base_seed is None:
+        base_seed = np.random.randint(0, 2**32 - 1)
+    print(f"[INFO] Generating {batch_size} scenes with base seed: {base_seed}")
 
     # Resolve the config.
     register_resolvers()
@@ -80,9 +76,9 @@ def main(cfg: DictConfig) -> None:
     scene_idx = cfg.get("scene_idx", 0)
     print(f"[INFO] Using dataset index: {scene_idx} for conditioning")
 
-    # Get output path
-    output_path = cfg.get("output_path", "trajectory_scenes.pkl")
-    print(f"[INFO] Will save trajectory to: {output_path}")
+    # Get output directory for batch
+    output_subdir = cfg.get("output_subdir", "trajectories")
+    print(f"[INFO] Will save trajectories to subdirectory: {output_subdir}")
 
     # Get yaml names.
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
@@ -170,12 +166,7 @@ def main(cfg: DictConfig) -> None:
     
     # Get the conditioning data for the specified scene index
     scene_data = custom_dataset[scene_idx]
-    # print(f"input {scene_data}")
-    # import sys; sys.exit(0)
-    # Move to device
     device = algo.device
-
-    print(f"[INFO] Generating trajectory for scene index {scene_idx}...")
 
     # Generate trajectory using the RL trainer's method
     algo.put_model_in_eval_mode()
@@ -184,184 +175,190 @@ def main(cfg: DictConfig) -> None:
     use_ema = cfg.algorithm.ema.use and cfg.algorithm.get("test", {}).get("use_ema", True)
     print(f"[INFO] Using EMA model: {use_ema}")
     
-    with torch.no_grad():
-        # Manually generate trajectory (similar to generate_trajs_for_ddpo but without gradients)
-        from diffusers import DDIMScheduler, DDPMScheduler
-        
-        room_type = getattr(cfg.dataset.data, "room_type", "bedroom")
-        if isinstance(algo.noise_scheduler, DDIMScheduler):
-            print("using ddim")
-            algo.noise_scheduler.set_timesteps(
-                cfg.algorithm.noise_schedule.ddim.num_inference_timesteps, device=device
-            )
-
-        trajectory = []
-        
-        # Sample initial noise
-        num_objects_per_scene = (
-            cfg.dataset.max_num_objects_per_scene
-            + cfg.algorithm.num_additional_tokens_for_sampling
-        )
-        assert num_objects_per_scene == 12
-        assert room_type == "bedroom"
-        if room_type == "livingroom":
-            xt = algo.sample_continuous_noise_prior(
-                (
-                    1,  # Single scene
-                    num_objects_per_scene,
-                    cfg.algorithm.custom.num_classes
-                    + cfg.algorithm.custom.translation_dim
-                    + cfg.algorithm.custom.size_dim
-                    + cfg.algorithm.custom.angle_dim
-                    + cfg.algorithm.custom.objfeat_dim,
-                )
-            ).to(device)
-        elif room_type == "bedroom":
-            xt = algo.sample_continuous_noise_prior(
-                (
-                    1,  # Single scene
-                    num_objects_per_scene,
-                    algo.scene_vec_desc.get_object_vec_len(),
-                )
-            ).to(device)
-        else:
-            raise ValueError(f"Unknown room type: {room_type}")
-        
-        trajectory.append(xt.clone()) # Append initial noise to trajectory
-        
-        # Create conditioning batch - IMPORTANT: Use the same structure as the dataloader
-        # This should match what the model expects during training/inference
-        data_batch = {
-            "scenes": scene_data["scenes"].unsqueeze(0).to(device),  # Add batch dimension
-            "idx": torch.tensor([scene_idx], device=device),
-        }
-        
-        # Add other fields from scene_data if they exist
-        for key in ["fpbpn", "text_cond", "text_cond_coarse"]:
-            if key in scene_data:
-                val = scene_data[key]
-                if isinstance(val, torch.Tensor):
-                    data_batch[key] = val.unsqueeze(0).to(device)
-                else:
-                    data_batch[key] = val
-        
-        # Denoising loop
-        for t_idx, t in enumerate(
-            tqdm(
-                algo.noise_scheduler.timesteps,
-                desc="Generating trajectory",
-            )
-        ):
-            with torch.no_grad():
-                # Predict noise - use data_batch instead of cond_dict and use_ema=True
-                residual = algo.predict_noise(xt, t, cond_dict=data_batch, use_ema=use_ema)
+    # Create output subdirectory
+    batch_output_dir = output_dir / output_subdir
+    batch_output_dir.mkdir(exist_ok=True, parents=True)
+    
+    # Generate trajectories for each scene in batch
+    for batch_idx in range(batch_size):
+        seed = base_seed + batch_idx
+        print(f"\n[INFO] ========== Generating scene {batch_idx+1}/{batch_size} (seed={seed}) ==========")
+    
+        with torch.no_grad():
+            # Manually generate trajectory (similar to generate_trajs_for_ddpo but without gradients)
+            from diffusers import DDIMScheduler, DDPMScheduler
             
-            # Compute the updated sample.
+            room_type = getattr(cfg.dataset.data, "room_type", "bedroom")
             if isinstance(algo.noise_scheduler, DDIMScheduler):
-                scheduler_out = algo.noise_scheduler.step(
-                    residual, t, xt, eta=cfg.algorithm.noise_schedule.ddim.eta
+                algo.noise_scheduler.set_timesteps(
+                    cfg.algorithm.noise_schedule.ddim.num_inference_timesteps, device=device
                 )
-            else:
-                scheduler_out = algo.noise_scheduler.step(residual, t, xt)
-            
-            # Update the sample.
-            xt = scheduler_out.prev_sample  # Shape (B, N, V)
-            trajectory.append(xt.clone())
-        
-        # Stack trajectory: (T+1, 1, N, V) -> (T+1, N, V)
-        trajectories = torch.stack(trajectory, dim=0).squeeze(1)
-        
-        # Unnormalize trajectories
-        # trajectories_unnorm = algo.dataset.inverse_normalize_scenes(trajectories)
-        
-        # print(f"[INFO] Generated trajectory with {len(trajectory)} timesteps")
-        # print(f"[INFO] Trajectory shape: {trajectories_unnorm.shape}")
 
-    # Convert to numpy and skip the initial noise (timestep 0)
-    # Keep only the denoising steps: timesteps 1 to T (indices 1 to T)
-    trajectories_np = trajectories.detach().cpu().numpy()  # (T, N, V) 
-    
-    # Determine number of classes
-    if cfg.dataset.data.room_type == "livingroom":
-        n_classes = 25
-    else:
-        n_classes = 22
-    
-    # Postprocess each timestep as a separate scene
-    print(f"[INFO] Postprocessing {trajectories_np.shape[0]} timesteps...")
-    bbox_params_list = []
-    
-    for t in tqdm(range(trajectories_np.shape[0]), desc="Postprocessing timesteps"):
-        scene_at_t = trajectories_np[t]  # (N, V)
-        
-        class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
-        
-        for j in range(scene_at_t.shape[0]):
-            class_label_idx = np.argmax(scene_at_t[j, :n_classes])
-            if class_label_idx != n_classes - 1:  # ignore if empty token
-                ohe = np.zeros(n_classes - 1)
-                ohe[class_label_idx] = 1
-                class_labels.append(ohe)
-                translations.append(scene_at_t[j, n_classes : n_classes + 3])
-                sizes.append(scene_at_t[j, n_classes + 3 : n_classes + 6])
-                angles.append(scene_at_t[j, n_classes + 6 : n_classes + 8])
-                
-                try:
-                    objfeats_32.append(
-                        scene_at_t[j, n_classes + 8 : n_classes + 8 + 32]
+            trajectory = []
+            
+            # Set random seed RIGHT BEFORE sampling noise
+            print(f"[INFO] Setting random seed {seed} before noise sampling")
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            np.random.seed(seed)
+            
+            # Sample initial noise
+            num_objects_per_scene = (
+                cfg.dataset.max_num_objects_per_scene
+                + cfg.algorithm.num_additional_tokens_for_sampling
+            )
+            assert num_objects_per_scene == 12
+            assert room_type == "bedroom"
+            if room_type == "livingroom":
+                xt = algo.sample_continuous_noise_prior(
+                    (
+                        1,  # Single scene
+                        num_objects_per_scene,
+                        cfg.algorithm.custom.num_classes
+                        + cfg.algorithm.custom.translation_dim
+                        + cfg.algorithm.custom.size_dim
+                        + cfg.algorithm.custom.angle_dim
+                        + cfg.algorithm.custom.objfeat_dim,
                     )
-                except Exception:
-                    objfeats_32 = None
-        
-        bbox_params_list.append(
-            {
-                "class_labels": np.array(class_labels)[None, :],
-                "translations": np.array(translations)[None, :],
-                "sizes": np.array(sizes)[None, :],
-                "angles": np.array(angles)[None, :],
-                "objfeats_32": np.array(objfeats_32)[None, :]
-                if objfeats_32 is not None
-                else None,
+                ).to(device)
+            elif room_type == "bedroom":
+                xt = algo.sample_continuous_noise_prior(
+                    (
+                        1,  # Single scene
+                        num_objects_per_scene,
+                        algo.scene_vec_desc.get_object_vec_len(),
+                    )
+                ).to(device)
+            else:
+                raise ValueError(f"Unknown room type: {room_type}")
+            
+            trajectory.append(xt.clone()) # Append initial noise to trajectory
+            
+            # Create conditioning batch - IMPORTANT: Use the same structure as the dataloader
+            # This should match what the model expects during training/inference
+            data_batch = {
+                "scenes": scene_data["scenes"].unsqueeze(0).to(device),  # Add batch dimension
+                "idx": torch.tensor([scene_idx], device=device),
             }
+            
+            # Add other fields from scene_data if they exist
+            for key in ["fpbpn", "text_cond", "text_cond_coarse"]:
+                if key in scene_data:
+                    val = scene_data[key]
+                    if isinstance(val, torch.Tensor):
+                        data_batch[key] = val.unsqueeze(0).to(device)
+                    else:
+                        data_batch[key] = val
+            
+            # Denoising loop
+            for t_idx, t in enumerate(
+                tqdm(
+                    algo.noise_scheduler.timesteps,
+                    desc=f"Scene {batch_idx+1}/{batch_size}",
+                )
+            ):
+                with torch.no_grad():
+                    # Predict noise - use data_batch instead of cond_dict and use_ema=True
+                    residual = algo.predict_noise(xt, t, cond_dict=data_batch, use_ema=use_ema)
+                
+                # Compute the updated sample.
+                if isinstance(algo.noise_scheduler, DDIMScheduler):
+                    scheduler_out = algo.noise_scheduler.step(
+                        residual, t, xt, eta=cfg.algorithm.noise_schedule.ddim.eta
+                    )
+                else:
+                    scheduler_out = algo.noise_scheduler.step(residual, t, xt)
+                
+                # Update the sample.
+                xt = scheduler_out.prev_sample  # Shape (B, N, V)
+                trajectory.append(xt.clone())
+            
+            # Stack trajectory: (T+1, 1, N, V) -> (T+1, N, V)
+            trajectories = torch.stack(trajectory, dim=0).squeeze(1)
+
+        # Convert to numpy
+        trajectories_np = trajectories.detach().cpu().numpy()  # (T, N, V) 
+        
+        # Determine number of classes
+        if cfg.dataset.data.room_type == "livingroom":
+            n_classes = 25
+        else:
+            n_classes = 22
+        
+        # Postprocess each timestep as a separate scene
+        print(f"[INFO] Postprocessing {trajectories_np.shape[0]} timesteps...")
+        bbox_params_list = []
+        
+        for t in tqdm(range(trajectories_np.shape[0]), desc=f"Postprocessing scene {batch_idx+1}"):
+            scene_at_t = trajectories_np[t]  # (N, V)
+            
+            class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
+            
+            for j in range(scene_at_t.shape[0]):
+                class_label_idx = np.argmax(scene_at_t[j, :n_classes])
+                if class_label_idx != n_classes - 1:  # ignore if empty token
+                    ohe = np.zeros(n_classes - 1)
+                    ohe[class_label_idx] = 1
+                    class_labels.append(ohe)
+                    translations.append(scene_at_t[j, n_classes : n_classes + 3])
+                    sizes.append(scene_at_t[j, n_classes + 3 : n_classes + 6])
+                    angles.append(scene_at_t[j, n_classes + 6 : n_classes + 8])
+                    
+                    try:
+                        objfeats_32.append(
+                            scene_at_t[j, n_classes + 8 : n_classes + 8 + 32]
+                        )
+                    except Exception:
+                        objfeats_32 = None
+            
+            bbox_params_list.append(
+                {
+                    "class_labels": np.array(class_labels)[None, :],
+                    "translations": np.array(translations)[None, :],
+                    "sizes": np.array(sizes)[None, :],
+                    "angles": np.array(angles)[None, :],
+                    "objfeats_32": np.array(objfeats_32)[None, :]
+                    if objfeats_32 is not None
+                    else None,
+                }
+            )
+        
+        # Post-process and create layout list
+        layout_list = []
+        successful_timesteps = []
+        
+        for t, bbox_params_dict in enumerate(
+            tqdm(bbox_params_list, desc=f"Post-processing scene {batch_idx+1}")
+        ):
+            try:
+                boxes = encoded_dataset.post_process(bbox_params_dict)
+                bbox_params = {k: v[0] for k, v in boxes.items()}
+                layout_list.append(bbox_params)
+                successful_timesteps.append(t)
+            except Exception as e:
+                print(f"[WARNING] Skipping timestep {t} due to post_process error: {e}")
+                continue
+        
+        print(f"[INFO] Successfully postprocessed {len(layout_list)} out of {trajectories_np.shape[0]} timesteps")
+        
+        # Create indices list (all pointing to the same scene_idx)
+        indices_list = [scene_idx] * len(layout_list)
+        
+        # Create ThreedFrontResults object
+        threed_front_results = ThreedFrontResults(
+            raw_train_dataset, raw_dataset, config, indices_list, layout_list
         )
+        
+        # Save to pickle - use the same format as custom_sample_and_render.py
+        output_pkl_path = batch_output_dir / f"trajectory_seed{seed}.pkl"
+        pickle.dump(threed_front_results, open(output_pkl_path, "wb"))
+        
+        print(f"[SUCCESS] Saved trajectory as {len(layout_list)} scenes to: {output_pkl_path}")
+        print(f"[INFO] Timestep range: 0 to {len(successful_timesteps)-1}")
     
-    # Post-process and create layout list
-    layout_list = []
-    successful_timesteps = []
-    
-    for t, bbox_params_dict in enumerate(
-        tqdm(bbox_params_list, desc="Post-processing with encoded_dataset")
-    ):
-        try:
-            boxes = encoded_dataset.post_process(bbox_params_dict)
-            bbox_params = {k: v[0] for k, v in boxes.items()}
-            layout_list.append(bbox_params)
-            successful_timesteps.append(t)
-        except Exception as e:
-            print(f"[WARNING] Skipping timestep {t} due to post_process error: {e}")
-            continue
-    
-    print(f"[INFO] Successfully postprocessed {len(layout_list)} out of {trajectories_np.shape[0]} timesteps")
-    
-    # Create indices list (all pointing to the same scene_idx)
-    indices_list = [scene_idx] * len(layout_list)
-    
-    # Create ThreedFrontResults object
-    threed_front_results = ThreedFrontResults(
-        raw_train_dataset, raw_dataset, config, indices_list, layout_list
-    )
-    
-    # Save to pickle - use the same format as custom_sample_and_render.py
-    output_pkl_path = output_dir / output_path
-    pickle.dump(threed_front_results, open(output_pkl_path, "wb"))
-    
-    print(f"[SUCCESS] Saved trajectory as {len(layout_list)} scenes to: {output_pkl_path}")
-    print(f"[INFO] All scenes use conditioning from dataset index: {scene_idx}")
-    print(f"[INFO] Timestep range: 0 to {len(successful_timesteps)-1}")
-    print(f"[INFO] Sample successful timesteps: {successful_timesteps[:10]}{'...' if len(successful_timesteps) > 10 else ''}")
-    
-    print(f"[INFO] You can now render using:")
-    print(f"       python ../ThreedFront/scripts/render_results.py --retrieve_by_size --no_texture --without_floor {output_pkl_path}")
+    print(f"\n[COMPLETE] Generated {batch_size} trajectories in: {batch_output_dir}")
+    print(f"[INFO] You can now render each trajectory using:")
+    print(f"       python ../ThreedFront/scripts/render_results.py --retrieve_by_size --no_texture --without_floor {batch_output_dir}/trajectory_seed<N>.pkl")
 
 
 if __name__ == "__main__":
