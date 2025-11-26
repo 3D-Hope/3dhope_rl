@@ -277,7 +277,7 @@ def get_universal_reward(
         reward_components: Dict with individual reward values for analysis
     """
     # print("[Ashok] importance_weights in universal reward:", importance_weights)
-    importance_weights = importance_weights["importance_weights"]
+    # importance_weights = importance_weights["importance_weights"]
     # rewards = {}
     # print(f"[Ashok] Computing universal rewards kwargs has keys: {list(kwargs.keys())}")
     # Define default universal reward functions if not provided
@@ -289,13 +289,14 @@ def get_universal_reward(
 
     # Compute rewards for each function
     for key, value in get_reward_functions.items():
-        if key not in importance_weights or importance_weights[key] == 0:
-            continue  # Skip rewards with zero importance weight
+        # if key not in importance_weights or importance_weights[key] == 0:
+        #     continue  # Skip rewards with zero importance weight
         reward = value(parsed_scenes, **kwargs)
         # rewards[key] = reward
         reward_components[key] = reward
-        rewards_sum += importance_weights[key] * reward
-        print(f"[Ashok] Raw reward for {key}: {reward}")
+        rewards_sum += reward
+        # rewards_sum += importance_weights[key] * reward
+        # print(f"[Ashok] Raw reward for {key}: {reward}")
     # Normalize rewards if normalizer is provided
     # reward_normalizer = None
     # if reward_normalizer is not None:

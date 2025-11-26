@@ -3,7 +3,7 @@
 #SBATCH --partition=debug
 #SBATCH --gpus=h200:2
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=12G
+#SBATCH --mem-per-cpu=20G
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err

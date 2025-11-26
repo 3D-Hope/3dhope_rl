@@ -403,7 +403,7 @@ PYTHONPATH=. python -u main.py +name=test_dynamic_rl \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
-    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=2
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=5
 
 
 PYTHONPATH=. python scripts/reward_custom_sample_and_render.py \
@@ -1946,16 +1946,36 @@ python scripts/custom_sample_and_render.py \
     algorithm.custom.loss=True
 
 
+python scripts/custom_sample_and_render.py \
+    load=0kz0t9w7 \
+    checkpoint_version=90 \
+    dataset=custom_scene \
+    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+    dataset.max_num_objects_per_scene=12 \
+    +num_scenes=1000 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
+    algorithm.classifier_free_guidance.use=False \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=1 \
+    algorithm.custom.loss=true \
+    algorithm.ema.use=True \
+    algorithm.noise_schedule.scheduler=ddim \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+    algorithm.custom.objfeat_dim=0 \
+    algorithm.custom.old=True \
+    algorithm.custom.loss=True
+
+
 python scripts/custom_sample_and_render.py load=cmdpm5nv dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=100 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
 
 
-python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-12/03-23-38/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size   /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-24/05-46-37/sampled_scenes_results.pkl
 
 
-python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/06-16-12/sampled_scenes_results.pkl
 
-
-python scripts/physcene_metrics_parallel.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/06-11-06/sampled_scenes_results.pkl
+python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-24/08-58-35/sampled_scenes_results.pkl
 
 conda activate 3dhope_rl
 poetry run python scripts/download_checkpoint.py \
@@ -1966,3 +1986,17 @@ poetry run python scripts/download_checkpoint.py \
 
 
 scp insait:/home/pramish_paudel/codes/3dhope_rl/checkpoints/pramish-paudel-insait/3dhope_rl/nylmdurl/model.ckpt .
+
+
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-12/16-31-04/sampled_scenes_results.pkl > temp_log.txt 2>&1 
+
+
+python ../ThreedFront/scripts/render_results_better.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-12/19-52-51/sampled_scenes_results.pkl > temp_log_tv_only.txt 2>&1 
+
+
+
+python ../ThreedFront/scripts/render_results.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-13/05-36-07/sampled_scenes_results.pkl > temp_log_tv_only.txt 2>&1 
+
+python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-13/05-36-07/sampled_scenes_results.pkl
+
+python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-22/03-

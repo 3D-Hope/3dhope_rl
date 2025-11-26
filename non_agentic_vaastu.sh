@@ -3,7 +3,7 @@
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=48G
+#SBATCH --mem-per-cpu=20G
 #SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
@@ -341,22 +341,22 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=non_agentic_vaastu \
-    load=fhfnf4xi \
+    load=bgdrozky \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_midiffusion \
+    algorithm=scene_diffuser_flux_transformer \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1020000 \
+    experiment.training.max_steps=2000000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
+    algorithm.ddpo.ddpm_reg_weight=100.0 \
     experiment.reset_lr_scheduler=True \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
@@ -373,11 +373,7 @@ PYTHONPATH=. python -u main.py +name=non_agentic_vaastu \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    experiment.training.precision=bf16-mixed \
-    experiment.validation.precision=bf16-mixed \
-    experiment.test.precision=bf16-mixed \
-    experiment.matmul_precision=medium \
-    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.use_floor=False \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
@@ -392,7 +388,8 @@ PYTHONPATH=. python -u main.py +name=non_agentic_vaastu \
     algorithm.custom.old=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="I want to follow Vaastu for bedroom layout. The beds headboard should face east." \
-    algorithm.ddpo.dynamic_constraint_rewards.agentic=False
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=False \
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0
 
 
 # Check exit status

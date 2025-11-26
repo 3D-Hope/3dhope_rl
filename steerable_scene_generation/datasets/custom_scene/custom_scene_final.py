@@ -413,11 +413,12 @@ class CustomDataset(BaseDataset):
             item["translations"],
             item["sizes"],
             item["angles"],
-        ]
-        if "objfeats_32" in item:
-            components.append(item["objfeats_32"])  # prefer 32-dim if available
-        elif "objfeats" in item:
-            components.append(item["objfeats"])  # fallback 64-dim
+        ] 
+        # TODO: if you want to use objfeats, uncomment below
+        # if "objfeats_32" in item:
+        #     components.append(item["objfeats_32"])  # prefer 32-dim if available
+        # elif "objfeats" in item:
+        #     components.append(item["objfeats"])  # fallback 64-dim
 
         if isinstance(components[0], torch.Tensor):
             concat = torch.cat(components, dim=1)

@@ -330,18 +330,18 @@ def main(argv):
         classes=None,
     )
     
-    overlap_ratio, overlap_scene_rate = calc_overlap(
-        threed_front_results,
-        raw_dataset,
-        encoded_dataset,
-        cfg=config,
-        visualize_overlap=False,
-    )
+    # overlap_ratio, overlap_scene_rate = calc_overlap(
+    #     threed_front_results,
+    #     raw_dataset,
+    #     encoded_dataset,
+    #     cfg=config,
+    #     visualize_overlap=False,
+    # )
     print("walkable_average_rate, Rwalkable:", walkable_average_rate)
     print("accessable_rate, Rreach:", accessable_rate)
     print("box_wall_rate, Rout:", box_wall_rate)
-    print("overlap_ratio, Colobj:", overlap_ratio)
-    print("overlap_scene_rate, Colscene:", overlap_scene_rate)
+    # print("overlap_ratio, Colobj:", overlap_ratio)
+    # print("overlap_scene_rate, Colscene:", overlap_scene_rate)
 
 
 # Walkable Average Rate(walkable_average_rate): Path exists in the scene for the robot to walk through

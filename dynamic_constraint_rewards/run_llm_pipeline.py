@@ -153,31 +153,31 @@ def run_llm_pipeline(room_type, cfg, use_gemini=False, use_openai=False, get_sta
         raise ValueError("Failed to verify tests for final constraints and dynamic rewards")
     print("Tests verified for final constraints and dynamic rewards")
     
-    llm_instruction_4, llm_user_prompt_4 = create_prompt_4(user_prompt, final_constraints_and_dynamic_rewards, room_type)
-    with open(os.path.join(prompts_tmp_dir, "llm_instruction_4.md"), "w") as f:
-        f.write(llm_instruction_4)
-    with open(os.path.join(prompts_tmp_dir, "llm_user_prompt_4.md"), "w") as f:
-        f.write(llm_user_prompt_4)
+    # llm_instruction_4, llm_user_prompt_4 = create_prompt_4(user_prompt, final_constraints_and_dynamic_rewards, room_type)
+    # with open(os.path.join(prompts_tmp_dir, "llm_instruction_4.md"), "w") as f:
+    #     f.write(llm_instruction_4)
+    # with open(os.path.join(prompts_tmp_dir, "llm_user_prompt_4.md"), "w") as f:
+    #     f.write(llm_user_prompt_4)
         
-    # CALL THE LLM HERE
-    if os.path.exists(os.path.join(responses_tmp_dir, "llm_response_4.json")):
-        with open(os.path.join(responses_tmp_dir, "llm_response_4.json"), "r") as f:
-            reward_weights = json.load(f)
-    else:
-        if use_gemini or use_openai:
-          llm_response_4 = call_llm(use_gemini, use_openai, llm_instruction_4, llm_user_prompt_4)
-          reward_weights = json.loads(llm_response_4.split("```json")[1].split("```")[0].strip())
-        else:
-          llm_response_4 = None
-          reward_weights = None
-        if reward_weights is not None:
-            with open(os.path.join(responses_tmp_dir, "llm_response_4.json"), "w") as f:
-                json.dump(reward_weights, f)
-        print(f"[Ashok] Saved reward weights to {os.path.join(responses_tmp_dir, 'llm_response_4.json')}")
+    # # CALL THE LLM HERE
+    # if os.path.exists(os.path.join(responses_tmp_dir, "llm_response_4.json")):
+    #     with open(os.path.join(responses_tmp_dir, "llm_response_4.json"), "r") as f:
+    #         reward_weights = json.load(f)
+    # else:
+    #     if use_gemini or use_openai:
+    #       llm_response_4 = call_llm(use_gemini, use_openai, llm_instruction_4, llm_user_prompt_4)
+    #       reward_weights = json.loads(llm_response_4.split("```json")[1].split("```")[0].strip())
+    #     else:
+    #       llm_response_4 = None
+    #       reward_weights = None
+    #     if reward_weights is not None:
+    #         with open(os.path.join(responses_tmp_dir, "llm_response_4.json"), "w") as f:
+    #             json.dump(reward_weights, f)
+    #     print(f"[Ashok] Saved reward weights to {os.path.join(responses_tmp_dir, 'llm_response_4.json')}")
         
-    print(f"Reward weights: {reward_weights}")
+    # print(f"Reward weights: {reward_weights}")
     
-    print("Successfully completed the task")
+    # print("Successfully completed the task")
     
 def get_statistics_for_final_rewards(cfg, load):
     user_query = cfg.algorithm.ddpo.dynamic_constraint_rewards.user_query

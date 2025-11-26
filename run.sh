@@ -1,44 +1,66 @@
 source .venv/bin/activate
-PYTHONPATH=. python -u main.py +name=bedroom_universal \
-    load=rrudae6n \
+python scripts/custom_sample_and_render.py \
+    load=0kz0t9w7 \
+    checkpoint_version=15 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_midiffusion\
+    +num_scenes=1000 \
+    algorithm=scene_diffuser_midiffusion \
+    algorithm.trainer=ddpm \
+    experiment.find_unused_parameters=True \
     algorithm.classifier_free_guidance.use=False \
-    algorithm.ema.use=False \
-    algorithm.trainer=rl_score \
+    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.weight=1 \
+    algorithm.custom.loss=true \
+    algorithm.ema.use=True \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2e6 \
-    experiment.validation.limit_batch=1 \
-    experiment.validation.val_every_n_step=50 \
-    algorithm.ddpo.ddpm_reg_weight=50.0 \
-    experiment.reset_lr_scheduler=True \
-    experiment.training.lr=1e-6 \
-    experiment.lr_scheduler.num_warmup_steps=250 \
-    algorithm.ddpo.batch_size=4 \
-    experiment.training.checkpointing.every_n_train_steps=500 \
-    algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=100 \
-    experiment.find_unused_parameters=True \
-    algorithm.custom.loss=true \
-    algorithm.validation.num_samples_to_render=0 \
-    algorithm.validation.num_samples_to_visualize=0 \
-    algorithm.validation.num_directives_to_generate=0 \
-    algorithm.test.num_samples_to_render=0 \
-    algorithm.test.num_samples_to_visualize=0 \
-    algorithm.test.num_directives_to_generate=0 \
-    algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    experiment.training.precision=bf16-mixed \
-    algorithm.ddpo.use_universal_reward=True \
-    algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.classifier_free_guidance.weight=1.0 \
+    algorithm.custom.objfeat_dim=0 \
     algorithm.custom.old=True \
-    algorithm.ddpo.use_inpaint=False \
-    algorithm.ddpo.dynamic_constraint_rewards.stats_path=dynamic_constraint_rewards/stats.json \
-    dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
-    dataset.accessibility_cache_dir=./bedroom_accessibility_cache/
+    algorithm.custom.loss=True
+
+
+# PYTHONPATH=. python -u main.py +name=bedroom_universal \
+#     load=rrudae6n \
+#     dataset=custom_scene \
+#     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+#     dataset.max_num_objects_per_scene=12 \
+#     algorithm=scene_diffuser_midiffusion\
+#     algorithm.classifier_free_guidance.use=False \
+#     algorithm.ema.use=False \
+#     algorithm.trainer=rl_score \
+#     algorithm.noise_schedule.scheduler=ddim \
+#     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+#     experiment.training.max_steps=2e6 \
+#     experiment.validation.limit_batch=1 \
+#     experiment.validation.val_every_n_step=50 \
+#     algorithm.ddpo.ddpm_reg_weight=50.0 \
+#     experiment.reset_lr_scheduler=True \
+#     experiment.training.lr=1e-6 \
+#     experiment.lr_scheduler.num_warmup_steps=250 \
+#     algorithm.ddpo.batch_size=4 \
+#     experiment.training.checkpointing.every_n_train_steps=500 \
+#     algorithm.num_additional_tokens_for_sampling=0 \
+#     algorithm.ddpo.n_timesteps_to_sample=100 \
+#     experiment.find_unused_parameters=True \
+#     algorithm.custom.loss=true \
+#     algorithm.validation.num_samples_to_render=0 \
+#     algorithm.validation.num_samples_to_visualize=0 \
+#     algorithm.validation.num_directives_to_generate=0 \
+#     algorithm.test.num_samples_to_render=0 \
+#     algorithm.test.num_samples_to_visualize=0 \
+#     algorithm.test.num_directives_to_generate=0 \
+#     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
+#     experiment.training.precision=bf16-mixed \
+#     algorithm.ddpo.use_universal_reward=True \
+#     algorithm.classifier_free_guidance.use_floor=True \
+#     algorithm.classifier_free_guidance.weight=1.0 \
+#     algorithm.custom.old=True \
+#     algorithm.ddpo.use_inpaint=False \
+#     algorithm.ddpo.dynamic_constraint_rewards.stats_path=dynamic_constraint_rewards/stats.json \
+#     dataset.sdf_cache_dir=./bedroom_sdf_cache/ \
+#     dataset.accessibility_cache_dir=./bedroom_accessibility_cache/
 
 
 

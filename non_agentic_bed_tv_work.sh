@@ -342,19 +342,19 @@ echo ""
 export PYTHONUNBUFFERED=1
 
 PYTHONPATH=. python -u main.py +name=non_agentic_bed_tv_work \
-    load=0kz0t9w7 \
+    load=bgdrozky \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
     dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
-    algorithm=scene_diffuser_midiffusion \
+    algorithm=scene_diffuser_flux_transformer \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1050000 \
+    experiment.training.max_steps=2000000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -374,7 +374,7 @@ PYTHONPATH=. python -u main.py +name=non_agentic_bed_tv_work \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.classifier_free_guidance.use_floor=True \
+    algorithm.classifier_free_guidance.use_floor=False \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
@@ -389,7 +389,8 @@ PYTHONPATH=. python -u main.py +name=non_agentic_bed_tv_work \
     algorithm.custom.old=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
-    algorithm.ddpo.dynamic_constraint_rewards.agentic=False
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=False \
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0
 
 
 

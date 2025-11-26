@@ -49,7 +49,7 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
         
         # Calculate distance from center (0, 0, 0) for each bed
         # We care about XZ distance primarily, but include Y for completeness
-        distances = torch.norm(bed_positions, dim=1)  # (num_beds,) # get Euclidean distance
+        distances = torch.norm(bed_positions, dim=1)  # (num_beds,)
         
         # Use the minimum distance (closest bed to center)
         min_distance = distances.min()
