@@ -4,24 +4,22 @@ from dynamic_constraint_rewards.utilities import get_all_utility_functions
 
 def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs):
     '''
-    Reward function to ensure bed headboard faces east (+X direction).
+    Reward for bed headboard facing East (theta = 270°).
     
-    The headboard facing east means when lying on the bed, the head points toward +X.
-    In 3D-FRONT, bed orientation is given as [cos(θ), sin(θ)] for z-axis rotation.
-    The bed's "front" (headboard) should align with +X axis (east).
+    Reward structure with smooth shaping:
+    - Within ±5° of East (270°): +1.0 (perfect)
+    - Gradual decay based on angular distance
+    - Worst at West (90°): approximately -1.0
     
-    Reward: Cosine similarity between bed's front direction and east direction.
-    Range: [-1, 1] where 1 = perfect alignment, -1 = opposite direction
+    Training goal: Beds should face East with headboard orientation
     '''
     
     device = parsed_scenes['device']
-    positions = parsed_scenes['positions']  # (B, N, 3)
-    sizes = parsed_scenes['sizes']  # (B, N, 3)
-    orientations = parsed_scenes['orientations']  # (B, N, 2)
+    orientations = parsed_scenes['orientations']  # (B, N, 2) -> [cos, sin]
     is_empty = parsed_scenes['is_empty']  # (B, N)
     object_indices = parsed_scenes['object_indices']  # (B, N)
     
-    B, N = positions.shape[:2]
+    B, N = orientations.shape[:2]
     
     # Get bed class indices
     labels_to_idx = {v: k for k, v in idx_to_labels.items()}
@@ -30,40 +28,43 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     # Initialize rewards
     rewards = torch.zeros(B, device=device)
     
+    target_angle = 270.0  # Target: headboard facing East
+    tolerance = 5.0  # ±5 degrees for perfect reward
+    
     for b in range(B):
-        # Find bed objects in the scene
+        # Find bed objects
         bed_mask = torch.zeros(N, dtype=torch.bool, device=device)
         for bed_class in bed_classes:
             bed_mask |= (object_indices[b] == bed_class) & (~is_empty[b])
         
         if not bed_mask.any():
-            # No bed found, give penalty
-            rewards[b] = -1.0
+            rewards[b] = -1.0  # No bed penalty
             continue
         
-        # Process all beds in the scene (take the one with best alignment)
-        bed_indices = torch.where(bed_mask)[0]
-        max_alignment = -1.0
+        # Get first bed's orientation
+        bed_idx = torch.where(bed_mask)[0][0]
+        cos_theta = orientations[b, bed_idx, 0]
+        sin_theta = orientations[b, bed_idx, 1]
+        theta = torch.atan2(sin_theta, cos_theta)  # Radians
+        theta_deg = (torch.rad2deg(theta) % 360).item()  # Degrees in [0, 360)
         
-        for bed_idx in bed_indices:
-            # Get bed orientation
-            cos_theta = orientations[b, bed_idx, 0]
-            sin_theta = orientations[b, bed_idx, 1]
-            
-            # The orientation gives the forward direction of the bed in XZ plane
-            # Forward direction vector: [cos(θ), sin(θ)]
-            bed_forward = torch.tensor([cos_theta, sin_theta], device=device)
-            
-            # East direction is +X axis: [1, 0] in XZ plane
-            east_direction = torch.tensor([1.0, 0.0], device=device)
-            
-            # Compute cosine similarity (dot product of normalized vectors)
-            # Both vectors are already unit vectors
-            alignment = torch.dot(bed_forward, east_direction)
-            
-            max_alignment = max(max_alignment, alignment.item())
+        # Calculate angular distance from target (270°)
+        # Handle wraparound: distance should be in [0, 180]
+        diff = abs(theta_deg - target_angle)
+        if diff > 180:
+            diff = 360 - diff
         
-        rewards[b] = max_alignment
+        # Reward shaping based on angular distance
+        if diff <= tolerance:
+            # Within tolerance: perfect reward
+            rewards[b] = 2.0
+        else:
+            # Smooth decay: use cosine-based shaping
+            # At 0°: reward ≈ 0.0
+            # At 90° (opposite): reward ≈ -1.0
+            # At 180° (opposite): reward ≈ -1.0
+            normalized_diff = (diff - tolerance) / (180.0 - tolerance)  # [0, 1]
+            rewards[b] = 1.0 - 2.0 * normalized_diff  # [1.0, -1.0]
     
     return rewards
 
