@@ -14,7 +14,7 @@ trap 'echo "❌ Error on line $LINENO. Exit code: $?" >&2' ERR
 
 # Create logs directory if it doesn't exist
 mkdir -p logs
-
+export WANDB_ENTITY="078bct021-ashok-d"
 # Print debug information
 echo "════════════════════════════════════════════════════════════════════════════════"
 echo "Job started at: $(date)"

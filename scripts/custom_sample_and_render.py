@@ -172,7 +172,8 @@ def main(cfg: DictConfig) -> None:
     # Save a ground truth sample from the dataset for comparison
     gt_sample_idx = 0  # Get the first sample
     gt_sample = custom_dataset[gt_sample_idx]
-
+    # print(f"input {gt_sample}")
+    # import sys; sys.exit(0)
     gt_sample_np = gt_sample["scenes"].detach().cpu().numpy()
     gt_text_path = output_dir / "ground_truth_scene.txt"
     with open(gt_text_path, "w") as f:

@@ -1,24 +1,42 @@
 source .venv/bin/activate
-python scripts/custom_sample_and_render.py \
-    load=0kz0t9w7 \
-    checkpoint_version=15 \
-    dataset=custom_scene \
-    dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-    dataset.max_num_objects_per_scene=12 \
-    +num_scenes=1000 \
-    algorithm=scene_diffuser_midiffusion \
-    algorithm.trainer=ddpm \
-    experiment.find_unused_parameters=True \
-    algorithm.classifier_free_guidance.use=False \
-    algorithm.classifier_free_guidance.use_floor=True \
-    algorithm.classifier_free_guidance.weight=1 \
-    algorithm.custom.loss=true \
-    algorithm.ema.use=True \
-    algorithm.noise_schedule.scheduler=ddim \
-    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    algorithm.custom.objfeat_dim=0 \
-    algorithm.custom.old=True \
-    algorithm.custom.loss=True
+
+PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=0 \
+load=bgdrozky \
+dataset=custom_scene \
+dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+dataset.max_num_objects_per_scene=12 \
+experiment.test.batch_size=32 \
+algorithm=scene_diffuser_flux_transformer \
+algorithm.trainer=ddpm \
+algorithm.noise_schedule.scheduler=ddim \
+algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+experiment.find_unused_parameters=True \
+algorithm.classifier_free_guidance.use=False \
+algorithm.classifier_free_guidance.use_floor=False \
+algorithm.classifier_free_guidance.weight=0 \
+algorithm.custom.loss=true \
+algorithm.ema.use=True \
+dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+# python scripts/custom_sample_and_render.py \
+#     load=0kz0t9w7 \
+#     checkpoint_version=15 \
+#     dataset=custom_scene \
+#     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+#     dataset.max_num_objects_per_scene=12 \
+#     +num_scenes=1000 \
+#     algorithm=scene_diffuser_midiffusion \
+#     algorithm.trainer=ddpm \
+#     experiment.find_unused_parameters=True \
+#     algorithm.classifier_free_guidance.use=False \
+#     algorithm.classifier_free_guidance.use_floor=True \
+#     algorithm.classifier_free_guidance.weight=1 \
+#     algorithm.custom.loss=true \
+#     algorithm.ema.use=True \
+#     algorithm.noise_schedule.scheduler=ddim \
+#     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+#     algorithm.custom.objfeat_dim=0 \
+#     algorithm.custom.old=True \
+#     algorithm.custom.loss=True
 
 
 # PYTHONPATH=. python -u main.py +name=bedroom_universal \

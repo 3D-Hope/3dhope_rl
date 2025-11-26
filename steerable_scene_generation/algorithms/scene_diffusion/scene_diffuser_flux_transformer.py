@@ -178,6 +178,7 @@ def create_scene_diffuser_flux_transformer(
                 floor_cond = self.floor_encoder(cond_dict["fpbpn"])  # Shape (B, 64)
                 # print(f"[Ashok] floor_cond shape: {floor_cond.shape}, fpbpn shape: {cond_dict['fpbpn'].shape}")
             # Predict the noise.
+            # print(f"text cond {text_cond}, cond {text_cond_coarse}, floor cond {floor_cond}")
             predicted_noise = model(
                 noisy_scenes,
                 timestep=timesteps,
