@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bed_tv_work_non_agentic
+#SBATCH --job-name=round2_bed_tv_work_non_agentic
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
@@ -341,8 +341,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=non_agentic_bed_tv_work \
-    load=bgdrozky \
+PYTHONPATH=. python -u main.py +name=round_2_non_agentic_bed_tv_work \
+    load=f2m6o04p \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -389,7 +389,7 @@ PYTHONPATH=. python -u main.py +name=non_agentic_bed_tv_work \
     algorithm.custom.old=True \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
-    algorithm.ddpo.dynamic_constraint_rewards.agentic=False \
+    algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0
 
 
