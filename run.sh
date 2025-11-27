@@ -1,12 +1,12 @@
 source .venv/bin/activate
-
-PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=1 \
-load=bgdrozky \
+# 
+PYTHONPATH=. python dynamic_constraint_rewards/compute_success_rates.py +num_scenes=1000 \
+load=xmbetoey \
 dataset=custom_scene \
+algorithm=scene_diffuser_midiffusion \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
-experiment.test.batch_size=32 \
-algorithm=scene_diffuser_flux_transformer \
+experiment.test.batch_size=256 \
 algorithm.trainer=ddpm \
 algorithm.noise_schedule.scheduler=ddim \
 algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
@@ -17,7 +17,70 @@ algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
 algorithm.ema.use=True \
 dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
-experiment.seed=21
+experiment.seed=21 \
+algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
+algorithm.ddpo.dynamic_constraint_rewards.use=True
+
+
+
+# PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=1 \
+# load=bgdrozky \
+# dataset=custom_scene \
+# dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+# dataset.max_num_objects_per_scene=12 \
+# experiment.test.batch_size=32 \
+# algorithm=scene_diffuser_flux_transformer \
+# algorithm.trainer=ddpm \
+# algorithm.noise_schedule.scheduler=ddim \
+# algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+# experiment.find_unused_parameters=True \
+# algorithm.classifier_free_guidance.use=False \
+# algorithm.classifier_free_guidance.use_floor=False \
+# algorithm.classifier_free_guidance.weight=0 \
+# algorithm.custom.loss=true \
+# algorithm.ema.use=True \
+# dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+# experiment.seed=21
+
+
+# PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=1 \
+# load=pfksynuz \
+# dataset=custom_scene \
+# dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+# dataset.max_num_objects_per_scene=12 \
+# experiment.test.batch_size=32 \
+# algorithm=scene_diffuser_midiffusion \
+# algorithm.trainer=ddpm \
+# algorithm.noise_schedule.scheduler=ddim \
+# algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+# experiment.find_unused_parameters=True \
+# algorithm.classifier_free_guidance.use=False \
+# algorithm.classifier_free_guidance.use_floor=False \
+# algorithm.classifier_free_guidance.weight=0 \
+# algorithm.custom.loss=true \
+# algorithm.ema.use=True \
+# dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+# experiment.seed=21
+
+# PYTHONPATH=. python scripts/generate_and_save_trajectory.py +scene_idx=1 \
+# load=rrudae6n \
+# dataset=custom_scene \
+# dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
+# dataset.max_num_objects_per_scene=12 \
+# experiment.test.batch_size=32 \
+# algorithm=scene_diffuser_midiffusion \
+# algorithm.trainer=ddpm \
+# algorithm.noise_schedule.scheduler=ddim \
+# algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
+# experiment.find_unused_parameters=True \
+# algorithm.classifier_free_guidance.use=False \
+# algorithm.classifier_free_guidance.use_floor=True \
+# algorithm.classifier_free_guidance.weight=0 \
+# algorithm.custom.loss=true \
+# algorithm.ema.use=True \
+# dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+# experiment.seed=21
+
 # python scripts/custom_sample_and_render.py \
 #     load=0kz0t9w7 \
 #     checkpoint_version=15 \

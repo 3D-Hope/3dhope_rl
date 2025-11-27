@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-PYTHONPATH=. python scripts/custom_sample_and_render.py +scene_idx=0 \
-load=bgdrozky \
+PYTHONPATH=. python scripts/custom_sample_and_render.py +num_scenes=1000 \
+load=2cnwjcuy \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
 experiment.test.batch_size=32 \
 algorithm=scene_diffuser_flux_transformer \
-algorithm.trainer=ddpm \
+algorithm.trainer=rl_score \
 algorithm.noise_schedule.scheduler=ddim \
 algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
 experiment.find_unused_parameters=True \
@@ -16,6 +16,11 @@ algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
 algorithm.ema.use=True \
 dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+
+
+# python ../ThreedFront/scripts/render_results.py --no_texture --without_floor --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/17-05-35/sampled_scenes_results.pkl
+
+# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/11-34-36/trajectories/trajectory_seed150698782.pkl
 
 # python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-24/09-06-56/sampled_scenes_results.pkl
 

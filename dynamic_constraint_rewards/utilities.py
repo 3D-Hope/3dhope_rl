@@ -129,7 +129,6 @@ def get_object_present_reward_potential(one_hot, class_label, idx_to_labels,
     
     # Calculate deviation from target count
     deviation = num_detections - count
-    
     # Shaped reward with asymmetric penalties
     rewards = torch.where(
         deviation == 0,

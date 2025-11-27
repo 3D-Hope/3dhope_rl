@@ -245,6 +245,8 @@ def main(cfg: DictConfig) -> None:
             for key in ["fpbpn", "text_cond", "text_cond_coarse"]:
                 if key in scene_data:
                     val = scene_data[key]
+                    if key == "fpbpn":
+                        val = torch.tensor(val, device=device)
                     if isinstance(val, torch.Tensor):
                         data_batch[key] = val.unsqueeze(0).to(device)
                     else:
