@@ -106,7 +106,7 @@ def sample_scenes_from_baseline(
         f"dataset._name=custom_scene",
         f"+num_scenes={num_scenes}",
         # f"algorithm=scene_diffuser_flux_transformer", # TODO: make this configurable
-        f"algorithm=scene_diffuser_midiffusion",
+        f"algorithm=scene_diffuser_flux_transformer",
         f"algorithm.trainer={config.algorithm.trainer}",
         f"experiment.find_unused_parameters=True",
         f"algorithm.classifier_free_guidance.use=False",

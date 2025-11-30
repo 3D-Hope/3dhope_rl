@@ -627,6 +627,7 @@ class ObjectFluxTransformer(nn.Module):
             cond_vec += self.vector_in(cond)
 
         if text_cond is not None:
+            # print(f"[Ashok] text_cond.shape: {text_cond.shape}, after text encoder {self.text_in(text_cond).shape}, sample {sample.shape}")
             txt_vec = self.text_in(text_cond)
             # print(f"[Ashok] txt_vec.shape: {txt_vec.shape}") #b,110,512, our b, 12, 64
             for block in self.double_blocks:
@@ -637,8 +638,9 @@ class ObjectFluxTransformer(nn.Module):
             )  # Shape (B, txt_seq_len + num_objects, hidden_dim)
 
         if floor_cond is not None:
-            floor_vec = floor_cond.repeat(1, self.max_objects, 1)  # b, 12, 64
-            floor_vec = self.floor_in(floor_vec)  # b, 12, 512
+            # floor_vec = floor_cond.repeat(1, self.max_objects, 1)  # b, 64 -> b, 12, 64 (but in reality 1. 3072, 64)
+            floor_vec = floor_cond.unsqueeze(1)  # b, 1, 64
+            floor_vec = self.floor_in(floor_vec)  # b, 1, 512
             # print(f"[Ashok] floor_vec.shape: {floor_vec.shape}") #b,64
             for block in self.double_blocks:
                 sample, floor_vec = block(sample, floor_vec, cond_vec)

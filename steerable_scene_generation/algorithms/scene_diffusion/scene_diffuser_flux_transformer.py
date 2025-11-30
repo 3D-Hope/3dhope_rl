@@ -179,6 +179,7 @@ def create_scene_diffuser_flux_transformer(
                 # print(f"[Ashok] floor_cond shape: {floor_cond.shape}, fpbpn shape: {cond_dict['fpbpn'].shape}")
             # Predict the noise.
             # print(f"text cond {text_cond}, cond {text_cond_coarse}, floor cond {floor_cond}")
+            # print(f"[Ashok] noisy scenes shape: {noisy_scenes.shape}, timesteps: {timesteps.shape if isinstance(timesteps, torch.Tensor) else timesteps} at scenediffuser_flux_transformer predict noise")
             predicted_noise = model(
                 noisy_scenes,
                 timestep=timesteps,

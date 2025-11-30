@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=tv_work_in_1_go
+#SBATCH --job-name=tv_work_in_1_go_flux_floor
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
@@ -341,8 +341,8 @@ echo ""
 
 export PYTHONUNBUFFERED=1
 
-PYTHONPATH=. python -u main.py +name=tv_work_in_1_go \
-    load=bgdrozky \
+PYTHONPATH=. python -u main.py +name=tv_work_in_1_go_flux_floor \
+    load=ca0l19rv \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -374,7 +374,7 @@ PYTHONPATH=. python -u main.py +name=tv_work_in_1_go \
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    algorithm.classifier_free_guidance.use_floor=False \
+    algorithm.classifier_free_guidance.use_floor=true \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
     dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
     dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \

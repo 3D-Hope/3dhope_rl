@@ -11,7 +11,8 @@ dataset.model_path_vec_len=28 \
 dataset.max_num_objects_per_scene=107 \
 +num_scenes=5 \
 algorithm.classifier_free_guidance.weight=1.5 \
-algorithm.classifier_free_guidance.sampling.labels="a scene with 2 shelves chairs and 1 table."
+algorithm.classifier_free_guidance.sampling.labels="a scene with 2 shelves chairs and 1 table." \
+wandb.mode=disabled
 
 python scripts/inference_time_search.py load=data/checkpoints/restaurant_low_clutter.ckpt \
 dataset.processed_scene_data_path=data/metadatas/restaurant_low_clutter.json \
@@ -1974,7 +1975,7 @@ python scripts/custom_sample_and_render.py load=cmdpm5nv dataset=custom_scene da
 
 python ../ThreedFront/scripts/render_results.py --no_texture --without_floor retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/04-55-02/sampled_scenes_results.pkl
 
-python ../ThreedFront/scripts/render_results.py --no_texture --without_floor --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-26/13-00-24/trajectory_scenes.pkl
+python ../ThreedFront/scripts/render_results.py --no_texture  --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-30/13-59-25/sampled_scenes_results.pkl
 
 python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-24/08-58-35/sampled_scenes_results.pkl
 
