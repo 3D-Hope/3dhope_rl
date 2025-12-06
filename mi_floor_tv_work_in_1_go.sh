@@ -218,6 +218,7 @@ echo ""
 POETRY_CMD=""
 POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
 POETRY_BIN="$POETRY_HOME/bin/poetry"
+POETRY_INSTALL_LOG="/tmp/poetry_install.log"
 
 
 # Run poetry install -- prefer no interaction. If it fails, fallback to pip editable install.
