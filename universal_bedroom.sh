@@ -172,6 +172,8 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════════
 # STAGE 4: Create and activate Python environment
 # ═══════════════════════════════════════════════════════════════════════════════════
+conda env remove -n 3dhope_rl -y
+
 echo "STAGE 4: Setting up Python environment..."
 if ! conda env list | grep -q "3dhope_rl"; then
     echo "Creating conda environment: 3dhope_rl"
