@@ -304,14 +304,30 @@ $POETRY_CMD install --no-interaction 2>&1 | tee /tmp/poetry_install.log || {
     pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
 }
 
-# Activate virtual environment
-if [ -d ".venv" ]; then
-    echo "Activating Poetry virtualenv..."
-    source .venv/bin/activate
-    echo "✅ Using Poetry virtualenv"
+# Get Python path from Poetry's virtualenv
+echo "Getting Python executable from Poetry environment..."
+PYTHON_CMD=$($POETRY_CMD env info -p 2>/dev/null)/bin/python
+
+if [ -f "$PYTHON_CMD" ]; then
+    echo "✅ Found Poetry Python at: $PYTHON_CMD"
+    echo "   Python version: $($PYTHON_CMD --version)"
 else
-    echo "⚠️  No .venv found, using conda environment"
+    echo "⚠️  Could not find Poetry Python, checking for .venv..."
+    if [ -d ".venv" ]; then
+        PYTHON_CMD=".venv/bin/python"
+        echo "✅ Using .venv Python: $PYTHON_CMD"
+    else
+        PYTHON_CMD="python"
+        echo "⚠️  Using system Python: $PYTHON_CMD"
+    fi
 fi
+
+# Verify hydra is available
+echo "Verifying required packages..."
+$PYTHON_CMD -c "import hydra; print('✅ Hydra found')" || {
+    echo "❌ Hydra not found in Poetry environment"
+    exit 1
+}
 
 # Login to wandb (use --relogin to avoid interactive prompt)
 echo "Logging in to wandb..."
