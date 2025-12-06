@@ -8,9 +8,10 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
-# Exit on error but with better error reporting
 set -euo pipefail
-trap 'ERR_CODE=$?; echo "❌ Error on line $LINENO. Exit code: $ERR_CODE" >&2; exit $ERR_CODE' ERR
+
+# Better error reporting including line number
+trap 'ERR_CODE=$?; echo "❌ Error on line ${LINENO:-?}. Exit code: $ERR_CODE" >&2; exit $ERR_CODE' ERR
 trap 'echo "🛑 Job interrupted"; exit 130' INT
 
 # -------------------------
@@ -35,53 +36,43 @@ export WANDB_ENTITY="078bct021-ashok-d"
 # -------------------------
 # Stage 1 & 2: copy caches/dataset (keeps your original behavior)
 # -------------------------
-# (kept your rsync/unzip logic but robustified)
 echo "STAGE 1: Copy/extract caches and dataset..."
 
+# Helper to copy and unzip if missing
+_copy_and_unzip_if_missing() {
+    local src_zip=$1
+    local dst_dir=$2
+    local dst_base=$(dirname "$dst_dir")
+    local zip_name=$(basename "$src_zip")
+    if [ -d "$dst_dir" ]; then
+        echo "✅ $dst_dir already exists"
+        return 0
+    fi
+    echo "Copying $zip_name to $dst_base..."
+    rsync -aHzv --progress "$src_zip" "$dst_base/" || {
+        echo "❌ Failed to copy $src_zip"; return 1
+    }
+    echo "Extracting $zip_name..."
+    unzip -o "$dst_base/$zip_name" -d "$dst_base" || {
+        echo "❌ Failed to extract $dst_base/$zip_name"; return 1
+    }
+    rm -f "$dst_base/$zip_name"
+    echo "✅ $dst_dir copied & extracted"
+    return 0
+}
+
+# Use the helper for your caches/dataset
 rm -rf /scratch/pramish_paudel/bedroom_sdf_cache || true
-if [ ! -d "/scratch/pramish_paudel/bedroom_sdf_cache" ]; then
-    echo "Copying SDF cache..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy SDF cache"; exit 1
-    }
-    echo "Extracting SDF cache..."
-    unzip -o /scratch/pramish_paudel/bedroom_sdf_cache.zip -d /scratch/pramish_paudel/ || {
-        echo "❌ Failed to extract SDF cache"; exit 1
-    }
-    rm -f /scratch/pramish_paudel/bedroom_sdf_cache.zip
-    echo "✅ SDF cache copied"
-else
-    echo "✅ SDF cache already exists in scratch"
-fi
+_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/bedroom_sdf_cache || { echo "Failed stage: bedroom_sdf_cache"; exit 1; }
 ls -la /scratch/pramish_paudel/bedroom_sdf_cache || true
 
 rm -rf /scratch/pramish_paudel/bedroom_accessibility_cache || true
-if [ ! -d "/scratch/pramish_paudel/bedroom_accessibility_cache" ]; then
-    echo "Copying accessibility cache..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy accessibility cache"; exit 1
-    }
-    unzip -o /scratch/pramish_paudel/bedroom_accessibility_cache.zip -d /scratch/pramish_paudel/ || {
-        echo "❌ Failed to extract accessibility cache"; exit 1
-    }
-    rm -f /scratch/pramish_paudel/bedroom_accessibility_cache.zip
-    echo "✅ accessibility cache copied"
-else
-    echo "✅ accessibility cache already exists in scratch"
-fi
+_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/bedroom_accessibility_cache || { echo "Failed stage: bedroom_accessibility_cache"; exit 1; }
 ls -la /scratch/pramish_paudel/bedroom_accessibility_cache || true
 
 echo "STAGE 2: Checking bedroom dataset..."
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
-    echo "Copying bedroom dataset..."
-    rsync -aHzv --progress /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/ || {
-        echo "❌ Failed to copy bedroom dataset"; exit 1
-    }
-    echo "Extracting dataset..."
-    cd /scratch/pramish_paudel/
-    unzip -oq bedroom.zip || { echo "❌ Failed to extract bedroom dataset"; exit 1; }
-    rm -f bedroom.zip
-    echo "✅ bedroom dataset extracted"
+    _copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/bedroom || { echo "❌ Failed to copy/extract bedroom dataset"; exit 1; }
 else
     echo "✅ bedroom dataset already exists in scratch"
 fi
@@ -96,46 +87,58 @@ if [ ! -d "$CONDA_DIR" ]; then
     echo "Installing Miniforge to $CONDA_DIR..."
     mkdir -p /scratch/pramish_paudel/tools/
     cd /scratch/pramish_paudel/tools/
-    # Use uname to choose correct installer
-    MINIFORGE_SH="Miniforge3-$(uname)-$(uname -m).sh"
-    wget -q --show-progress "https://github.com/conda-forge/miniforge/releases/latest/download/$MINIFORGE_SH" -O miniforge.sh || {
-        echo "❌ Failed to download Miniforge"; exit 1
+    # Generic installer filename; Miniforge release provides platform-specific installers named like Miniforge3-*.sh
+    MINIFORGE_SH="miniforge_installer.sh"
+    # try download generic latest release asset pattern from github (best-effort)
+    wget -q --show-progress "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh" -O "$MINIFORGE_SH" || {
+        echo "❌ Failed to download Miniforge installer"; exit 1
     }
-    bash miniforge.sh -b -p "$CONDA_DIR" || { echo "❌ Failed to install Miniforge"; exit 1; }
-    rm -f miniforge.sh
+    bash "$MINIFORGE_SH" -b -p "$CONDA_DIR" || { echo "❌ Failed to install Miniforge"; exit 1; }
+    rm -f "$MINIFORGE_SH"
     echo "✅ Miniforge installed at $CONDA_DIR"
 else
     echo "✅ Miniforge already exists at $CONDA_DIR"
 fi
 
-# Source conda hooks
+# Source conda hooks reliably
 echo "Sourcing conda..."
 # shellcheck source=/dev/null
-source "$CONDA_DIR/etc/profile.d/conda.sh" || { echo "❌ Failed to source conda.sh"; exit 1; }
-# ensure conda command is available
-eval "$($CONDA_DIR/bin/conda shell.bash hook)" || true
+if [ -f "$CONDA_DIR/etc/profile.d/conda.sh" ]; then
+    source "$CONDA_DIR/etc/profile.d/conda.sh"
+else
+    echo "❌ Expected conda.sh not found at $CONDA_DIR/etc/profile.d/conda.sh"; exit 1
+fi
+# Ensure conda command available in this shell
+eval "$("$CONDA_DIR/bin/conda" shell.bash hook)" || true
 
 echo ""
 
 # -------------------------
-# Stage 4: Create and activate conda env
+# Stage 4: Create and activate conda env (explicit python version)
 # -------------------------
-echo "STAGE 4: Creating/activating conda env '3dhope_rl'..."
+echo "STAGE 4: Creating/activating conda env '3dhope_rl' with python=3.10..."
 CONDA_ENV_NAME="3dhope_rl"
-if ! conda env list | awk '{print $1}' | grep -xq "$CONDA_ENV_NAME"; then
-    echo "Creating conda environment: $CONDA_ENV_NAME (python 3.10)"
-    conda create -n "$CONDA_ENV_NAME" python=3.10 -y || { echo "❌ Failed to create conda env"; exit 1; }
+DESIRED_PY="3.10"
+
+# Create if missing
+if ! "$CONDA_DIR/bin/conda" env list | awk '{print $1}' | grep -xq "$CONDA_ENV_NAME"; then
+    echo "Creating conda environment: $CONDA_ENV_NAME (python=$DESIRED_PY)"
+    "$CONDA_DIR/bin/conda" create -n "$CONDA_ENV_NAME" python="$DESIRED_PY" -y || { echo "❌ Failed to create conda env"; exit 1; }
+else
+    echo "✅ Conda env $CONDA_ENV_NAME already present"
 fi
 
-# Activate env
+# Activate environment
 echo "Activating conda environment: $CONDA_ENV_NAME"
+# Prefer conda activate (requires conda.sh sourced above)
 conda activate "$CONDA_ENV_NAME" || { echo "❌ Failed to activate conda env"; exit 1; }
 
-# Make sure conda's bin is first in PATH, so conda-installed poetry is used
-export PATH="$CONDA_PREFIX/bin:$PATH"
+# Ensure conda python is first and export PATH accordingly
+export PATH="${CONDA_PREFIX:-$CONDA_DIR/envs/$CONDA_ENV_NAME}/bin:$PATH"
 hash -r || true
 
 echo "Environment verification:"
+echo "  CONDA_PREFIX: ${CONDA_PREFIX:-N/A}"
 echo "  Active conda environment: ${CONDA_DEFAULT_ENV:-N/A}"
 echo "  Python path: $(which python)"
 echo "  Python version: $(python --version 2>&1)"
@@ -149,90 +152,82 @@ echo "STAGE 5: Poetry Setup"
 echo "───────────────────────────────────────────────────────────────────────────────"
 
 cd ~/codes/3dhope_rl/ || {
-    echo "❌ Failed to change to project directory"
-    exit 1
+    echo "❌ Failed to change to project directory ~/codes/3dhope_rl/"; exit 1
 }
-
 echo "Current directory: $(pwd)"
 echo ""
 
-# Define Poetry paths
+# Set scratch poetry location and preferred binary path
 POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
 POETRY_BIN="$POETRY_HOME/bin/poetry"
 
-# Remove ~/.local/bin from PATH to avoid global Poetry
-echo "🔧 Cleaning PATH to avoid conflicts..."
-export PATH=$(echo $PATH | tr ':' '\n' | grep -v "\.local/bin" | tr '\n' ':' | sed 's/:$//')
+# Remove ~/.local/bin from PATH to avoid accidentally using a global poetry
+export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v -x "$HOME/.local/bin" | tr '\n' ':' | sed 's/:$//')
 
-# Check if scratch Poetry exists
-if [ -f "$POETRY_BIN" ]; then
+# Install poetry into scratch if missing
+if [ -x "$POETRY_BIN" ]; then
     echo "✅ Found Poetry at: $POETRY_BIN"
 else
-    echo "📦 Installing Poetry to scratch..."
+    echo "📦 Installing Poetry to $POETRY_HOME..."
     mkdir -p "$POETRY_HOME"
-    
-    # Install Poetry to scratch location
-    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
-        echo "❌ Failed to install Poetry to scratch"
-        exit 1
+    # Use the official installer via python inside the conda env (this ensures correct python used)
+    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python - || {
+        echo "❌ Failed to install Poetry to $POETRY_HOME"; exit 1
     }
-    
-    if [ ! -f "$POETRY_BIN" ]; then
-        echo "❌ Poetry installation failed - binary not found"
-        exit 1
+    if [ ! -x "$POETRY_BIN" ]; then
+        echo "❌ Poetry installation failed - $POETRY_BIN not found or not executable"; exit 1
     fi
     echo "✅ Poetry installed to $POETRY_HOME"
 fi
 
-# Add scratch Poetry to PATH (put it FIRST to override everything)
+# Put scratch poetry first in PATH to ensure it's used
 export PATH="$POETRY_HOME/bin:$PATH"
+hash -r || true
 
-# Verify we're using the correct Poetry
-POETRY_PATH=$(which poetry)
+POETRY_PATH="$(command -v poetry || true)"
 echo ""
 echo "Poetry Information:"
 echo "  Expected: $POETRY_BIN"
-echo "  Actual:   $POETRY_PATH"
-echo "  Version:  $(poetry --version)"
+echo "  Actual:   ${POETRY_PATH:-N/A}"
+if [ -n "$POETRY_PATH" ]; then
+    echo "  Version:  $(poetry --version 2>/dev/null || echo 'unknown')"
+fi
 
+# Ensure we are using the exact poetry we installed
 if [ "$POETRY_PATH" != "$POETRY_BIN" ]; then
-    echo "❌ ERROR: Wrong Poetry is being used!"
-    echo "   This might cause package installation issues"
+    echo "❌ ERROR: Wrong Poetry binary is being used! Expected $POETRY_BIN but got ${POETY_PATH:-$POETRY_PATH}"
+    echo "   To avoid this, ensure no other poetry is earlier in PATH."
+    # fail fast to avoid installing with wrong poetry
     exit 1
 fi
 echo "  ✅ Confirmed: Using scratch Poetry"
 echo ""
 
-# Configure Poetry to use conda's Python (not create its own venv)
-# Configure Poetry to use conda's Python (not create its own venv)
-echo "🔧 Configuring Poetry to use conda environment..."
-poetry config virtualenvs.create false
-poetry config virtualenvs.in-project false
-echo "📋 Poetry configuration:"
-poetry config --list | grep virtualenvs
-
-echo ""
-echo "✅ STAGE 5 Complete: Poetry configured to use scratch installation"
+# Configure Poetry to use the active conda python (no venv creation)
+echo "🔧 Configuring Poetry to use the active conda environment (no virtualenv created by poetry)..."
+poetry config virtualenvs.create false --local || true
+poetry config virtualenvs.in-project false --local || true
+echo "📋 Poetry configuration (virtualenvs.*):"
+poetry config --list | grep virtualenvs || true
 echo ""
 
-POETRY_CMD=""
-POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
-POETRY_BIN="$POETRY_HOME/bin/poetry"
+# Run `poetry install` but ensure we run poetry from the exact path and use conda python
+POETRY_CMD="$POETRY_BIN"
 POETRY_INSTALL_LOG="/tmp/poetry_install.log"
 
-
-# Run poetry install -- prefer no interaction. If it fails, fallback to pip editable install.
+echo "Running: $POETRY_CMD install --no-interaction --no-ansi"
 if "$POETRY_CMD" install --no-interaction --no-ansi 2>&1 | tee "$POETRY_INSTALL_LOG"; then
     echo "✅ Poetry install succeeded"
 else
-    echo "⚠️ Poetry install failed — showing last 30 lines of log:"
-    tail -n 30 "$POETRY_INSTALL_LOG" || true
-    echo "Falling back to pip install -e . (best-effort)"
-    pip install -e . || { echo "❌ Fallback pip install failed"; exit 1; }
+    echo "⚠️ Poetry install failed — showing last 60 lines of log:"
+    tail -n 60 "$POETRY_INSTALL_LOG" || true
+    echo "Falling back to pip install -e . using current python ($CONDA_PREFIX/bin/python)..."
+    # Always use the conda python
+    "$CONDA_PREFIX/bin/pip" install -e . || { echo "❌ Fallback pip install failed"; exit 1; }
 fi
 
 # -------------------------
-# Stage 8: Activate project's .venv (if created) OR fall back to conda env
+# Stage 8: Activate project's .venv (if created) OR keep conda env
 # -------------------------
 if [ -d ".venv" ]; then
     echo "Activating project .venv..."
@@ -240,11 +235,11 @@ if [ -d ".venv" ]; then
     source .venv/bin/activate || { echo "❌ Failed to activate .venv"; exit 1; }
     echo "✅ Using Poetry .venv: $(which python)"
 else
-    echo "⚠️ No .venv found — will continue using conda env: ${CONDA_DEFAULT_ENV:-N/A}"
+    echo "⚠️ No .venv found — continuing using conda env: ${CONDA_DEFAULT_ENV:-N/A}"
 fi
 
 # quick verify that hydra (or other crucial libs) are importable
-echo "Verifying important packages (hydra)..."
+echo "Verifying important packages (hydra, omegaconf)..."
 python - <<'PYTEST' || { echo "❌ Required python imports failed"; exit 1; }
 try:
     import importlib, sys
@@ -287,8 +282,8 @@ echo ""
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
 
-# ---- your large python command (kept original flags) ----
-PYTHONPATH=. python -u main.py +name=mi_floor \
+# Use the active conda python to launch to avoid any confusion
+"$CONDA_PREFIX/bin/python" -u main.py +name=mi_floor \
     load=rrudae6n  \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
