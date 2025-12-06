@@ -230,66 +230,79 @@ POETRY_BIN="$POETRY_HOME/bin/poetry"
 
 # First, check if Poetry is available in current conda environment
 echo "Checking for Poetry installation..."
-if command -v poetry &> /dev/null; then
-    POETRY_CMD="poetry"
-    echo "✅ Poetry found in current environment: $(which poetry)"
-    echo "   Version: $(poetry --version)"
-# Second, check if Poetry exists in scratch
-elif [ -f "$POETRY_BIN" ]; then
-    POETRY_CMD="$POETRY_BIN"
-    export PATH="$POETRY_HOME/bin:$PATH"
-    echo "✅ Poetry found in scratch: $POETRY_BIN"
-    echo "   Version: $($POETRY_BIN --version)"
-# Third, try to install Poetry via conda (fastest and most reliable in conda env)
-else
-    echo "Poetry not found, trying to install via conda..."
-    conda install -y -c conda-forge poetry 2>&1 | grep -v "Collecting package metadata" || {
-        echo "⚠️  Conda install failed, installing to scratch..."
-        mkdir -p "$POETRY_HOME"
-        
-        # Download and install Poetry to scratch
-        echo "Downloading Poetry installer..."
-        curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
-            echo "❌ Failed to install Poetry to scratch"
-            echo "Falling back to pip installation..."
-            pip install poetry || {
-                echo "❌ Failed to install Poetry via pip"
-                exit 1
-            }
-            POETRY_CMD="poetry"
-        }
-        
-        if [ -f "$POETRY_BIN" ]; then
-            POETRY_CMD="$POETRY_BIN"
-            export PATH="$POETRY_HOME/bin:$PATH"
-            echo "✅ Poetry installed to $POETRY_HOME"
-        fi
-    }
-    
-    # Check again after installation
-    if command -v poetry &> /dev/null; then
-        POETRY_CMD="poetry"
-        echo "✅ Poetry installed successfully"
-        echo "   Location: $(which poetry)"
-        echo "   Version: $(poetry --version)"
-    elif [ -f "$POETRY_BIN" ]; then
-        POETRY_CMD="$POETRY_BIN"
-        echo "✅ Poetry installed to scratch"
-        echo "   Version: $($POETRY_BIN --version)"
-    else
-        echo "❌ Failed to install Poetry"
-        exit 1
-    fi
-fi
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 5: Poetry Installation and Configuration
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 5: Poetry Setup"
+echo "───────────────────────────────────────────────────────────────────────────────"
 
-echo ""
-
-# Configure Poetry to create virtualenv in project
-echo "Configuring Poetry..."
-$POETRY_CMD config virtualenvs.in-project true || {
-    echo "⚠️  Failed to configure Poetry, but continuing..."
+cd ~/codes/3dhope_rl/ || {
+    echo "❌ Failed to change to project directory"
+    exit 1
 }
 
+echo "Current directory: $(pwd)"
+echo ""
+
+# Define Poetry paths
+POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
+POETRY_BIN="$POETRY_HOME/bin/poetry"
+
+# Remove ~/.local/bin from PATH to avoid global Poetry
+echo "🔧 Cleaning PATH to avoid conflicts..."
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "\.local/bin" | tr '\n' ':' | sed 's/:$//')
+
+# Check if scratch Poetry exists
+if [ -f "$POETRY_BIN" ]; then
+    echo "✅ Found Poetry at: $POETRY_BIN"
+else
+    echo "📦 Installing Poetry to scratch..."
+    mkdir -p "$POETRY_HOME"
+    
+    # Install Poetry to scratch location
+    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
+        echo "❌ Failed to install Poetry to scratch"
+        exit 1
+    }
+    
+    if [ ! -f "$POETRY_BIN" ]; then
+        echo "❌ Poetry installation failed - binary not found"
+        exit 1
+    fi
+    echo "✅ Poetry installed to $POETRY_HOME"
+fi
+
+# Add scratch Poetry to PATH (put it FIRST to override everything)
+export PATH="$POETRY_HOME/bin:$PATH"
+
+# Verify we're using the correct Poetry
+POETRY_PATH=$(which poetry)
+echo ""
+echo "Poetry Information:"
+echo "  Expected: $POETRY_BIN"
+echo "  Actual:   $POETRY_PATH"
+echo "  Version:  $(poetry --version)"
+
+if [ "$POETRY_PATH" != "$POETRY_BIN" ]; then
+    echo "❌ ERROR: Wrong Poetry is being used!"
+    echo "   This might cause package installation issues"
+    exit 1
+fi
+echo "  ✅ Confirmed: Using scratch Poetry"
+echo ""
+
+# Configure Poetry to use conda's Python (not create its own venv)
+echo "🔧 Configuring Poetry to use conda environment..."
+poetry config virtualenvs.create false
+poetry config virtualenvs.in-project false
+poetry config virtualenvs.prefer-active-python true
+
+echo "📋 Poetry configuration:"
+poetry config --list | grep virtualenvs
+
+echo ""
+echo "✅ STAGE 5 Complete: Poetry configured to use scratch installation"
+echo ""
 # Install project dependencies
 echo "Installing dependencies with Poetry..."
 $POETRY_CMD install --no-interaction 2>&1 | tee /tmp/poetry_install.log || {

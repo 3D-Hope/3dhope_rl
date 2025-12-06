@@ -142,56 +142,80 @@ echo "  Python version: $(python --version 2>&1)"
 echo "  Pip path: $(which pip)"
 echo ""
 
-# -------------------------
-# Stage 5: Install Poetry into conda env (if missing)
-# -------------------------
-echo "STAGE 5: Ensuring Poetry is installed inside conda env..."
-POETRY_CMD=""
-if command -v poetry &> /dev/null; then
-    POETRY_CMD="$(command -v poetry)"
-    echo "✅ Poetry found: $POETRY_CMD"
-    echo "   $(poetry --version 2>/dev/null || true)"
-else
-    echo "Poetry not found in conda env; installing via conda-forge..."
-    conda install -y -c conda-forge poetry || {
-        echo "❌ conda install poetry failed; trying pip install in conda env..."
-        pip install poetry || { echo "❌ Failed to install poetry in conda env"; exit 1; }
-    }
-    if command -v poetry &> /dev/null; then
-        POETRY_CMD="$(command -v poetry)"
-        echo "✅ Poetry installed at: $POETRY_CMD"
-    else
-        echo "❌ Poetry still not available after attempted installs"; exit 1
-    fi
-fi
+# ═══════════════════════════════════════════════════════════════════════════════════
+# STAGE 5: Poetry Installation and Configuration
+# ═══════════════════════════════════════════════════════════════════════════════════
+echo "STAGE 5: Poetry Setup"
+echo "───────────────────────────────────────────────────────────────────────────────"
 
-echo ""
+cd ~/codes/3dhope_rl/ || {
+    echo "❌ Failed to change to project directory"
+    exit 1
+}
 
-# -------------------------
-# Stage 6: Project directory + configure Poetry for in-project venv
-# -------------------------
-echo "STAGE 6: Project directory & Poetry configuration"
-PROJECT_DIR="$HOME/codes/3dhope_rl"
-cd "$PROJECT_DIR" || { echo "❌ Failed to cd to project dir $PROJECT_DIR"; exit 1; }
 echo "Current directory: $(pwd)"
 echo ""
 
-# Ensure poetry uses the currently active python and creates .venv in project
-echo "Configuring Poetry to prefer active Python and create .venv in-project..."
-# prefer active python ensures poetry creates venv using conda's python if run inside conda
-"$POETRY_CMD" config virtualenvs.prefer-active-python true --local || true
-"$POETRY_CMD" config virtualenvs.in-project true --local || true
+# Define Poetry paths
+POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
+POETRY_BIN="$POETRY_HOME/bin/poetry"
 
-echo "Poetry config (virtualenvs.in-project):"
-"$POETRY_CMD" config virtualenvs.in-project --local || true
+# Remove ~/.local/bin from PATH to avoid global Poetry
+echo "🔧 Cleaning PATH to avoid conflicts..."
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "\.local/bin" | tr '\n' ':' | sed 's/:$//')
+
+# Check if scratch Poetry exists
+if [ -f "$POETRY_BIN" ]; then
+    echo "✅ Found Poetry at: $POETRY_BIN"
+else
+    echo "📦 Installing Poetry to scratch..."
+    mkdir -p "$POETRY_HOME"
+    
+    # Install Poetry to scratch location
+    curl -sSL https://install.python-poetry.org | POETRY_HOME="$POETRY_HOME" python3 - || {
+        echo "❌ Failed to install Poetry to scratch"
+        exit 1
+    }
+    
+    if [ ! -f "$POETRY_BIN" ]; then
+        echo "❌ Poetry installation failed - binary not found"
+        exit 1
+    fi
+    echo "✅ Poetry installed to $POETRY_HOME"
+fi
+
+# Add scratch Poetry to PATH (put it FIRST to override everything)
+export PATH="$POETRY_HOME/bin:$PATH"
+
+# Verify we're using the correct Poetry
+POETRY_PATH=$(which poetry)
+echo ""
+echo "Poetry Information:"
+echo "  Expected: $POETRY_BIN"
+echo "  Actual:   $POETRY_PATH"
+echo "  Version:  $(poetry --version)"
+
+if [ "$POETRY_PATH" != "$POETRY_BIN" ]; then
+    echo "❌ ERROR: Wrong Poetry is being used!"
+    echo "   This might cause package installation issues"
+    exit 1
+fi
+echo "  ✅ Confirmed: Using scratch Poetry"
 echo ""
 
-# -------------------------
-# Stage 7: Install Python dependencies with Poetry
-# -------------------------
-echo "STAGE 7: Installing dependencies with Poetry (non-interactive)..."
-# save poetry output to a log for easier debugging
-POETRY_INSTALL_LOG="/tmp/poetry_install_${SLURM_JOB_ID:-$$}.log"
+# Configure Poetry to use conda's Python (not create its own venv)
+echo "🔧 Configuring Poetry to use conda environment..."
+poetry config virtualenvs.create false
+poetry config virtualenvs.in-project false
+poetry config virtualenvs.prefer-active-python true
+
+echo "📋 Poetry configuration:"
+poetry config --list | grep virtualenvs
+
+echo ""
+echo "✅ STAGE 5 Complete: Poetry configured to use scratch installation"
+echo ""
+
 
 # Run poetry install -- prefer no interaction. If it fails, fallback to pip editable install.
 if "$POETRY_CMD" install --no-interaction --no-ansi 2>&1 | tee "$POETRY_INSTALL_LOG"; then
