@@ -292,10 +292,10 @@ echo "  ✅ Confirmed: Using scratch Poetry"
 echo ""
 
 # Configure Poetry to use conda's Python (not create its own venv)
+# Configure Poetry to use conda's Python (not create its own venv)
 echo "🔧 Configuring Poetry to use conda environment..."
 poetry config virtualenvs.create false
 poetry config virtualenvs.in-project false
-poetry config virtualenvs.prefer-active-python true
 
 echo "📋 Poetry configuration:"
 poetry config --list | grep virtualenvs
