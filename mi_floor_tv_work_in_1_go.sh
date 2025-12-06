@@ -215,6 +215,10 @@ echo ""
 echo "✅ STAGE 5 Complete: Poetry configured to use scratch installation"
 echo ""
 
+POETRY_CMD=""
+POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
+POETRY_BIN="$POETRY_HOME/bin/poetry"
+
 
 # Run poetry install -- prefer no interaction. If it fails, fallback to pip editable install.
 if "$POETRY_CMD" install --no-interaction --no-ansi 2>&1 | tee "$POETRY_INSTALL_LOG"; then

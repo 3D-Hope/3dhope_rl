@@ -224,7 +224,7 @@ echo "Current directory: $(pwd)"
 echo ""
 
 # Check for Poetry in multiple locations
-POETRY_CMD=""
+ =""
 POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
 POETRY_BIN="$POETRY_HOME/bin/poetry"
 
@@ -304,6 +304,10 @@ echo ""
 echo "✅ STAGE 5 Complete: Poetry configured to use scratch installation"
 echo ""
 # Install project dependencies
+POETRY_CMD=""
+POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
+POETRY_BIN="$POETRY_HOME/bin/poetry"
+
 echo "Installing dependencies with Poetry..."
 $POETRY_CMD install --no-interaction 2>&1 | tee /tmp/poetry_install.log || {
     echo "❌ Poetry install failed, falling back to pip..."
