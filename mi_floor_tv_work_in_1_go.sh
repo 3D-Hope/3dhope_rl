@@ -161,9 +161,11 @@ echo ""
 POETRY_HOME="/scratch/pramish_paudel/tools/poetry"
 POETRY_BIN="$POETRY_HOME/bin/poetry"
 
+# TODO: 
+rm -rf /scratch/pramish_paudel/tools/poetry
+
 # Remove ~/.local/bin from PATH to avoid accidentally using a global poetry
 export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v -x "$HOME/.local/bin" | tr '\n' ':' | sed 's/:$//')
-
 # Install poetry into scratch if missing
 if [ -x "$POETRY_BIN" ]; then
     echo "✅ Found Poetry at: $POETRY_BIN"
@@ -203,18 +205,13 @@ fi
 echo "  ✅ Confirmed: Using scratch Poetry"
 echo ""
 
-# Configure Poetry to use the active conda python (no venv creation)
-echo "🔧 Configuring Poetry to use the active conda environment (no virtualenv created by poetry)..."
-poetry config virtualenvs.create false --local || true
-poetry config virtualenvs.in-project false --local || true
-echo "📋 Poetry configuration (virtualenvs.*):"
-poetry config --list | grep virtualenvs || true
-echo ""
 
 # Run `poetry install` but ensure we run poetry from the exact path and use conda python
 POETRY_CMD="$POETRY_BIN"
 POETRY_INSTALL_LOG="/tmp/poetry_install.log"
 
+# TODO: 
+$POETRY_CMD config virtualenvs.in-project true
 echo "Running: $POETRY_CMD install --no-interaction --no-ansi"
 if "$POETRY_CMD" install --no-interaction --no-ansi 2>&1 | tee "$POETRY_INSTALL_LOG"; then
     echo "✅ Poetry install succeeded"
