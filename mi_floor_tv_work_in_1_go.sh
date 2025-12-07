@@ -280,7 +280,8 @@ export PYTHONUNBUFFERED=1
 export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
-"$CONDA_PREFIX/bin/python" -u main.py +name=mi_floor \
+# TODO: 
+PYTHONPATH=. python -u  main.py +name=mi_floor \
     load=rrudae6n  \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
