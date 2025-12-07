@@ -275,6 +275,10 @@ echo "STAGE 10: Starting RL training..."
 echo "Training started at: $(date)"
 echo "════════════════════════════════════════════════════════════════════════"
 echo ""
+# Install ThreedFront package
+echo "Installing ThreedFront package..."
+pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
+
 
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
