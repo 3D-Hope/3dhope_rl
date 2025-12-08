@@ -750,12 +750,13 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         Returns:
             torch.Tensor: The unnormalized scenes of shape (num_samples, N, V).
         """
-        # TODO: allow inpainting mask here for rl inpaint sampling
+        # oldtODO: allow inpainting mask here for rl inpaint sampling
         cond_dict = None
         if data_batch is not None:
-            cond_dict = self.dataset.sample_data_dict(
-                data=data_batch, num_items=num_samples
-            )
+            # cond_dict = self.dataset.sample_data_dict(
+            #     data=data_batch, num_items=num_samples
+            # ) #ashok
+            cond_dict = data_batch
 
         sampled_scenes = super().sample_scenes(
             num_samples=num_samples,
