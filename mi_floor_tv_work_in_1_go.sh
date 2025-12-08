@@ -337,6 +337,7 @@ PYTHONPATH=. python -u  main.py +name=mi_floor \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
     experiment.training.batch_size=192 \
     experiment.validation.batch_size=192 \
+    experiment.test.batch_size=192 \
 
 # -------------------------
 # Final status
