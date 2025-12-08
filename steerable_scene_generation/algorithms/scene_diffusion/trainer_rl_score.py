@@ -58,7 +58,8 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         print(f"[Ashok] reinforce loss values: {loss.item()}")
         # DDPM loss for regularization.
         if self.cfg.ddpo.ddpm_reg_weight > 0.0:
-            ddpm_loss = self.compute_ddpm_loss(batch)
+            # ddpm_loss = self.compute_ddpm_loss(batch)
+            ddpm_loss = self.compute_ddpm_loss(cond_dict)
             loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
             print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}")
 

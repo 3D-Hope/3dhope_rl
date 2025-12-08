@@ -209,7 +209,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             raise ValueError(f"Unknown room type: {room_type}")
         trajectory.append(xt)
-        # print(f"[Ashok] Initial noise xt shape: {xt.shape}")
+        print(f"[Ashok] num data {len(batch['idx'])}, batch size {self.cfg.ddpo.batch_size}")
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:

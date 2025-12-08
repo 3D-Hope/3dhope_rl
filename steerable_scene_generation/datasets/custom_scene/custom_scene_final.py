@@ -514,30 +514,27 @@ class CustomDataset(BaseDataset):
         # print(f"[Ashok] items in data {[ (key, type(value)) for key, value in data.items() ]}")
         if num_items <= total_items:
             # Sample without replacement.
-            # sample_indices = torch.arange(num_items)
-            pass
+            sample_indices = torch.arange(num_items)
         else:
             # Sample with replacement.
-            # sample_indices = torch.randint(0, total_items, (num_items,))
-            raise NotImplementedError("please provide data == num_items")
+            sample_indices = torch.randint(0, total_items, (num_items,))
+            # raise NotImplementedError("please provide data <= num_items")
 
         # Create the sampled data dictionary.
-        sampled_data = {}  # TODO: support for non tensor types
-        for k, v in data.items():
-            sampled_data[k] =  v[:num_items]
-        # for key, value in data.items():
-        #     if isinstance(value, torch.Tensor):
-        #         sampled_data[key] = value[sample_indices]
-        #     # elif isinstance(value, list):
-        #     #     sampled_data[key] = [value[i] for i in sample_indices]
-        #     # elif isinstance(value, BatchEncoding):
-        #     #     sampled_data[key] = BatchEncoding(
-        #     #         {k: v[sample_indices] for k, v in value.items()}
-        #     #     )
-        #     else:
-        #         raise ValueError(
-        #             f"Unsupported data type '{type(value)}' for key '{key}'"
-        #         )
+        sampled_data = {}
+        for key, value in data.items():
+            if isinstance(value, torch.Tensor):
+                sampled_data[key] = value[sample_indices]
+            elif isinstance(value, list):
+                sampled_data[key] = [value[i] for i in sample_indices]
+            elif isinstance(value, BatchEncoding):
+                sampled_data[key] = BatchEncoding(
+                    {k: v[sample_indices] for k, v in value.items()}
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported data type '{type(value)}' for key '{key}'"
+                )
         return sampled_data
 
     def get_sampler(self) -> Union[WeightedRandomSampler, None]:
