@@ -213,7 +213,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:
-            cond_dict = batch
+            cond_dict = self.dataset.sample_data_dict(
+                data=batch, num_items=self.cfg.ddpo.batch_size
+            )
         # Optional: RL inpainting using cfg.algorithm.predict.inpaint_masks
         use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
         if use_inpaint:
@@ -750,8 +752,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # oldtODO: allow inpainting mask here for rl inpaint sampling
         cond_dict = None
         if data_batch is not None:
-            cond_dict = data_batch
-
+            cond_dict = self.dataset.sample_data_dict(
+                data=data_batch, num_items=num_samples
+            )
         sampled_scenes = super().sample_scenes(
             num_samples=num_samples,
             is_test=is_test,
