@@ -166,12 +166,12 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False, room_type
     device = scenes.device
 
     # Parse scene representation
-    one_hot = scenes[:, :, :num_classes]
-    positions_normalized = scenes[:, :, num_classes : num_classes + 3]
-    sizes_normalized = scenes[:, :, num_classes + 3 : num_classes + 6]
+    positions_normalized = scenes[:, :,  0:3]
+    sizes_normalized = scenes[:, :,  3:6]
     orientations = scenes[
-        :, :, num_classes + 6 : num_classes + 8
+        :, :,  6:8
     ]  # [cos_theta, sin_theta]
+    one_hot = scenes[:, :, 8:8+num_classes]
     
     # Descale to world coordinates
     if not parse_only:

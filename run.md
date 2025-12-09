@@ -257,7 +257,7 @@ zip -r bedroom_sdf_cache.zip bedroom_sdf_cache/
 
 
 
-srun --partition=debug --gres=gpu:a6000:1 --time=04:00:00 --pty bash
+srun --partition=debug --gres=gpu:h100:1 --time=04:00:00 --pty bash
 
 rsync -avzP insait:/home/pramish_paudel/codes/3dhope_rl/logs/vaastu-467478.out /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/
 
@@ -360,8 +360,8 @@ python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugat
 
 
 
-python scripts/custom_sample_and_render.py load=fhfnf4xi dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm..use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.custom.objfeat_dim=0 algorithm.custom.old=True
-classifier_free_guidance
+python scripts/custom_sample_and_render.py load=fhfnf4xi dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.ddpo.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150 algorithm.custom.objfeat_dim=0 algorithm.custom.old=True
+
 
 python scripts/custom_sample_and_render.py load=z708k43v dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=1000 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
 
@@ -1163,10 +1163,9 @@ python scripts/custom_sample_and_render.py +num_scenes=1000 algorithm.noise_sche
     algorithm.test.num_samples_to_visualize=0 \
     algorithm.test.num_directives_to_generate=0 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
-    dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm \
-    dataset.data.path_to_processed_data=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/3d_front_data
+    dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm
 
-python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-02/04-28-23/sampled_scenes_results.pkl --no_texture
+python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/19-18-13/sampled_scenes_results.pkl --retrieve_by_size
 
 PYTHONPATH=. python -u main.py +name=continuous_mi_livingroom_floor_obj32 \
     dataset=custom_scene \
@@ -1973,7 +1972,7 @@ python scripts/custom_sample_and_render.py \
 python scripts/custom_sample_and_render.py load=cmdpm5nv dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=100 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
 
 
-python ../ThreedFront/scripts/render_results.py --no_texture --without_floor retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/04-55-02/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/19-07-48/sampled_scenes_results.pkl
 
 python ../ThreedFront/scripts/render_results.py --no_texture  --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-30/13-59-25/sampled_scenes_results.pkl
 
@@ -1990,15 +1989,25 @@ poetry run python scripts/download_checkpoint.py \
 scp insait:/home/pramish_paudel/codes/3dhope_rl/checkpoints/pramish-paudel-insait/3dhope_rl/nylmdurl/model.ckpt .
 
 
-python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size --without_floor /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-26/16-59-55/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-02/16-05-14/sampled_scenes_results.pkl
 
 
 python ../ThreedFront/scripts/render_results_better.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-12/19-52-51/sampled_scenes_results.pkl > temp_log_tv_only.txt 2>&1 
 
 
 
-python ../ThreedFront/scripts/render_results.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-13/05-36-07/sampled_scenes_results.pkl > temp_log_tv_only.txt 2>&1 
+python ../ThreedFront/scripts/render_results.py --retrieve_by_size --no_texture /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/08-25-38/sampled_scenes_results.pkl
 
 python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-13/05-36-07/sampled_scenes_results.pkl
 
-python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-22/03-
+python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/06-56-57/sampled_scenes_results.pkl
+
+
+
+
+
+
+python scripts/custom_sample_and_render.py +num_scenes=1000 load=rrudae6n     dataset=custom_scene     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json     dataset.max_num_objects_per_scene=12     algorithm=scene_diffuser_midiffusion     algorithm.classifier_free_guidance.use=False     algorithm.ema.use=True     algorithm.trainer=rl_score     algorithm.noise_schedule.scheduler=ddim     algorithm.noise_schedule.ddim.num_inference_timesteps=150     experiment.training.max_steps=1020000     experiment.validation.limit_batch=1     experiment.validation.val_every_n_step=50     algorithm.ddpo.ddpm_reg_weight=40     experiment.reset_lr_scheduler=True     experiment.training.lr=1e-6     experiment.lr_scheduler.num_warmup_steps=250     algorithm.ddpo.batch_size=128     experiment.training.checkpointing.every_n_train_steps=500     algorithm.num_additional_tokens_for_sampling=0     algorithm.ddpo.n_timesteps_to_sample=100     experiment.find_unused_parameters=True     algorithm.custom.loss=True     algorithm.validation.num_samples_to_render=0     algorithm.validation.num_samples_to_visualize=0     algorithm.validation.num_directives_to_generate=0     algorithm.test.num_samples_to_render=0     algorithm.test.num_samples_to_visualize=0     algorithm.test.num_directives_to_generate=0     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0     algorithm.ddpo.use_universal_reward=True     algorithm.classifier_free_guidance.use_floor=True     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards     algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom     dataset.sdf_cache_dir=./bedroom_sdf_cache/     dataset.accessibility_cache_dir=./bedroom_accessibility_cache/     algorithm.custom.num_classes=22     algorithm.custom.objfeat_dim=0     algorithm.custom.obj_vec_len=30     algorithm.custom.obj_diff_vec_len=30     
+
+
+ 

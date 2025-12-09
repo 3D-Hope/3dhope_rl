@@ -293,21 +293,21 @@ def main(cfg: DictConfig) -> None:
         for i in range(sampled_scenes_np.shape[0]):
             class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
             for j in range(sampled_scenes_np.shape[1]):
-                class_label_idx = np.argmax(sampled_scenes_np[i, j, :n_classes])
+                class_label_idx = np.argmax(sampled_scenes_np[i, j, 8:8+n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
                     ohe = np.zeros(n_classes - 1)
                     ohe[class_label_idx] = 1
                     class_labels.append(ohe)
                     translations.append(
-                        sampled_scenes_np[i, j, n_classes : n_classes + 3]
+                        sampled_scenes_np[i, j, 0:3]
                     )
-                    sizes.append(sampled_scenes_np[i, j, n_classes + 3 : n_classes + 6])
+                    sizes.append(sampled_scenes_np[i, j, 3:6])
                     angles.append(
-                        sampled_scenes_np[i, j, n_classes + 6 : n_classes + 8]
+                        sampled_scenes_np[i, j, 6:8]
                     )
                     try:
                         objfeats_32.append(
-                            sampled_scenes_np[i, j, n_classes + 8 : n_classes + 8 + 32]
+                            sampled_scenes_np[i, j, 8+n_classes:n_classes + 8 + 32]
                         )
                         
                     except Exception as e:

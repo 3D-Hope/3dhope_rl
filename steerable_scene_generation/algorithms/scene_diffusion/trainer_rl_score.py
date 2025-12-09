@@ -43,7 +43,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         )
 
         # Remove initial noisy scene.
-        trajectories = trajectories[:, 1:]  # Shape (B, T, N, V)
+        trajectories = trajectories[:, 1:]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
 
         # Compute rewards.
         rewards = self.compute_rewards_from_trajs(

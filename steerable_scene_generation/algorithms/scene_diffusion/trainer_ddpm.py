@@ -138,24 +138,26 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         # Define indices for your representation components
         # print(f"[Ashok] custom loss shape of target noise {noise.shape}, pred noise {predicted_noise.shape}")
         num_classes = self.cfg.custom.num_classes
-        class_indices = list(range(0, num_classes))
         pos_indices = list(
             range(
-                len(class_indices), len(class_indices) + 3
-            )  # TODO: USE cfg.algorithm.custom.num_classes and so on for these all
+                0, 3
+            )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
         )  # Next 3 dimensions for position
         size_indices = list(
             range(
-                len(class_indices) + len(pos_indices),
-                len(class_indices) + len(pos_indices) + 3,
+                len(pos_indices),
+                len(pos_indices) + 3,
             )
         )  # Next 3 dimensions for size
         rot_indices = list(
             range(
-                len(class_indices) + len(pos_indices) + len(size_indices),
-                len(class_indices) + len(pos_indices) + len(size_indices) + 2,
+                len(pos_indices) + len(size_indices),
+                len(pos_indices) + len(size_indices) + 2,
             )
         )  # Next 2 dimensions for rotation
+        class_indices = list(range(
+            len(pos_indices) + len(size_indices) + len(rot_indices), len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes
+            ))
         # 22+3+3+2+32
         if int(self.cfg.custom.objfeat_dim) == 32:
             objfeat_32_indices = list[int](

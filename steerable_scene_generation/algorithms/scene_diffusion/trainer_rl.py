@@ -217,29 +217,29 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 data=batch, num_items=self.cfg.ddpo.batch_size
             )
         # Optional: RL inpainting using cfg.algorithm.predict.inpaint_masks
-        use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
-        if use_inpaint:
+        # use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
+        # if use_inpaint:
             # Build label->idx map from room type labels
             # print(f"[Ashok] room_type: {room_type}")
             
-            label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
-            label_to_idx = {v: k for k, v in label_map.items()}
+            # label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
+            # label_to_idx = {v: k for k, v in label_map.items()}
 
             # Determine class dimension
-            if hasattr(self.cfg, "custom") and hasattr(self.cfg.custom, "num_classes"):
-                num_classes = int(self.cfg.custom.num_classes)
-            else:
-                num_classes = len(label_map) + 1  # +1 for empty
+            # if hasattr(self.cfg, "custom") and hasattr(self.cfg.custom, "num_classes"):
+            #     num_classes = int(self.cfg.custom.num_classes)
+            # else:
+            #     num_classes = len(label_map) + 1  # +1 for empty
                 
-            user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
-            user_query = user_query.replace(' ', '_').replace('.', '')
-            inpaint_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_3.json")
-            # print(f"[Ashok] inpaint_path: {inpaint_path}")
-            with open(inpaint_path, "r") as f:
-                import json
-                inpaint_cfg = json.load(f)
-            # print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
-            inpaint_cfg = inpaint_cfg["inpaint"]
+            # user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
+            # user_query = user_query.replace(' ', '_').replace('.', '')
+            # inpaint_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_3.json")
+            # # print(f"[Ashok] inpaint_path: {inpaint_path}")
+            # with open(inpaint_path, "r") as f:
+            #     import json
+            #     inpaint_cfg = json.load(f)
+            # # print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
+            # inpaint_cfg = inpaint_cfg["inpaint"]
 
 
             # Read inpaint config dict: {label_name: count}
@@ -261,43 +261,43 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             
             # print(f"Using inpainting with config: {inpaint_cfg}")
             # Initialize mask and originals
-            inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
-            original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
+            # inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
+            # original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
 
-            hardcoded_count = 0
-            dataset_stat_dir = os.path.join(self.cfg.dataset.data.path_to_processed_data, self.cfg.dataset.data.room_type, "dataset_stats.txt")
+            # hardcoded_count = 0
+            # dataset_stat_dir = os.path.join(self.cfg.dataset.data.path_to_processed_data, self.cfg.dataset.data.room_type, "dataset_stats.txt")
             
-            with open(dataset_stat_dir, "r") as f:
-                import json
-                dataset_stats = json.load(f)
-            class_frequencies = dataset_stats["class_frequencies"]   
+            # with open(dataset_stat_dir, "r") as f:
+            #     import json
+            #     dataset_stats = json.load(f)
+            # class_frequencies = dataset_stats["class_frequencies"]   
             
             
-            # DictConfig and dict both support .items()
-            for label_name, count in inpaint_cfg.items():
-                labels = label_name.split(",")
-                if len(labels) == 1:
-                    label_name = labels[0]
-                else:
-                    weights = [class_frequencies[label_name] for label_name in labels]
-                    label_name = random.choices(labels, weights=weights, k=1)[0]
-                class_idx = int(label_to_idx[str(label_name)])
-                count = int(count)
-                end = hardcoded_count + count
-                if end > xt.shape[1]:
-                    end = xt.shape[1]
-                if hardcoded_count >= end:
-                    continue
-                # Freeze class slots for these objects
-                inpainting_masks[:, hardcoded_count:end, :num_classes] = False
-                # Set original class one-hot: default -1, with target class 1
-                original_scenes[:, hardcoded_count:end, :num_classes] = -1.0
-                original_scenes[:, hardcoded_count:end, class_idx] = 1.0
-                hardcoded_count = end
+            # # DictConfig and dict both support .items()
+            # for label_name, count in inpaint_cfg.items():
+            #     labels = label_name.split(",")
+            #     if len(labels) == 1:
+            #         label_name = labels[0]
+            #     else:
+            #         weights = [class_frequencies[label_name] for label_name in labels]
+            #         label_name = random.choices(labels, weights=weights, k=1)[0]
+            #     class_idx = int(label_to_idx[str(label_name)])
+            #     count = int(count)
+            #     end = hardcoded_count + count
+            #     if end > xt.shape[1]:
+            #         end = xt.shape[1]
+            #     if hardcoded_count >= end:
+            #         continue
+            #     # Freeze class slots for these objects
+            #     inpainting_masks[:, hardcoded_count:end, :num_classes] = False
+            #     # Set original class one-hot: default -1, with target class 1
+            #     original_scenes[:, hardcoded_count:end, :num_classes] = -1.0
+            #     original_scenes[:, hardcoded_count:end, class_idx] = 1.0
+            #     hardcoded_count = end
 
-            # Apply mask to initial noise
-            xt = torch.where(inpainting_masks, xt, original_scenes)
-            trajectory[0] = xt
+            # # Apply mask to initial noise
+            # xt = torch.where(inpainting_masks, xt, original_scenes)
+            # trajectory[0] = xt
             # print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
 
         for t_idx, t in enumerate(
@@ -325,7 +325,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     model_output=residual,
                     timestep=t,
                     sample=xt,
-                    mask=inpainting_masks if use_inpaint else None,
+                    # mask=inpainting_masks if use_inpaint else None,
                 )
             else:  # DDIMScheduler
                 xt_next, log_prop = ddim_step_with_logprob(
@@ -334,16 +334,17 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     timestep=t,
                     sample=xt,
                     eta=self.cfg.noise_schedule.ddim.eta,
-                    mask=inpainting_masks if use_inpaint else None,
+                    # mask=inpainting_masks if use_inpaint else None,
                 )
-            if torch.isnan(xt_next).any():
-                print(f"[Ashok] NaNs detected in xt_next at timestep {t},")
-                xt_next = torch.nan_to_num(xt_next)
+            # if torch.isnan(xt_next).any():
+            #     print(f"[Ashok] NaNs detected in xt_next at timestep {t},")
+            #     xt_next = torch.nan_to_num(xt_next)
             # If inpainting, keep unmasked values fixed to originals
-            if use_inpaint:
-                xt = torch.where(inpainting_masks, xt_next, original_scenes)
-            else:
-                xt = xt_next
+            # if use_inpaint:
+            #     xt = torch.where(inpainting_masks, xt_next, original_scenes)
+            # else:
+            #     xt = xt_next
+            xt = xt_next
 
             trajectory.append(xt)
             trajectory_log_props.append(log_prop)

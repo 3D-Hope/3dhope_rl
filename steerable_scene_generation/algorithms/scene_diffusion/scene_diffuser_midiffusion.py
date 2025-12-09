@@ -86,7 +86,7 @@ def create_scene_diffuser_midiffusion(
                     "objectness_dim": 0,  # Not used by our scene representation
                     "class_dim": self.cfg.custom.num_classes,
                     "translation_dim": self.cfg.custom.translation_dim,
-                    "size_dim": self.cfg.custom.size_dim,  # Not used by our scene representation
+                    "size_dim": self.cfg.custom.size_dim,
                     "angle_dim": self.cfg.custom.angle_dim,
                     "objfeat_dim": self.cfg.custom.objfeat_dim,  # Not used by our scene representation
                 }
