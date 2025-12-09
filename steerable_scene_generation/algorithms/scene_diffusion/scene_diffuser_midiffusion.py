@@ -71,7 +71,7 @@ def create_scene_diffuser_midiffusion(
                 self.txt_encoder = None
                 self.floor_encoder = None
                 context_dim = 0
-            if self.cfg.custom.old and self.cfg.dataset.data.room_type =="bedroom":
+            if self.cfg.custom.old and self.cfg.dataset.data.room_type == "bedroom":
                 network_dim = {
                     "objectness_dim": 0,  # Not used by our scene representation
                     "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
@@ -180,9 +180,7 @@ def create_scene_diffuser_midiffusion(
             # if torch.isnan(noisy_scenes).any():
             #     print(f"[WARNING] NaN detected in noisy_scenes! Replacing with zeros.")
             #     noisy_scenes = torch.nan_to_num(noisy_scenes)
-            
-        
-            
+
             # Context: Text OR Floor (mutually exclusive)
             context = None
             if cond_dict is not None and self.txt_encoder is not None:
@@ -207,7 +205,9 @@ def create_scene_diffuser_midiffusion(
                     )  # Shape (B, N, C)
             elif cond_dict is not None and self.floor_encoder is not None:
                 # Floor conditioning (same pattern as Flux)
-                floor_cond = self.floor_encoder(cond_dict["fpbpn"].to(noisy_scenes.dtype))  # Shape (B, 64)
+                floor_cond = self.floor_encoder(
+                    cond_dict["fpbpn"].to(noisy_scenes.dtype)
+                )  # Shape (B, 64)
                 # print(f"[Ashok] Floor condition shape: {floor_cond.shape}")
                 floor_cond = floor_cond.to(noisy_scenes.dtype)
 
@@ -221,7 +221,7 @@ def create_scene_diffuser_midiffusion(
             predicted_noise = model(
                 noisy_scenes, time=timesteps, context=context, context_cross=None
             )  # Shape (B, N, V)
-            
+
             # if torch.isnan(predicted_noise).any():
             #     print(f"[WARNING] NaN detected in predicted_noise!")
             #     # print(f"[DEBUG] predicted_noise min: {predicted_noise[~torch.isnan(predicted_noise)].min()}")

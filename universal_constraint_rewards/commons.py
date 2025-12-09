@@ -48,14 +48,14 @@ idx_to_labels_livingroom = {
     20: "stool",
     21: "tv_stand",
     22: "wardrobe",
-    23: "wine_cabinet"
+    23: "wine_cabinet",
 }
 
 idx_to_labels = {
     "bedroom": idx_to_labels_bedroom,
     "livingroom": idx_to_labels_livingroom,
 }
-    
+
 
 ceiling_objects = ["ceiling_lamp", "pendant_lamp"]
 
@@ -70,7 +70,9 @@ def descale_to_origin(x, minimum, maximum):
     return x
 
 
-def descale_pos(positions, pos_min=None, pos_max=None, device="cuda", room_type="livingroom"):
+def descale_pos(
+    positions, pos_min=None, pos_max=None, device="cuda", room_type="livingroom"
+):
     """
     Descale positions to original coordinates.
 
@@ -86,23 +88,29 @@ def descale_pos(positions, pos_min=None, pos_max=None, device="cuda", room_type=
     if pos_min is None:
         if room_type == "bedroom":
             pos_min = torch.tensor([-2.7625005, 0.045, -2.75275], device=device)
-        elif room_type == "livingroom": #TODO: Update these values
-            pos_min = torch.tensor([-5.672918693230125, 0.0375, -5.716401580065309], device=device)
+        elif room_type == "livingroom":  # TODO: Update these values
+            pos_min = torch.tensor(
+                [-5.672918693230125, 0.0375, -5.716401580065309], device=device
+            )
         else:
             raise ValueError(f"Unknown room type: {room_type}")
     if pos_max is None:
         if room_type == "bedroom":
             pos_max = torch.tensor([2.7784417, 3.6248395, 2.8185427], device=device)
         elif room_type == "livingroom":
-            pos_max = torch.tensor([ 5.09667921844729, 3.3577405149437496, 5.4048500000000015], device=device)
+            pos_max = torch.tensor(
+                [5.09667921844729, 3.3577405149437496, 5.4048500000000015],
+                device=device,
+            )
         else:
             raise ValueError(f"Unknown room type: {room_type}")
-
 
     return descale_to_origin(positions, pos_min, pos_max)
 
 
-def descale_size(sizes, size_min=None, size_max=None, device="cuda", room_type="livingroom"):
+def descale_size(
+    sizes, size_min=None, size_max=None, device="cuda", room_type="livingroom"
+):
     """
     Descale sizes to original dimensions.
 
@@ -126,22 +134,34 @@ def descale_size(sizes, size_min=None, size_max=None, device="cuda", room_type="
     if size_min is None:
         if room_type == "bedroom":
             size_min = torch.tensor([0.03998289, 0.02000002, 0.012772], device=device)
-        elif room_type == "livingroom":#TODO: Update these values
-            size_min = torch.tensor([  0.03998999999999997,0.020000020334800084,0.0328434999999998,], device=device)
+        elif room_type == "livingroom":  # TODO: Update these values
+            size_min = torch.tensor(
+                [
+                    0.03998999999999997,
+                    0.020000020334800084,
+                    0.0328434999999998,
+                ],
+                device=device,
+            )
         else:
             raise ValueError(f"Unknown room type: {room_type}")
     if size_max is None:
         if room_type == "bedroom":
             size_max = torch.tensor([2.8682, 1.770065, 1.698315], device=device)
         elif room_type == "livingroom":
-            size_max = torch.tensor([2.3802699999999994, 1.7700649999999998, 1.3224289999999996], device=device)
+            size_max = torch.tensor(
+                [2.3802699999999994, 1.7700649999999998, 1.3224289999999996],
+                device=device,
+            )
         else:
             raise ValueError(f"Unknown room type: {room_type}")
 
     return descale_to_origin(sizes, size_min, size_max)
 
 
-def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False, room_type="livingroom"):
+def parse_and_descale_scenes(
+    scenes, num_classes=22, parse_only=False, room_type="livingroom"
+):
     """
     Parse scene tensor and descale positions/sizes to world coordinates.
 
@@ -166,16 +186,16 @@ def parse_and_descale_scenes(scenes, num_classes=22, parse_only=False, room_type
     device = scenes.device
 
     # Parse scene representation
-    positions_normalized = scenes[:, :,  0:3]
-    sizes_normalized = scenes[:, :,  3:6]
-    orientations = scenes[
-        :, :,  6:8
-    ]  # [cos_theta, sin_theta]
-    one_hot = scenes[:, :, 8:8+num_classes]
-    
+    positions_normalized = scenes[:, :, 0:3]
+    sizes_normalized = scenes[:, :, 3:6]
+    orientations = scenes[:, :, 6:8]  # [cos_theta, sin_theta]
+    one_hot = scenes[:, :, 8 : 8 + num_classes]
+
     # Descale to world coordinates
     if not parse_only:
-        positions = descale_pos(positions_normalized, device=device, room_type=room_type)
+        positions = descale_pos(
+            positions_normalized, device=device, room_type=room_type
+        )
         sizes = descale_size(sizes_normalized, device=device, room_type=room_type)
     else:
         positions = positions_normalized
@@ -234,6 +254,7 @@ def get_all_universal_reward_functions():
     from universal_constraint_rewards.not_out_of_bound_reward import (
         compute_boundary_violation_reward,
     )
+
     # from universal_constraint_rewards.object_count_reward import (
     #     compute_object_count_reward,
     # )
@@ -285,7 +306,6 @@ def get_universal_reward(
     get_reward_functions = get_all_universal_reward_functions()
     rewards_sum = 0.0
     reward_components = {}
-    
 
     # Compute rewards for each function
     for key, value in get_reward_functions.items():
@@ -314,5 +334,5 @@ def get_universal_reward(
     # for key, value in rewards.items():
     #     importance = importance_weights[key]
     #     rewards_sum += importance * value
-        
+
     return rewards_sum, reward_components

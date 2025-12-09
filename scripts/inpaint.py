@@ -201,7 +201,7 @@
 #         persistent_workers=False,
 #         pin_memory=cfg.experiment.test.pin_memory,
 #     )
-    
+
 #     idx_to_labels_room_type = idx_to_labels[cfg.dataset.data.room_type]
 #     label_to_idx_room_type = {v: k for k, v in idx_to_labels_room_type.items()}
 #     print(f"[DEBUG] label_to_idx_room_type: {label_to_idx_room_type}")
@@ -228,13 +228,13 @@
 #             inpaint_cfg = json.load(f)
 #         inpaint_masks = inpaint_cfg["inpaint"]
 #         print(f"[DEBUG] Inpaint masks: {inpaint_masks}")
-        
+
 #         dataset_stat_dir = os.path.join(cfg.dataset.data.path_to_processed_data, cfg.dataset.data.room_type, "dataset_stats.txt")
 #         import random
 #         with open(dataset_stat_dir, "r") as f:
 #             import json
 #             dataset_stats = json.load(f)
-#         class_frequencies = dataset_stats["class_frequencies"]  
+#         class_frequencies = dataset_stats["class_frequencies"]
 #         for label_name, count in inpaint_masks.items():
 #             labels = label_name.split(",")
 #             if len(labels) == 1:
@@ -243,9 +243,9 @@
 #                 weights = [class_frequencies[label_name] for label_name in labels]
 #                 label_name = random.choices(labels, weights=weights, k=1)[0]
 #             inpaint_masks_final[label_name] = count
-            
+
 #     print(f"[DEBUG] Inpaint masks final: {inpaint_masks_final}")
-    
+
 #     if inpaint_masks_final is None:
 #         to_hardcode = None
 #     else:
@@ -257,7 +257,7 @@
 #         use_ema=cfg.algorithm.ema.use,
 #         to_hardcode=to_hardcode,
 #     )
-    
+
 #     # NOTE: fpbpn goes as a part of dataloader batch, scenes and inpaint_masks sent  for each indices of dataloader
 #     # SAUGAT
 #     # experiment.algo = experiment._build_algo(ckpt_path=checkpoint_path)
@@ -334,20 +334,20 @@
 #     ), f"Mismatch: {len(sampled_indices)} indices vs {sampled_scenes.shape[0]} scenes"
 #     with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
 #         pickle.dump(sampled_scenes, f)
-    
+
 #     if cfg.dataset.data.room_type == "livingroom":
 #         n_classes = 25
 #     else:
 #         n_classes = 22
 #     # SAUGAT
-    
+
 #     mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
 #     # Filter scenes
 #     sampled_scenes = sampled_scenes[mask]
 #     # Filter corresponding dataset indices so they align with the kept scenes
 #     mask_np = mask.detach().cpu().numpy().astype(bool)
 #     sampled_indices = [idx for idx, keep in zip(sampled_indices, mask_np) if keep]
-    
+
 #     sampled_scenes_np = sampled_scenes.detach().cpu().numpy()
 
 #     print(f"[DEBUG] sampled scenes np: {sampled_scenes_np[0]}")

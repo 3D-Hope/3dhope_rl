@@ -443,10 +443,14 @@ class ContinuousDenoiseTransformer(DenoiseTransformer):
 
         # final processing
         if self.seperate_all:
-            out = self.bbox_hidden2output(x) # b, 12, 12 but should be # b, 12, 512 -> b, 12, 8 TODO:
+            out = self.bbox_hidden2output(
+                x
+            )  # b, 12, 12 but should be # b, 12, 512 -> b, 12, 8 TODO:
             assert out.shape[2] == 8
             if self.class_dim > 0:
-                out_class = self.class_hidden2output(x) # b, 12, 18 but should be b, 12, 22
+                out_class = self.class_hidden2output(
+                    x
+                )  # b, 12, 18 but should be b, 12, 22
                 assert out_class.shape[2] == 22
                 out = torch.cat([out, out_class], dim=2).contiguous()
             if self.objectness_dim > 0:
@@ -458,4 +462,4 @@ class ContinuousDenoiseTransformer(DenoiseTransformer):
         else:
             out = self.hidden2output(x)
 
-        return out # b, 12, 30 
+        return out  # b, 12, 30

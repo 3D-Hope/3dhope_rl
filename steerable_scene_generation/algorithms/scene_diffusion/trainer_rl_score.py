@@ -43,7 +43,9 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         )
 
         # Remove initial noisy scene.
-        trajectories = trajectories[:, 1:]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
+        trajectories = trajectories[
+            :, 1:
+        ]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
 
         # Compute rewards.
         rewards = self.compute_rewards_from_trajs(
@@ -61,6 +63,8 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             # ddpm_loss = self.compute_ddpm_loss(batch)
             ddpm_loss = self.compute_ddpm_loss(cond_dict)
             loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
-            print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}")
+            print(
+                f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}"
+            )
 
         return loss

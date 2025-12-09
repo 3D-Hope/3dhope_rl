@@ -8,16 +8,14 @@ from diffusers import DDIMScheduler, DDPMScheduler
 from tqdm import tqdm
 
 from dynamic_constraint_rewards.commons import import_dynamic_reward_functions
+
 # from dynamic_constraint_rewards.scale_raw_rewards import RewardNormalizer
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 from universal_constraint_rewards.accessibility_reward import (
     AccessibilityCache,
     precompute_accessibility_cache,
 )
-from universal_constraint_rewards.commons import (
-    parse_and_descale_scenes,
-    idx_to_labels,
-)
+from universal_constraint_rewards.commons import idx_to_labels, parse_and_descale_scenes
 from universal_constraint_rewards.not_out_of_bound_reward import (
     SDFCache,
     precompute_sdf_cache,
@@ -61,13 +59,21 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             and not self.cfg.ddpo.universal_reward.use_physcene_reward
         ):
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
-            user_query = user_query.replace(' ', '_').replace('.', '')
-            
-            if self.cfg.ddpo.dynamic_constraint_rewards.agentic:#during universal only training, this flag should be set
-                stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats.json")
+            user_query = user_query.replace(" ", "_").replace(".", "")
+
+            if (
+                self.cfg.ddpo.dynamic_constraint_rewards.agentic
+            ):  # during universal only training, this flag should be set
+                stats_path = os.path.join(
+                    self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir,
+                    f"{user_query}_stats.json",
+                )
             else:
-                stats_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_stats_initial.json")
-                
+                stats_path = os.path.join(
+                    self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir,
+                    f"{user_query}_stats_initial.json",
+                )
+
             # self.reward_normalizer = RewardNormalizer(
             #     baseline_stats_path=stats_path
             # )
@@ -77,7 +83,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             ):
                 print(f"Precomputing SDF cache at {self.cfg.dataset.sdf_cache_dir}...")
                 precompute_sdf_cache(
-                    config=self.cfg, num_workers=16,
+                    config=self.cfg,
+                    num_workers=16,
                     sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
                 )
 
@@ -98,7 +105,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 print(
                     f"Accessibility cache directory {self.cfg.dataset.accessibility_cache_dir} already exists. Skipping Accessibility precomputation."
                 )
-            self.train_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="train_val")
+            self.train_sdf_cache = SDFCache(
+                self.cfg.dataset.sdf_cache_dir, split="train_val"
+            )
             self.val_sdf_cache = SDFCache(self.cfg.dataset.sdf_cache_dir, split="test")
             self.train_accessibility_cache = AccessibilityCache(
                 self.cfg.dataset.accessibility_cache_dir, split="train_val"
@@ -111,12 +120,22 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
-            
+
             if self.cfg.ddpo.dynamic_constraint_rewards.agentic:
-                self.get_reward_functions, self.test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_final")
+                (
+                    self.get_reward_functions,
+                    self.test_reward_functions,
+                ) = import_dynamic_reward_functions(
+                    reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_final"
+                )
             else:
-                self.get_reward_functions, self.test_reward_functions = import_dynamic_reward_functions(reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_initial")
-                
+                (
+                    self.get_reward_functions,
+                    self.test_reward_functions,
+                ) = import_dynamic_reward_functions(
+                    reward_code_dir=f"{user_query.replace(' ', '_').replace('.', '')}_dynamic_reward_functions_initial"
+                )
+
         else:
             self.get_reward_functions = None
             self.test_reward_functions = None
@@ -209,7 +228,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             raise ValueError(f"Unknown room type: {room_type}")
         trajectory.append(xt)
-        print(f"[Ashok] num data {len(batch['idx'])}, batch size {self.cfg.ddpo.batch_size}")
+        print(
+            f"[Ashok] num data {len(batch['idx'])}, batch size {self.cfg.ddpo.batch_size}"
+        )
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:
@@ -219,86 +240,84 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # Optional: RL inpainting using cfg.algorithm.predict.inpaint_masks
         # use_inpaint = bool(getattr(self.cfg.ddpo, "use_inpaint", False))
         # if use_inpaint:
-            # Build label->idx map from room type labels
-            # print(f"[Ashok] room_type: {room_type}")
-            
-            # label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
-            # label_to_idx = {v: k for k, v in label_map.items()}
+        # Build label->idx map from room type labels
+        # print(f"[Ashok] room_type: {room_type}")
 
-            # Determine class dimension
-            # if hasattr(self.cfg, "custom") and hasattr(self.cfg.custom, "num_classes"):
-            #     num_classes = int(self.cfg.custom.num_classes)
-            # else:
-            #     num_classes = len(label_map) + 1  # +1 for empty
-                
-            # user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
-            # user_query = user_query.replace(' ', '_').replace('.', '')
-            # inpaint_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_3.json")
-            # # print(f"[Ashok] inpaint_path: {inpaint_path}")
-            # with open(inpaint_path, "r") as f:
-            #     import json
-            #     inpaint_cfg = json.load(f)
-            # # print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
-            # inpaint_cfg = inpaint_cfg["inpaint"]
+        # label_map = idx_to_labels.get(room_type, idx_to_labels["bedroom"])  # fall back to bedroom
+        # label_to_idx = {v: k for k, v in label_map.items()}
 
+        # Determine class dimension
+        # if hasattr(self.cfg, "custom") and hasattr(self.cfg.custom, "num_classes"):
+        #     num_classes = int(self.cfg.custom.num_classes)
+        # else:
+        #     num_classes = len(label_map) + 1  # +1 for empty
 
-            # Read inpaint config dict: {label_name: count}
-            # inpaint_cfg = getattr(self.cfg.predict, "inpaint_masks", None)
-            
-            # if inpaint_cfg is None:
-            #     raise ValueError(
-            #         "cfg.ddpo.use_inpaint=True but cfg.algorithm.predict.inpaint_masks is not provided."
-            #     )
-            
-            # Handle DictConfig or string representations
-            # from omegaconf import DictConfig, OmegaConf
-            # if isinstance(inpaint_cfg, str):
-            #     # Parse string as YAML/dict
-            #     import yaml
-            #     inpaint_cfg = yaml.safe_load(inpaint_cfg)
-            # elif isinstance(inpaint_cfg, DictConfig):
-            #     inpaint_cfg = OmegaConf.to_container(inpaint_cfg, resolve=True)
-            
-            # print(f"Using inpainting with config: {inpaint_cfg}")
-            # Initialize mask and originals
-            # inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
-            # original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
+        # user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
+        # user_query = user_query.replace(' ', '_').replace('.', '')
+        # inpaint_path = os.path.join(self.cfg.ddpo.dynamic_constraint_rewards.reward_base_dir, f"{user_query}_responses_tmp/llm_response_3.json")
+        # # print(f"[Ashok] inpaint_path: {inpaint_path}")
+        # with open(inpaint_path, "r") as f:
+        #     import json
+        #     inpaint_cfg = json.load(f)
+        # # print(f"[Ashok] inpaint_cfg: {inpaint_cfg}")
+        # inpaint_cfg = inpaint_cfg["inpaint"]
 
-            # hardcoded_count = 0
-            # dataset_stat_dir = os.path.join(self.cfg.dataset.data.path_to_processed_data, self.cfg.dataset.data.room_type, "dataset_stats.txt")
-            
-            # with open(dataset_stat_dir, "r") as f:
-            #     import json
-            #     dataset_stats = json.load(f)
-            # class_frequencies = dataset_stats["class_frequencies"]   
-            
-            
-            # # DictConfig and dict both support .items()
-            # for label_name, count in inpaint_cfg.items():
-            #     labels = label_name.split(",")
-            #     if len(labels) == 1:
-            #         label_name = labels[0]
-            #     else:
-            #         weights = [class_frequencies[label_name] for label_name in labels]
-            #         label_name = random.choices(labels, weights=weights, k=1)[0]
-            #     class_idx = int(label_to_idx[str(label_name)])
-            #     count = int(count)
-            #     end = hardcoded_count + count
-            #     if end > xt.shape[1]:
-            #         end = xt.shape[1]
-            #     if hardcoded_count >= end:
-            #         continue
-            #     # Freeze class slots for these objects
-            #     inpainting_masks[:, hardcoded_count:end, :num_classes] = False
-            #     # Set original class one-hot: default -1, with target class 1
-            #     original_scenes[:, hardcoded_count:end, :num_classes] = -1.0
-            #     original_scenes[:, hardcoded_count:end, class_idx] = 1.0
-            #     hardcoded_count = end
+        # Read inpaint config dict: {label_name: count}
+        # inpaint_cfg = getattr(self.cfg.predict, "inpaint_masks", None)
 
-            # # Apply mask to initial noise
-            # xt = torch.where(inpainting_masks, xt, original_scenes)
-            # trajectory[0] = xt
-            # print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
+        # if inpaint_cfg is None:
+        #     raise ValueError(
+        #         "cfg.ddpo.use_inpaint=True but cfg.algorithm.predict.inpaint_masks is not provided."
+        #     )
+
+        # Handle DictConfig or string representations
+        # from omegaconf import DictConfig, OmegaConf
+        # if isinstance(inpaint_cfg, str):
+        #     # Parse string as YAML/dict
+        #     import yaml
+        #     inpaint_cfg = yaml.safe_load(inpaint_cfg)
+        # elif isinstance(inpaint_cfg, DictConfig):
+        #     inpaint_cfg = OmegaConf.to_container(inpaint_cfg, resolve=True)
+
+        # print(f"Using inpainting with config: {inpaint_cfg}")
+        # Initialize mask and originals
+        # inpainting_masks = torch.ones_like(xt, dtype=torch.bool, device=self.device)  # (B,N,V)
+        # original_scenes = torch.zeros_like(xt, device=self.device)  # (B,N,V)
+
+        # hardcoded_count = 0
+        # dataset_stat_dir = os.path.join(self.cfg.dataset.data.path_to_processed_data, self.cfg.dataset.data.room_type, "dataset_stats.txt")
+
+        # with open(dataset_stat_dir, "r") as f:
+        #     import json
+        #     dataset_stats = json.load(f)
+        # class_frequencies = dataset_stats["class_frequencies"]
+
+        # # DictConfig and dict both support .items()
+        # for label_name, count in inpaint_cfg.items():
+        #     labels = label_name.split(",")
+        #     if len(labels) == 1:
+        #         label_name = labels[0]
+        #     else:
+        #         weights = [class_frequencies[label_name] for label_name in labels]
+        #         label_name = random.choices(labels, weights=weights, k=1)[0]
+        #     class_idx = int(label_to_idx[str(label_name)])
+        #     count = int(count)
+        #     end = hardcoded_count + count
+        #     if end > xt.shape[1]:
+        #         end = xt.shape[1]
+        #     if hardcoded_count >= end:
+        #         continue
+        #     # Freeze class slots for these objects
+        #     inpainting_masks[:, hardcoded_count:end, :num_classes] = False
+        #     # Set original class one-hot: default -1, with target class 1
+        #     original_scenes[:, hardcoded_count:end, :num_classes] = -1.0
+        #     original_scenes[:, hardcoded_count:end, class_idx] = 1.0
+        #     hardcoded_count = end
+
+        # # Apply mask to initial noise
+        # xt = torch.where(inpainting_masks, xt, original_scenes)
+        # trajectory[0] = xt
+        # print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
 
         for t_idx, t in enumerate(
             tqdm(
@@ -470,7 +489,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             )
 
             # Parse and descale scenes
-            parsed_scenes = parse_and_descale_scenes(x0, num_classes=num_classes, room_type=room_type)
+            parsed_scenes = parse_and_descale_scenes(
+                x0, num_classes=num_classes, room_type=room_type
+            )
 
             if self.cfg.ddpo.universal_reward.use_physcene_reward:
                 # TODO: Get floor plan args from dataset, how do we get the dataset here? we need get_floor_plan_args from custom dataset here to get the values for each scene in the batch
@@ -528,7 +549,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     indices=cond_dict["idx"],
                     is_val=is_val,
                     sdf_cache_dir=self.cfg.dataset.sdf_cache_dir,
-                    sdf_cache=self.train_sdf_cache if not is_val else self.val_sdf_cache,
+                    sdf_cache=self.train_sdf_cache
+                    if not is_val
+                    else self.val_sdf_cache,
                     accessibility_cache=self.train_accessibility_cache
                     if not is_val
                     else self.val_accessibility_cache,
@@ -556,7 +579,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 room_type = self.cfg.ddpo.dynamic_constraint_rewards.get(
                     "room_type", self.cfg.dataset.data.room_type
                 )
-            
+
             indices = cond_dict["idx"]
             floor_plan_args_list = [
                 self.dataset.get_floor_plan_args(idx) for idx in indices

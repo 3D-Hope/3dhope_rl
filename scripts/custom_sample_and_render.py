@@ -19,7 +19,6 @@ from omegaconf.omegaconf import open_dict
 from threed_front.datasets import get_raw_dataset
 from threed_front.evaluation import ThreedFrontResults
 
-
 from steerable_scene_generation.datasets.custom_scene import get_dataset_raw_and_encoded
 from steerable_scene_generation.datasets.custom_scene.custom_scene_final import (
     CustomDataset,
@@ -236,7 +235,6 @@ def main(cfg: DictConfig) -> None:
 
     # Build experiment with custom dataset
     experiment = build_experiment(cfg, ckpt_path=checkpoint_path)
-    
 
     try:
         print("[DEBUG] Starting to sample scenes...")
@@ -271,7 +269,7 @@ def main(cfg: DictConfig) -> None:
 
         with open(output_dir / "raw_sampled_scenes.pkl", "wb") as f:
             pickle.dump(sampled_scenes, f)
-        
+
         # Remove samples that contain any NaN and keep indices in sync
         mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
         # Filter scenes
@@ -280,7 +278,9 @@ def main(cfg: DictConfig) -> None:
         mask_np = mask.detach().cpu().numpy().astype(bool)
         sampled_indices = [idx for idx, keep in zip(sampled_indices, mask_np) if keep]
 
-        print(f"Remaining samples: {sampled_scenes.shape[0]} out of {num_scenes_to_sample}")
+        print(
+            f"Remaining samples: {sampled_scenes.shape[0]} out of {num_scenes_to_sample}"
+        )
 
         sampled_scenes_np = sampled_scenes.detach().cpu().numpy()  # b, 12, 30
         print(f"[Ashok] sampled scene {sampled_scenes_np[0]}")
@@ -293,26 +293,22 @@ def main(cfg: DictConfig) -> None:
         for i in range(sampled_scenes_np.shape[0]):
             class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
             for j in range(sampled_scenes_np.shape[1]):
-                class_label_idx = np.argmax(sampled_scenes_np[i, j, 8:8+n_classes])
+                class_label_idx = np.argmax(sampled_scenes_np[i, j, 8 : 8 + n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
                     ohe = np.zeros(n_classes - 1)
                     ohe[class_label_idx] = 1
                     class_labels.append(ohe)
-                    translations.append(
-                        sampled_scenes_np[i, j, 0:3]
-                    )
+                    translations.append(sampled_scenes_np[i, j, 0:3])
                     sizes.append(sampled_scenes_np[i, j, 3:6])
-                    angles.append(
-                        sampled_scenes_np[i, j, 6:8]
-                    )
+                    angles.append(sampled_scenes_np[i, j, 6:8])
                     try:
                         objfeats_32.append(
-                            sampled_scenes_np[i, j, 8+n_classes:n_classes + 8 + 32]
+                            sampled_scenes_np[i, j, 8 + n_classes : n_classes + 8 + 32]
                         )
-                        
+
                     except Exception as e:
                         objfeats_32 = None
-                
+
             bbox_params_list.append(
                 {
                     "class_labels": np.array(class_labels)[None, :],

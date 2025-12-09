@@ -155,9 +155,12 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
                 len(pos_indices) + len(size_indices) + 2,
             )
         )  # Next 2 dimensions for rotation
-        class_indices = list(range(
-            len(pos_indices) + len(size_indices) + len(rot_indices), len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes
-            ))
+        class_indices = list(
+            range(
+                len(pos_indices) + len(size_indices) + len(rot_indices),
+                len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+            )
+        )
         # 22+3+3+2+32
         if int(self.cfg.custom.objfeat_dim) == 32:
             objfeat_32_indices = list[int](
@@ -349,7 +352,11 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         Returns the loss.
         """
         scenes = batch["scenes"]
-        if int(self.cfg.custom.objfeat_dim) == 0 and self.cfg.custom.use_objfeats and scenes.shape[-1] > 50: # TODO: correct this. i just made qick fix
+        if (
+            int(self.cfg.custom.objfeat_dim) == 0
+            and self.cfg.custom.use_objfeats
+            and scenes.shape[-1] > 50
+        ):  # TODO: correct this. i just made qick fix
             scenes = scenes[:, :, : -int(32)]  # Remove objfeat part
         # print(f"[Ashok] ddpm forward shape of scenes {scenes.shape}")
         # Sample noise to add to the scenes.
