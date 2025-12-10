@@ -7,6 +7,9 @@ from steerable_scene_generation.algorithms.common.ema_model import EMAModel
 from steerable_scene_generation.algorithms.common.txt_encoding import (
     load_txt_encoder_from_config,
 )
+from steerable_scene_generation.algorithms.common.floor_encoder import (
+    load_floor_encoder_from_config,
+)
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .models import MIDiffusionMixed
@@ -58,18 +61,36 @@ def create_scene_diffuser_mixed_midiffusion(
                 self.txt_encoder, text_cond_dim = load_txt_encoder_from_config(
                     self.cfg, component="encoder"
                 )
+                self.floor_encoder = None
+                context_dim = text_cond_dim
+            elif self.cfg.classifier_free_guidance.use_floor:
+                self.floor_encoder, floor_cond_dim = load_floor_encoder_from_config()
+                self.txt_encoder = None
+                context_dim = floor_cond_dim  # 64D from PointNet
+                print(f"[Ashok] Using floor encoder with context dim: {context_dim}")
             else:
                 self.txt_encoder = None
-                text_cond_dim = 0
-
-            network_dim = {
-                "objectness_dim": 0,  # Not used by our scene representation
-                "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
-                "translation_dim": self.scene_vec_desc.get_translation_vec_len(),
-                "size_dim": 0,  # Not used by our scene representation
-                "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
-                "objfeat_dim": 0,  # Not used by our scene representation
-            }
+                self.floor_encoder = None
+                context_dim = 0
+                
+            if self.cfg.custom.old:
+                network_dim = {
+                    "objectness_dim": 0,  # Not used by our scene representation
+                    "class_dim": self.scene_vec_desc.get_model_path_vec_len(),
+                    "translation_dim": self.scene_vec_desc.get_translation_vec_len(),
+                    "size_dim": 0,  # Not used by our scene representation
+                    "angle_dim": self.scene_vec_desc.get_rotation_vec_len(),
+                    "objfeat_dim": 0,  # Not used by our scene representation
+                }
+            else:
+                network_dim = {
+                    "objectness_dim": 0,  # Not used by our scene representation
+                    "class_dim": self.cfg.custom.num_classes,
+                    "translation_dim": self.cfg.custom.translation_dim,
+                    "size_dim": self.cfg.custom.size_dim,
+                    "angle_dim": self.cfg.custom.angle_dim,
+                    "objfeat_dim": self.cfg.custom.objfeat_dim,  # Not used by our scene representation
+                }
             self.model = MIDiffusionMixed(
                 network_dim=network_dim,
                 seperate_all=self.cfg.model.seperate_all,
@@ -80,7 +101,7 @@ def create_scene_diffuser_mixed_midiffusion(
                 dropout=self.cfg.model.dropout,
                 activate=self.cfg.model.activate,
                 timestep_type=self.cfg.model.timestep_type,
-                context_dim=text_cond_dim,  # Text instead of floor plan condition
+                context_dim=context_dim,  # Text instead of floor plan condition for steerable but for all it is floor
                 mlp_type=self.cfg.model.mlp_type,
                 concate_features=self.cfg.model.concate_features,
             )
@@ -160,16 +181,28 @@ def create_scene_diffuser_mixed_midiffusion(
                     text_cond = text_cond.to(x_continous.dtype)
 
                     # Expand context along num_objects dimension
-                    text_cond = text_cond.unsqueeze(1).expand(
+                    context = text_cond.unsqueeze(1).expand(
                         -1, x_continous.size(1), -1
                     )  # Shape (B, N, C)
+                    
+            elif cond_dict is not None and self.floor_encoder is not None:
+                floor_cond = self.floor_encoder(
+                    cond_dict["fpbpn"].to(x_continous.dtype)
+                )  # Shape (B, 64)
+                # print(f"[Ashok] Floor condition shape: {floor_cond.shape}")
+                floor_cond = floor_cond.to(x_continous.dtype)
+
+                # Expand context along num_objects dimension (same as text)
+                context = floor_cond.unsqueeze(1).expand(
+                    -1, x_continous.size(1), -1
+                )  # Shape (B, N, 64)
 
             # Predict the noise.
             x_discrete_out, x_continous_out = model(
                 x_semantic=x_discrete,
                 x_geometry=x_continous,
                 time=timesteps,
-                context=text_cond,
+                context=context,
                 context_cross=None,
             )  # First has shape (B, N, Vd) and second has shape (B, N, Vc)
 
