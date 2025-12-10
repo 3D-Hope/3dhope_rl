@@ -57,7 +57,7 @@ def main(cfg: DictConfig) -> None:
         )
 
     # Get batch size and base seed
-    batch_size = cfg.get("batch_size", 4)
+    batch_size = cfg.get("batch_size", 16)
     base_seed = cfg.get("base_seed", None)
     if base_seed is None:
         base_seed = np.random.randint(0, 2**32 - 1)
@@ -297,14 +297,14 @@ def main(cfg: DictConfig) -> None:
             class_labels, translations, sizes, angles, objfeats_32 = [], [], [], [], []
             
             for j in range(scene_at_t.shape[0]):
-                class_label_idx = np.argmax(scene_at_t[j, :n_classes])
+                class_label_idx = np.argmax(scene_at_t[j, 8:8+n_classes])
                 if class_label_idx != n_classes - 1:  # ignore if empty token
                     ohe = np.zeros(n_classes - 1)
                     ohe[class_label_idx] = 1
                     class_labels.append(ohe)
-                    translations.append(scene_at_t[j, n_classes : n_classes + 3])
-                    sizes.append(scene_at_t[j, n_classes + 3 : n_classes + 6])
-                    angles.append(scene_at_t[j, n_classes + 6 : n_classes + 8])
+                    translations.append(scene_at_t[j, :3])
+                    sizes.append(scene_at_t[j,  3:6])
+                    angles.append(scene_at_t[j,  6:8])
                     
                     try:
                         objfeats_32.append(
