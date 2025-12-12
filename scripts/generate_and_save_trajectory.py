@@ -85,6 +85,15 @@ def main(cfg: DictConfig) -> None:
     # Get output directory for batch
     output_subdir = cfg.get("output_subdir", "trajectories")
     print(f"[INFO] Will save trajectories to subdirectory: {output_subdir}")
+    
+    # Get flag for loss computation
+    compute_losses = cfg.get("compute_losses", False)
+    print(f"[INFO] Computing losses: {compute_losses}")
+    
+    # Get loss computation mode (only relevant if compute_losses=True)
+    loss_on_normalized_scenes = cfg.get("loss_on_normalized_scenes", False)
+    if compute_losses:
+        print(f"[INFO] Computing loss on {'normalized' if loss_on_normalized_scenes else 'unnormalized'} scenes")
 
     # Get yaml names.
     hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
@@ -241,15 +250,17 @@ def main(cfg: DictConfig) -> None:
         n_classes = 22
     
     # Process batches from dataloader
-    global_scene_idx = 0
+    global_scene_idx = 0  # Sequential index for loop/filenames (handles resampling)
     
-    # Dictionary to store loss trajectories for plotting
-    # Format: {scene_idx: {"timesteps": [], "pos_loss": [], "size_loss": [], ...}}
-    loss_trajectories = {}
+    # Dictionary to store loss trajectories for plotting (only if computing losses)
+    # Format: {sequential_idx: {"timesteps": [], "pos_loss": [], "dataset_idx": int, ...}}
+    loss_trajectories = {} if compute_losses else None
     
     for batch_idx, batch_data in enumerate(tqdm(dataloader, desc="Processing batches")):
         current_batch_size = batch_data["scenes"].shape[0]
-        print(f"\n[INFO] ========== Processing batch {batch_idx+1}/{len(dataloader)} ({current_batch_size} scenes) ==========")
+        # Get the actual dataset indices for this batch (for conditioning mapping)
+        batch_dataset_indices = batch_data["idx"].cpu().numpy() if isinstance(batch_data["idx"], torch.Tensor) else batch_data["idx"]
+        print(f"\n[INFO] ========== Processing batch {batch_idx+1}/{len(dataloader)} ({current_batch_size} scenes) ===========")
         
         with torch.no_grad():
             # Sample initial noise for entire batch
@@ -282,7 +293,7 @@ def main(cfg: DictConfig) -> None:
             # Prepare conditioning batch
             data_batch = {
                 "scenes": batch_data["scenes"].to(device),
-                "idx": batch_data.get("idx", torch.arange(current_batch_size)).to(device),
+                "idx": batch_data["idx"].to(device),
             }
             
             for key in ["fpbpn", "text_cond", "text_cond_coarse"]:
@@ -332,64 +343,214 @@ def main(cfg: DictConfig) -> None:
             # Stack: (T+1, B, N, V)
             trajectories_batch = torch.stack(trajectories_batch, dim=0)
         
-        # Compute loss trajectories for each scene in batch
-        # Get ground truth scenes from batch_data
-        gt_scenes = batch_data["scenes"].to(device)  # (B, N, V)
-        
-        # Define indices for loss components (same as in custom_loss_function)
-        pos_indices = list(range(0, 3))
-        size_indices = list(range(len(pos_indices), len(pos_indices) + 3))
-        rot_indices = list(range(len(pos_indices) + len(size_indices), len(pos_indices) + len(size_indices) + 2))
-        class_indices = list(range(len(pos_indices) + len(size_indices) + len(rot_indices), 
-                                   len(pos_indices) + len(size_indices) + len(rot_indices) + n_classes))
-        
-        # Calculate losses at each timestep for entire batch
-        for t_idx in range(trajectories_batch.shape[0]):
-            pred_at_t = trajectories_batch[t_idx]  # (B, N, V)
+        # Compute loss trajectories for each scene in batch (only if requested)
+        if compute_losses:
+            # Get ground truth scenes from batch_data
+            gt_scenes = batch_data["scenes"].to(device)  # (B, N, V) - normalized
             
-            # Extract components
-            pred_pos = pred_at_t[..., pos_indices]
-            pred_size = pred_at_t[..., size_indices]
-            pred_rot = pred_at_t[..., rot_indices]
-            pred_class = pred_at_t[..., class_indices]
-            
-            gt_pos = gt_scenes[..., pos_indices]
-            gt_size = gt_scenes[..., size_indices]
-            gt_rot = gt_scenes[..., rot_indices]
-            gt_class = gt_scenes[..., class_indices]
-            
-            # Compute losses per scene (B,)
-            pos_loss_batch = F.mse_loss(pred_pos, gt_pos, reduction='none').mean(dim=[1, 2])
-            size_loss_batch = F.mse_loss(pred_size, gt_size, reduction='none').mean(dim=[1, 2])
-            rot_loss_batch = F.mse_loss(pred_rot, gt_rot, reduction='none').mean(dim=[1, 2])
-            class_loss_batch = F.mse_loss(pred_class, gt_class, reduction='none').mean(dim=[1, 2])
-            
-            # Store losses for each scene in the batch
-            for scene_in_batch_idx in range(current_batch_size):
-                scene_id = global_scene_idx + scene_in_batch_idx
-                if scene_id not in loss_trajectories:
-                    loss_trajectories[scene_id] = {
-                        "timesteps": [],
-                        "pos_loss": [],
-                        "size_loss": [],
-                        "rot_loss": [],
-                        "class_loss": [],
-                        "total_loss": []
+            # If computing loss on unnormalized scenes, denormalize both pred and gt
+            if not loss_on_normalized_scenes:
+                # Denormalize ground truth scenes using encoded_dataset.post_process
+                # We'll convert normalized scenes to unnormalized by extracting components
+                # and applying the reverse of normalization
+                
+                # Store original normalized trajectories for later processing
+                # normalized_trajectories_batch = trajectories_batch.clone()
+                
+                # Denormalize trajectories_batch at each timestep
+                denormalized_traj_list = []
+                for t_idx in range(trajectories_batch.shape[0]):
+                    pred_at_t_normalized = trajectories_batch[t_idx]  # (B, N, V)
+                    
+                    # Extract and denormalize components for each scene in batch
+                    denormalized_batch = []
+                    for b_idx in range(current_batch_size):
+                        scene_normalized = pred_at_t_normalized[b_idx].detach().cpu().numpy()  # (N, V)
+                        
+                        # Extract components (same logic as postprocessing)
+                        class_labels, translations, sizes, angles = [], [], [], []
+                        for j in range(scene_normalized.shape[0]):
+                            class_label_idx = np.argmax(scene_normalized[j, 8:8+n_classes])
+                            if class_label_idx != n_classes - 1:
+                                class_labels.append(scene_normalized[j, 8:8+n_classes])
+                                translations.append(scene_normalized[j, :3])
+                                sizes.append(scene_normalized[j, 3:6])
+                                angles.append(scene_normalized[j, 6:8])
+                        
+                        if len(class_labels) == 0:
+                            # Empty scene, keep normalized
+                            denormalized_batch.append(pred_at_t_normalized[b_idx])
+                            continue
+                        
+                        # Create bbox_params dict for post_process
+                        bbox_params_dict = {
+                            "class_labels": np.array(class_labels)[None, :],
+                            "translations": np.array(translations)[None, :],
+                            "sizes": np.array(sizes)[None, :],
+                            "angles": np.array(angles)[None, :],
+                        }
+                        
+                        try:
+                            # Post-process to get unnormalized values
+                            boxes = encoded_dataset.post_process(bbox_params_dict)
+                            
+                            # Extract unnormalized values
+                            unnorm_trans = boxes["translations"][0]  # (M, 3)
+                            unnorm_sizes = boxes["sizes"][0]  # (M, 3)
+                            unnorm_angles = boxes["angles"][0]  # (M,)
+                            unnorm_class = boxes["class_labels"][0]  # (M, C)
+                            
+                            # Reconstruct scene vector in unnormalized space
+                            # Format: [trans(3), size(3), angle(2), class(n_classes)]
+                            unnorm_scene = torch.zeros_like(pred_at_t_normalized[b_idx])
+                            obj_idx = 0
+                            for j in range(scene_normalized.shape[0]):
+                                class_label_idx = np.argmax(scene_normalized[j, 8:8+n_classes])
+                                if class_label_idx != n_classes - 1 and obj_idx < len(unnorm_trans):
+                                    # Position
+                                    unnorm_scene[j, :3] = torch.from_numpy(unnorm_trans[obj_idx]).float().to(device)
+                                    # Size
+                                    unnorm_scene[j, 3:6] = torch.from_numpy(unnorm_sizes[obj_idx]).float().to(device)
+                                    # Angle (convert back to 2D representation)
+                                    angle_val = float(unnorm_angles[obj_idx])
+                                    unnorm_scene[j, 6] = float(np.cos(angle_val))
+                                    unnorm_scene[j, 7] = float(np.sin(angle_val))
+                                    # Class (one-hot)
+                                    unnorm_scene[j, 8:8+n_classes] = torch.from_numpy(unnorm_class[obj_idx]).float().to(device)
+                                    obj_idx += 1
+                                else:
+                                    # Keep empty token or copy normalized values
+                                    unnorm_scene[j] = pred_at_t_normalized[b_idx, j]
+                            
+                            denormalized_batch.append(unnorm_scene)
+                        except Exception as e:
+                            # If denormalization fails, keep normalized
+                            # denormalized_batch.append(pred_at_t_normalized[b_idx])
+                            raise Exception(f"Denormalization failed at batch {batch_idx}, timestep {t_idx}, scene {b_idx}: {e}")
+                    
+                    denormalized_traj_list.append(torch.stack(denormalized_batch, dim=0))
+                
+                # Stack denormalized trajectories
+                trajectories_batch_for_loss = torch.stack(denormalized_traj_list, dim=0).to(device)
+                
+                # Denormalize ground truth scenes
+                gt_scenes_for_loss = []
+                for b_idx in range(current_batch_size):
+                    gt_normalized = gt_scenes[b_idx].detach().cpu().numpy()  # (N, V)
+                    
+                    # Extract and denormalize GT
+                    class_labels, translations, sizes, angles = [], [], [], []
+                    for j in range(gt_normalized.shape[0]):
+                        class_label_idx = np.argmax(gt_normalized[j, 8:8+n_classes])
+                        if class_label_idx != n_classes - 1:
+                            class_labels.append(gt_normalized[j, 8:8+n_classes])
+                            translations.append(gt_normalized[j, :3])
+                            sizes.append(gt_normalized[j, 3:6])
+                            angles.append(gt_normalized[j, 6:8])
+                    
+                    if len(class_labels) == 0:
+                        gt_scenes_for_loss.append(gt_scenes[b_idx])
+                        continue
+                    
+                    bbox_params_dict = {
+                        "class_labels": np.array(class_labels)[None, :],
+                        "translations": np.array(translations)[None, :],
+                        "sizes": np.array(sizes)[None, :],
+                        "angles": np.array(angles)[None, :],
                     }
+                    
+                    try:
+                        boxes = encoded_dataset.post_process(bbox_params_dict)
+                        unnorm_trans = boxes["translations"][0]
+                        unnorm_sizes = boxes["sizes"][0]
+                        unnorm_angles = boxes["angles"][0]
+                        unnorm_class = boxes["class_labels"][0]
+                        
+                        unnorm_gt_scene = torch.zeros_like(gt_scenes[b_idx])
+                        obj_idx = 0
+                        for j in range(gt_normalized.shape[0]):
+                            class_label_idx = np.argmax(gt_normalized[j, 8:8+n_classes])
+                            if class_label_idx != n_classes - 1 and obj_idx < len(unnorm_trans):
+                                unnorm_gt_scene[j, :3] = torch.from_numpy(unnorm_trans[obj_idx]).float().to(device)
+                                unnorm_gt_scene[j, 3:6] = torch.from_numpy(unnorm_sizes[obj_idx]).float().to(device)
+                                angle_val = unnorm_angles[obj_idx]
+                                unnorm_gt_scene[j, 6] = float(np.cos(angle_val))
+                                unnorm_gt_scene[j, 7] = float(np.sin(angle_val))
+                                unnorm_gt_scene[j, 8:8+n_classes] = torch.from_numpy(unnorm_class[obj_idx]).float().to(device)
+                                obj_idx += 1
+                            else:
+                                unnorm_gt_scene[j] = gt_scenes[b_idx, j]
+                        
+                        gt_scenes_for_loss.append(unnorm_gt_scene)
+                    except Exception as e:
+                        # gt_scenes_for_loss.append(gt_scenes[b_idx])
+                        raise Exception(f"GT Denormalization failed at batch {batch_idx}, scene {b_idx}: {e}")
                 
-                loss_trajectories[scene_id]["timesteps"].append(t_idx)
-                loss_trajectories[scene_id]["pos_loss"].append(pos_loss_batch[scene_in_batch_idx].item())
-                loss_trajectories[scene_id]["size_loss"].append(size_loss_batch[scene_in_batch_idx].item())
-                loss_trajectories[scene_id]["rot_loss"].append(rot_loss_batch[scene_in_batch_idx].item())
-                loss_trajectories[scene_id]["class_loss"].append(class_loss_batch[scene_in_batch_idx].item())
+                gt_scenes_for_loss = torch.stack(gt_scenes_for_loss, dim=0).to(device)
+            else:
+                # Use normalized scenes for loss computation
+                trajectories_batch_for_loss = trajectories_batch
+                gt_scenes_for_loss = gt_scenes
+            
+            # Define indices for loss components (same as in custom_loss_function)
+            pos_indices = list(range(0, 3))
+            size_indices = list(range(len(pos_indices), len(pos_indices) + 3))
+            rot_indices = list(range(len(pos_indices) + len(size_indices), len(pos_indices) + len(size_indices) + 2))
+            class_indices = list(range(len(pos_indices) + len(size_indices) + len(rot_indices), 
+                                       len(pos_indices) + len(size_indices) + len(rot_indices) + n_classes))
+            
+            # Calculate losses at each timestep for entire batch
+            for t_idx in range(trajectories_batch_for_loss.shape[0]):
+                pred_at_t = trajectories_batch_for_loss[t_idx]  # (B, N, V)
                 
-                total = (pos_loss_batch[scene_in_batch_idx] + size_loss_batch[scene_in_batch_idx] + 
-                        rot_loss_batch[scene_in_batch_idx] + class_loss_batch[scene_in_batch_idx]).item()
-                loss_trajectories[scene_id]["total_loss"].append(total)
+                # Extract components
+                pred_pos = pred_at_t[..., pos_indices]
+                pred_size = pred_at_t[..., size_indices]
+                pred_rot = pred_at_t[..., rot_indices]
+                pred_class = pred_at_t[..., class_indices]
+                
+                gt_pos = gt_scenes_for_loss[..., pos_indices]
+                gt_size = gt_scenes_for_loss[..., size_indices]
+                gt_rot = gt_scenes_for_loss[..., rot_indices]
+                gt_class = gt_scenes_for_loss[..., class_indices]
+                
+                # Compute losses per scene (B,)
+                pos_loss_batch = F.mse_loss(pred_pos, gt_pos, reduction='none').mean(dim=[1, 2])
+                size_loss_batch = F.mse_loss(pred_size, gt_size, reduction='none').mean(dim=[1, 2])
+                rot_loss_batch = F.mse_loss(pred_rot, gt_rot, reduction='none').mean(dim=[1, 2])
+                class_loss_batch = F.mse_loss(pred_class, gt_class, reduction='none').mean(dim=[1, 2])
+                loss_total_batch = F.mse_loss(pred_at_t, gt_scenes_for_loss, reduction='none').mean(dim=[1, 2])
+                # Store losses for each scene in the batch using sequential index
+                for scene_in_batch_idx in range(current_batch_size):
+                    # Use sequential index for loss trajectory (handles resampling correctly)
+                    seq_idx = global_scene_idx + scene_in_batch_idx
+                    # Also store the dataset index for reference
+                    dataset_idx = int(batch_dataset_indices[scene_in_batch_idx])
+                    
+                    if seq_idx not in loss_trajectories:
+                        loss_trajectories[seq_idx] = {
+                            "timesteps": [],
+                            "pos_loss": [],
+                            "size_loss": [],
+                            "rot_loss": [],
+                            "class_loss": [],
+                            "total_loss": [],
+                            "dataset_idx": dataset_idx  # Store for reference
+                        }
+                    
+                    loss_trajectories[seq_idx]["timesteps"].append(t_idx)
+                    loss_trajectories[seq_idx]["pos_loss"].append(pos_loss_batch[scene_in_batch_idx].item())
+                    loss_trajectories[seq_idx]["size_loss"].append(size_loss_batch[scene_in_batch_idx].item())
+                    loss_trajectories[seq_idx]["rot_loss"].append(rot_loss_batch[scene_in_batch_idx].item())
+                    loss_trajectories[seq_idx]["class_loss"].append(class_loss_batch[scene_in_batch_idx].item())
+                    
+                    loss_trajectories[seq_idx]["total_loss"].append(loss_total_batch[scene_in_batch_idx].item())
         
         # Process each scene in the batch separately
         for scene_in_batch_idx in range(current_batch_size):
-            print(f"\n[INFO] Processing scene {global_scene_idx+1}/{num_scenes_to_sample}")
+            # Get the actual dataset index for this scene (for ThreedFrontResults)
+            dataset_idx = int(batch_dataset_indices[scene_in_batch_idx])
+            print(f"\n[INFO] Processing scene {global_scene_idx+1}/{num_scenes_to_sample} (dataset_idx={dataset_idx})")
             
             # Extract trajectory for this scene: (T+1, N, V)
             trajectory_single = trajectories_batch[:, scene_in_batch_idx, :, :].detach().cpu().numpy()
@@ -441,135 +602,137 @@ def main(cfg: DictConfig) -> None:
                     layout_list.append(bbox_params)
                     successful_timesteps.append(t)
                 except Exception as e:
-                    print(f"[WARNING] Scene {global_scene_idx}, timestep {t}: {e}")
+                    print(f"[WARNING] Scene {global_scene_idx} (dataset_idx={dataset_idx}), timestep {t}: {e}")
                     continue
             
-            # Get the original dataset index for this scene
-            original_idx = sampled_dataset_indices[global_scene_idx]
-            indices_list = [original_idx] * len(layout_list)
+            # Use the actual dataset index for ThreedFrontResults (correct conditioning mapping)
+            indices_list = [dataset_idx] * len(layout_list)
             
             # Create ThreedFrontResults
             threed_front_results = ThreedFrontResults(
                 raw_train_dataset, raw_dataset, config, indices_list, layout_list
             )
             
-            # Save trajectory
+            # Save trajectory using sequential index (handles resampling correctly)
             output_pkl_path = batch_output_dir / f"trajectory_scene{global_scene_idx}.pkl"
             pickle.dump(threed_front_results, open(output_pkl_path, "wb"))
             
             print(f"[SUCCESS] Saved trajectory with {len(layout_list)} timesteps to: {output_pkl_path}")
             
-            global_scene_idx += 1 
+            global_scene_idx += 1
     
     print(f"\n[COMPLETE] Generated {global_scene_idx} trajectories in: {batch_output_dir}")
     
-    # Plot loss evolution
-    print(f"\n[INFO] Plotting loss evolution...")
-    plot_output_dir = batch_output_dir / "loss_plots"
-    plot_output_dir.mkdir(exist_ok=True, parents=True)
-    
-    # Plot 1: Total loss for all scenes
-    plt.figure(figsize=(12, 8))
-    for scene_id, losses in loss_trajectories.items():
-        plt.plot(losses["timesteps"], losses["total_loss"], label=f"Scene {scene_id}", alpha=0.7)
-    plt.xlabel("Timestep", fontsize=12)
-    plt.ylabel("Total Loss (MSE)", fontsize=12)
-    plt.title("Denoising Loss Evolution - Total Loss", fontsize=14)
-    # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    total_loss_path = plot_output_dir / "total_loss_evolution.png"
-    plt.savefig(total_loss_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"[SUCCESS] Saved total loss plot to: {total_loss_path}")
-    
-    # Plot 2: Component losses (averaged across all scenes)
-    plt.figure(figsize=(12, 8))
-    
-    # Average losses across all scenes
-    max_timesteps = max(len(losses["timesteps"]) for losses in loss_trajectories.values()) # 151
-    # print("[DEBUG] Max timesteps across scenes:", max_timesteps)
-    avg_pos_loss = np.zeros(max_timesteps)
-    avg_size_loss = np.zeros(max_timesteps)
-    avg_rot_loss = np.zeros(max_timesteps)
-    avg_class_loss = np.zeros(max_timesteps)
-    avg_total_loss = np.zeros(max_timesteps)
-    counts = np.zeros(max_timesteps)
-    
-    for scene_id, losses in loss_trajectories.items():
-        for i, t in enumerate(losses["timesteps"]):
-            avg_pos_loss[t] += losses["pos_loss"][i]
-            avg_size_loss[t] += losses["size_loss"][i]
-            avg_rot_loss[t] += losses["rot_loss"][i]
-            avg_class_loss[t] += losses["class_loss"][i]
-            avg_total_loss[t] += losses["total_loss"][i]
-            counts[t] += 1
-    # print(f"[DEBUG] Counts per timestep:", counts)
-    # Normalize by counts
-    avg_pos_loss /= np.maximum(counts, 1)
-    avg_size_loss /= np.maximum(counts, 1)
-    avg_rot_loss /= np.maximum(counts, 1)
-    avg_class_loss /= np.maximum(counts, 1)
-    avg_total_loss /= np.maximum(counts, 1)
-    
-    timesteps = list(range(max_timesteps))
-    plt.plot(timesteps, avg_pos_loss, label="Position Loss", linewidth=2)
-    plt.plot(timesteps, avg_size_loss, label="Size Loss", linewidth=2)
-    plt.plot(timesteps, avg_rot_loss, label="Rotation Loss", linewidth=2)
-    plt.plot(timesteps, avg_class_loss, label="Class Loss", linewidth=2)
-    # plt.plot(timesteps, avg_total_loss, label="Total Loss", linewidth=2.5, linestyle='--', color='black')
-    
-    plt.xlabel("Timestep", fontsize=12)
-    plt.ylabel("Loss (MSE)", fontsize=12)
-    plt.title("Denoising Loss Evolution - Component Losses Averaged(over 1000 scenes)", fontsize=14)
-    plt.legend(fontsize=10)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    component_loss_path = plot_output_dir / "component_loss_evolution.png"
-    plt.savefig(component_loss_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"[SUCCESS] Saved component loss plot to: {component_loss_path}")
-    
-    # Plot 3: Averaged total loss across all scenes
-    plt.figure(figsize=(12, 8))
-    plt.plot(timesteps, avg_total_loss, label="Average(over 1000 scenes) Total Loss", linewidth=2.5, color='black')
-    plt.xlabel("Timestep", fontsize=12)
-    plt.ylabel("Total Loss (MSE)", fontsize=12)
-    plt.title("Denoising Loss Evolution - Average Total Loss", fontsize=14)
-    # plt.legend(fontsize=10)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    avg_total_loss_path = plot_output_dir / "average_total_loss_evolution.png"
-    plt.savefig(avg_total_loss_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"[SUCCESS] Saved average total loss plot to: {avg_total_loss_path}")
-    
-    # Plot 4: Individual component losses per scene (separate subplots)
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    component_names = ["pos_loss", "size_loss", "rot_loss", "class_loss"]
-    component_titles = ["Position Loss", "Size Loss", "Rotation Loss", "Class Loss"]
-    
-    for idx, (comp_name, comp_title) in enumerate(zip(component_names, component_titles)):
-        ax = axes[idx // 2, idx % 2]
+    # Plot loss evolution (only if computed)
+    if compute_losses:
+        print(f"\n[INFO] Plotting loss evolution...")
+        plot_output_dir = batch_output_dir / "loss_plots"
+        plot_output_dir.mkdir(exist_ok=True, parents=True)
+        
+        # Plot 1: Total loss for all scenes
+        plt.figure(figsize=(12, 8))
         for scene_id, losses in loss_trajectories.items():
-            ax.plot(losses["timesteps"], losses[comp_name], label=f"Scene {scene_id}", alpha=0.7)
-        ax.set_xlabel("Timestep", fontsize=10)
-        ax.set_ylabel("Loss (MSE)", fontsize=10)
-        ax.set_title(comp_title, fontsize=12)
-        # ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=6)
-        ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    individual_loss_path = plot_output_dir / "individual_component_losses.png"
-    plt.savefig(individual_loss_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"[SUCCESS] Saved individual component loss plot to: {individual_loss_path}")
-    
-    # Save loss data as pickle for later analysis
-    loss_data_path = plot_output_dir / "loss_trajectories.pkl"
-    with open(loss_data_path, "wb") as f:
-        pickle.dump(loss_trajectories, f)
-    print(f"[SUCCESS] Saved loss trajectory data to: {loss_data_path}")
+            plt.plot(losses["timesteps"], losses["total_loss"], label=f"Scene {scene_id}", alpha=0.7)
+        plt.xlabel("Timestep", fontsize=12)
+        plt.ylabel("Total Loss (MSE)", fontsize=12)
+        plt.title("Denoising Loss Evolution - Total Loss", fontsize=14)
+        # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        total_loss_path = plot_output_dir / "total_loss_evolution.png"
+        plt.savefig(total_loss_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"[SUCCESS] Saved total loss plot to: {total_loss_path}")
+        
+        # Plot 2: Component losses (averaged across all scenes)
+        plt.figure(figsize=(12, 8))
+        
+        # Average losses across all scenes
+        max_timesteps = max(len(losses["timesteps"]) for losses in loss_trajectories.values()) # 151
+        # print("[DEBUG] Max timesteps across scenes:", max_timesteps)
+        avg_pos_loss = np.zeros(max_timesteps)
+        avg_size_loss = np.zeros(max_timesteps)
+        avg_rot_loss = np.zeros(max_timesteps)
+        avg_class_loss = np.zeros(max_timesteps)
+        avg_total_loss = np.zeros(max_timesteps)
+        counts = np.zeros(max_timesteps)
+        
+        for scene_id, losses in loss_trajectories.items():
+            for i, t in enumerate(losses["timesteps"]):
+                avg_pos_loss[t] += losses["pos_loss"][i]
+                avg_size_loss[t] += losses["size_loss"][i]
+                avg_rot_loss[t] += losses["rot_loss"][i]
+                avg_class_loss[t] += losses["class_loss"][i]
+                avg_total_loss[t] += losses["total_loss"][i]
+                counts[t] += 1
+        # print(f"[DEBUG] Counts per timestep:", counts)
+        # Normalize by counts
+        avg_pos_loss /= np.maximum(counts, 1)
+        avg_size_loss /= np.maximum(counts, 1)
+        avg_rot_loss /= np.maximum(counts, 1)
+        avg_class_loss /= np.maximum(counts, 1)
+        avg_total_loss /= np.maximum(counts, 1)
+        
+        timesteps = list(range(max_timesteps))
+        plt.plot(timesteps, avg_pos_loss, label="Position Loss", linewidth=2)
+        plt.plot(timesteps, avg_size_loss, label="Size Loss", linewidth=2)
+        plt.plot(timesteps, avg_rot_loss, label="Rotation Loss", linewidth=2)
+        plt.plot(timesteps, avg_class_loss, label="Class Loss", linewidth=2)
+        # plt.plot(timesteps, avg_total_loss, label="Total Loss", linewidth=2.5, linestyle='--', color='black')
+        
+        plt.xlabel("Timestep", fontsize=12)
+        plt.ylabel("Loss (MSE)", fontsize=12)
+        loss_type_str = "Normalized" if loss_on_normalized_scenes else "Unnormalized"
+        plt.title(f"Denoising Loss Evolution - Component Losses Averaged(over {num_scenes_to_sample} scenes) [{loss_type_str}]", fontsize=14)
+        plt.legend(fontsize=10)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        component_loss_path = plot_output_dir / f"component_loss_evolution_{'normalized' if loss_on_normalized_scenes else 'unnormalized'}.png"
+        plt.savefig(component_loss_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"[SUCCESS] Saved component loss plot to: {component_loss_path}")
+        
+        # Plot 3: Averaged total loss across all scenes
+        plt.figure(figsize=(12, 8))
+        plt.plot(timesteps, avg_total_loss, label=f"Average(over {num_scenes_to_sample} scenes) Total Loss", linewidth=2.5, color='black')
+        plt.xlabel("Timestep", fontsize=12)
+        plt.ylabel("Total Loss (MSE)", fontsize=12)
+        loss_type_str = "Normalized" if loss_on_normalized_scenes else "Unnormalized"
+        plt.title(f"Denoising Loss Evolution - Average Total Loss [{loss_type_str}]", fontsize=14)
+        # plt.legend(fontsize=10)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        avg_total_loss_path = plot_output_dir / f"average_total_loss_evolution_{'normalized' if loss_on_normalized_scenes else 'unnormalized'}.png"
+        plt.savefig(avg_total_loss_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"[SUCCESS] Saved average total loss plot to: {avg_total_loss_path}")
+        
+        # Plot 4: Individual component losses per scene (separate subplots)
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        component_names = ["pos_loss", "size_loss", "rot_loss", "class_loss"]
+        component_titles = ["Position Loss", "Size Loss", "Rotation Loss", "Class Loss"]
+        
+        for idx, (comp_name, comp_title) in enumerate(zip(component_names, component_titles)):
+            ax = axes[idx // 2, idx % 2]
+            for scene_id, losses in loss_trajectories.items():
+                ax.plot(losses["timesteps"], losses[comp_name], label=f"Scene {scene_id}", alpha=0.7)
+            ax.set_xlabel("Timestep", fontsize=10)
+            ax.set_ylabel("Loss (MSE)", fontsize=10)
+            ax.set_title(comp_title, fontsize=12)
+            # ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=6)
+            ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        individual_loss_path = plot_output_dir / "individual_component_losses.png"
+        plt.savefig(individual_loss_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"[SUCCESS] Saved individual component loss plot to: {individual_loss_path}")
+        
+        # Save loss data as pickle for later analysis
+        loss_data_path = plot_output_dir / "loss_trajectories.pkl"
+        with open(loss_data_path, "wb") as f:
+            pickle.dump(loss_trajectories, f)
+        print(f"[SUCCESS] Saved loss trajectory data to: {loss_data_path}")
     
     print(f"[INFO] You can now render each trajectory using:")
     print(f"       python ../ThreedFront/scripts/render_results.py --retrieve_by_size --no_texture --without_floor {batch_output_dir}/trajectory_scene<N>.pkl")
