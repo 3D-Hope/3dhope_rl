@@ -315,8 +315,8 @@ def get_universal_reward(
         # rewards[key] = reward
         reward_components[key] = reward
         rewards_sum += reward
+        print(f"[Ashok] Raw reward for {key}: {reward}")
         # rewards_sum += importance_weights[key] * reward
-        # print(f"[Ashok] Raw reward for {key}: {reward}")
     # Normalize rewards if normalizer is provided
     # reward_normalizer = None
     # if reward_normalizer is not None:
