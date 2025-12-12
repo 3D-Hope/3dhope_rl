@@ -106,7 +106,8 @@ def sample_scenes_from_baseline(
         f"dataset._name=custom_scene",
         f"+num_scenes={num_scenes}",
         # f"algorithm=scene_diffuser_flux_transformer", # TODO: make this configurable
-        f"algorithm=scene_diffuser_flux_transformer",
+        # f"algorithm=scene_diffuser_flux_transformer",
+        f"algorithm=scene_diffuser_midiffusion",
         f"algorithm.trainer={config.algorithm.trainer}",
         f"experiment.find_unused_parameters=True",
         f"algorithm.classifier_free_guidance.use=False",
@@ -120,6 +121,7 @@ def sample_scenes_from_baseline(
         f"dataset.data.path_to_processed_data={config.dataset.data.path_to_processed_data}",
         f"dataset.data.room_type={config.dataset.data.room_type}",
         f"dataset.data.encoding_type={config.dataset.data.encoding_type}",
+        f"algorithm.custom.old={config.algorithm.custom.get('old', False)}",
     ]
     
     if config.dataset.data.room_type == "livingroom":
@@ -139,7 +141,6 @@ def sample_scenes_from_baseline(
             f"dataset.max_num_objects_per_scene=12",
             f"algorithm.custom.num_classes=22",
             f"algorithm.custom.objfeat_dim=0",
-            f"algorithm.custom.old=True",
         ])
     
     print("\n" + "="*80)
