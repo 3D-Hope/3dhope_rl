@@ -162,48 +162,49 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             )
         )
         # 22+3+3+2+32
-        if int(self.cfg.custom.objfeat_dim) == 32:
-            objfeat_32_indices = list[int](
-                range(
-                    len(class_indices)
-                    + len(pos_indices)
-                    + len(size_indices)
-                    + len(rot_indices),
-                    len(class_indices)
-                    + len(pos_indices)
-                    + len(size_indices)
-                    + len(rot_indices)
-                    + 32,
-                )
-            )
-            pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
-            target_objfeat_32 = noise[..., objfeat_32_indices]
-            objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
-        else:
-            objfeat_32_loss = None
-        # Extract components from your representation using your custom indices
-        pred_pos = predicted_noise[..., pos_indices]
-        pred_size = predicted_noise[..., size_indices]
-        pred_rot = predicted_noise[..., rot_indices]
-        pred_class = predicted_noise[..., class_indices]
+        # if int(self.cfg.custom.objfeat_dim) == 32:
+        #     objfeat_32_indices = list[int](
+        #         range(
+        #             len(class_indices)
+        #             + len(pos_indices)
+        #             + len(size_indices)
+        #             + len(rot_indices),
+        #             len(class_indices)
+        #             + len(pos_indices)
+        #             + len(size_indices)
+        #             + len(rot_indices)
+        #             + 32,
+        #         )
+        #     )
+        #     pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
+        #     target_objfeat_32 = noise[..., objfeat_32_indices]
+        #     objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
+        # else:
+        #     objfeat_32_loss = None
+        # # Extract components from your representation using your custom indices
+        # pred_pos = predicted_noise[..., pos_indices]
+        # pred_size = predicted_noise[..., size_indices]
+        # pred_rot = predicted_noise[..., rot_indices]
+        # pred_class = predicted_noise[..., class_indices]
 
-        target_pos = noise[..., pos_indices]
-        target_size = noise[..., size_indices]
-        target_rot = noise[..., rot_indices]
-        target_class = noise[..., class_indices]
+        # target_pos = noise[..., pos_indices]
+        # target_size = noise[..., size_indices]
+        # target_rot = noise[..., rot_indices]
+        # target_class = noise[..., class_indices]
 
         # Calculate your custom losses
-        pos_loss = F.mse_loss(pred_pos, target_pos)
-        size_loss = F.mse_loss(pred_size, target_size)
-        rot_loss = F.mse_loss(pred_rot, target_rot)
-        class_loss = F.mse_loss(pred_class, target_class)
-
-        # Weight the losses as needed (you can make these configurable)
-        pos_weight = 1.0
-        size_weight = 1.0
-        rot_weight = 1.0
-        class_weight = 1.0
-        objfeat_32_weight = 1.0
+        loss = (noise - predicted_noise) ** 2
+        
+        pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
+        size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
+        rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
+        class_loss = loss[:,:,class_indices].mean(dim=(0,1,2))
+        # # Weight the losses as needed (you can make these configurable)
+        # pos_weight = 1.0
+        # size_weight = 1.0
+        # rot_weight = 1.0
+        # class_weight = 1.0
+        # objfeat_32_weight = 1.0
 
         # Initialize losses dictionary
         losses_dict = {
@@ -211,20 +212,15 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             "size_loss": size_loss.item(),
             "rot_loss": rot_loss.item(),
             "class_loss": class_loss.item(),
-            "objfeat_32_loss": objfeat_32_loss.item()
-            if objfeat_32_loss is not None
-            else 0.0,
+            # "objfeat_32_loss": objfeat_32_loss.item()
+            # if objfeat_32_loss is not None
+            # else 0.0,
         }
 
         # Calculate base loss
-        total_loss = (
-            pos_weight * pos_loss
-            + size_weight * size_loss
-            + rot_weight * rot_loss
-            + class_weight * class_loss
-        )
-        if objfeat_32_loss is not None:
-            total_loss += objfeat_32_weight * objfeat_32_loss
+        total_loss = loss.mean(dim=(0,1,2))
+        # if objfeat_32_loss is not None:
+        #     total_loss += objfeat_32_weight * objfeat_32_loss
 
         # Apply IoU regularization if enabled
         # if hasattr(self.cfg, "loss") and getattr(
