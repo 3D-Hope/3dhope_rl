@@ -1,0 +1,8 @@
+# Compatible versions that work with google-genai and FastAPI
+fastapi>=0.115.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.9.0,<3.0.0
+python-multipart>=0.0.6
+# Note: anyio>=4.8.0,<5.0.0 is required by google-genai, and FastAPI 0.115+ supports it
+
+
