@@ -356,6 +356,8 @@ python dynamic_constraint_rewards/take_user_instruction.py dataset=custom_scene 
 <!-- SAUGAT DO THIS -->
 python scripts/custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
 
+python custom_sample_and_render.py load=rrudae6n dataset=custom_scene dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json dataset.max_num_objects_per_scene=12 +num_scenes=10 algorithm=scene_diffuser_midiffusion algorithm.trainer=ddpm experiment.find_unused_parameters=True algorithm.classifier_free_guidance.use=False algorithm.classifier_free_guidance.use_floor=True algorithm.classifier_free_guidance.weight=1 algorithm.custom.loss=true algorithm.ema.use=True algorithm.noise_schedule.scheduler=ddim algorithm.noise_schedule.ddim.num_inference_timesteps=150
+
 python ../ThreedFront/scripts/render_results.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-09/06-06-09/sampled_scenes_results.pkl --no_texture --retrieve_by_size
 
 
@@ -1989,18 +1991,21 @@ poetry run python scripts/download_checkpoint.py \
 scp insait:/home/pramish_paudel/codes/3dhope_rl/checkpoints/pramish-paudel-insait/3dhope_rl/nylmdurl/model.ckpt .
 
 
-python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-02/16-05-14/sampled_scenes_results.pkl
+python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-13/06-08-02/sampled_scenes_results.pkl
+
+
+
+
 
 
 python ../ThreedFront/scripts/render_results_better.py --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-12/19-52-51/sampled_scenes_results.pkl > temp_log_tv_only.txt 2>&1 
 
 
 
-python ../ThreedFront/scripts/render_results.py --retrieve_by_size --no_texture /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/08-25-38/sampled_scenes_results.pkl
-
+ 
 python scripts/physcene_metrics.py /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-13/05-36-07/sampled_scenes_results.pkl
 
-python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-09/06-56-57/sampled_scenes_results.pkl
+python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-10/04-43-36/sampled_scenes_results.pkl
 
 
 
@@ -2010,4 +2015,75 @@ python scripts/physcene_metrics.py  /media/ajad/YourBook/AshokSaugatResearchBack
 python scripts/custom_sample_and_render.py +num_scenes=1000 load=rrudae6n     dataset=custom_scene     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json     dataset.max_num_objects_per_scene=12     algorithm=scene_diffuser_midiffusion     algorithm.classifier_free_guidance.use=False     algorithm.ema.use=True     algorithm.trainer=rl_score     algorithm.noise_schedule.scheduler=ddim     algorithm.noise_schedule.ddim.num_inference_timesteps=150     experiment.training.max_steps=1020000     experiment.validation.limit_batch=1     experiment.validation.val_every_n_step=50     algorithm.ddpo.ddpm_reg_weight=40     experiment.reset_lr_scheduler=True     experiment.training.lr=1e-6     experiment.lr_scheduler.num_warmup_steps=250     algorithm.ddpo.batch_size=128     experiment.training.checkpointing.every_n_train_steps=500     algorithm.num_additional_tokens_for_sampling=0     algorithm.ddpo.n_timesteps_to_sample=100     experiment.find_unused_parameters=True     algorithm.custom.loss=True     algorithm.validation.num_samples_to_render=0     algorithm.validation.num_samples_to_visualize=0     algorithm.validation.num_directives_to_generate=0     algorithm.test.num_samples_to_render=0     algorithm.test.num_samples_to_visualize=0     algorithm.test.num_directives_to_generate=0     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0     algorithm.ddpo.use_universal_reward=True     algorithm.classifier_free_guidance.use_floor=True     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards     algorithm.ddpo.dynamic_constraint_rewards.user_query=universal_bedroom     dataset.sdf_cache_dir=./bedroom_sdf_cache/     dataset.accessibility_cache_dir=./bedroom_accessibility_cache/     algorithm.custom.num_classes=22     algorithm.custom.objfeat_dim=0     algorithm.custom.obj_vec_len=30     algorithm.custom.obj_diff_vec_len=30     
 
 
- 
+---
+## un normalized space
+translation 
+Mean: [0.03010307 0.91980165 0.02603687]
+Std: [1.1332246 0.7547199 1.1151172]
+Variance: [1.284198  0.5696022 1.2434863]
+Min: [-2.445794    0.21860601 -1.9965979 ]
+Max: [2.166107 2.527924 2.081882]
+Median: [ 0.27258563  0.53957695 -0.12236786]
+25th percentile: [-0.7562077   0.29186791 -0.84684712]
+75th percentile: [1.04483175 1.23913914 0.86093736]
+
+
+sizes
+
+
+Mean: [0.64495254 0.53398025 0.43777984]
+Std: [0.4453669  0.32814306 0.36066335]
+Variance: [0.19835167 0.10767788 0.13007805]
+Min: [0.12913734 0.06378472 0.10653112]
+Max: [2.1377182 1.3234549 1.2360181]
+Median: [0.47034588 0.45089927 0.27877924]
+25th percentile: [0.27224244 0.27720636 0.21299133]
+75th percentile: [1.01279193 0.59951106 0.42543936]
+
+
+angle(radian)
+Mean: [-0.19658588]
+Std: [1.6652051]
+Variance: [2.772908]
+Min: [-3.1415393]
+Max: [3.141519]
+Median: [-0.00019447]
+25th percentile: [-1.57078987]
+75th percentile: [0.00079974]
+
+
+## normalized space 
+translation 
+
+Mean: [ 0.00798871 -0.5112621  -0.00246251]
+Std: [0.40903684 0.42165017 0.40030825]
+Variance: [0.16731113 0.17778887 0.16024669]
+Min: [-0.88568497 -0.90300906 -0.7285542 ]
+Max: [0.7789781  0.38717058 0.7355512 ]
+Median: [ 0.09551267 -0.72368765 -0.05573726]
+25th percentile: [-0.2758297  -0.86207879 -0.31581308]
+75th percentile: [ 0.37425445 -0.33285318  0.29725266]
+
+
+size 
+Mean: [-0.5721901  -0.41261584 -0.49570218]
+Std: [0.31494537 0.37500677 0.42794916]
+Variance: [0.09919058 0.14063007 0.18314047]
+Min: [-0.9369536  -0.9499622  -0.88874906]
+Max: [0.48343295 0.48960748 0.45145643]
+Median: [-0.6956648 -0.507562  -0.6843661]
+25th percentile: [-0.8357555  -0.7060608  -0.76242751]
+75th percentile: [-0.31206913 -0.33772627 -0.51034494]
+
+
+
+angle(cos, sin)
+
+Mean: [ 0.2121844  -0.24597198]
+Std: [0.718982  0.6138764]
+Variance: [0.5169351  0.37684426]
+Min: [-0.99991655 -1.        ]
+Max: [1. 1.]
+Median: [ 0.00016622 -0.00016594]
+25th percentile: [-7.71882711e-04 -9.99492079e-01]
+75th percentile: [9.99557793e-01 4.62990734e-04]
