@@ -48,17 +48,30 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     chair_reward = utility_functions["get_object_present_reward_potential"]["function"](
         one_hot, "chair", idx_to_labels, object_indices=parsed_scenes["object_indices"]
     )
+    
+    single_bed_reward = utility_functions["get_object_present_reward_potential"]["function"](
+        one_hot, "single_bed", idx_to_labels, object_indices=parsed_scenes["object_indices"]
+    )
+    double_bed_reward = utility_functions["get_object_present_reward_potential"]["function"](
+        one_hot, "double_bed", idx_to_labels, object_indices=parsed_scenes["object_indices"]
+    )
+    bed_reward = (
+        (single_bed_reward == 1.0).float() + (double_bed_reward == 1.0).float()
+    )
+    
 
     # Count how many object types are properly placed (reward = 1.0)
     num_properly_placed = (
         (tv_stand_reward == 1.0).float()
         + (desk_reward == 1.0).float()
         + (chair_reward == 1.0).float()
+        + (bed_reward == 1.0).float()
     )
 
-    # Base reward structure emphasizing having all 3 objects
+    # Base reward structure emphasizing having all 4 objects
     base_rewards = torch.zeros(B, device=device)
-    base_rewards[num_properly_placed == 3] = 10.0  # Highest reward for all 3
+    base_rewards[num_properly_placed == 4] = 20.0  # Highest reward for all 4
+    base_rewards[num_properly_placed == 3] = 10.0  # lower reward for 3
     base_rewards[num_properly_placed == 2] = 5.0  # Lower for 2
     base_rewards[num_properly_placed == 1] = 2.0  # Even lower for 1
     base_rewards[num_properly_placed == 0] = -2.0  # Penalty for none

@@ -261,10 +261,10 @@ def get_all_universal_reward_functions():
 
     return {
         # "must_have_furniture": compute_must_have_furniture_reward if ,
-        "non_penetration": compute_non_penetration_reward,
         # "object_count": compute_object_count_reward,
         "not_out_of_bound": compute_boundary_violation_reward,
         "accessibility": compute_accessibility_reward,
+        "non_penetration": compute_non_penetration_reward,
         # "gravity_following": compute_gravity_following_reward,
         # "night_tables_on_head_side": compute_nightstand_placement_reward,
         # "axis_alignment": compute_axis_alignment_reward,

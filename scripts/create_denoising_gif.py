@@ -105,8 +105,8 @@ def create_denoising_video(input_dir, output_path, fps=10):
     print(f"  Output: {output_path}")
 
 if __name__ == "__main__":
-    input_dir = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/11-34-36/trajectories"
-    output_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-11-27/11-34-36/trajectories/denoising_process1_mi_floor.mp4"
+    input_dir = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-12/02-35-03/trajectories"
+    output_path = "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-12/02-35-03/trajectories/denoising_process1_mi_no_floor.mp4"
     
     # 10 fps - good balance between smooth and not too fast
     create_denoising_video(input_dir, output_path, fps=10)

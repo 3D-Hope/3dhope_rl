@@ -623,6 +623,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     f"reward_components/{name}_mean": values.mean()
                     for name, values in reward_components.items()
                 }
+                print("Logging reward components...", reward_metrics.keys())
                 self.log_dict(
                     reward_metrics,
                     on_step=True,
