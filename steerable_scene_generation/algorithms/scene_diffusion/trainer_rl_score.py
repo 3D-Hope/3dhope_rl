@@ -29,6 +29,23 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             self.training_steps = self.cfg.ddpo.training_steps_start # TODO: make this configurable
             self.incremental_n_timesteps_to_sample = [10, 25, 40, 65, 80, 95, 110, 125, 150]
             self.training_steps_per_increment = 1500
+        self.join_taining_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
+
+    def _merge_cond_dicts(self, trajectory_groups):
+        """Merge conditioning dicts from all groups into one batch."""
+        if not trajectory_groups or trajectory_groups[0]['cond_dict'] is None:
+            return None
+            
+        merged = {}
+        for key in trajectory_groups[0]['cond_dict'].keys():
+            values = [group['cond_dict'][key] for group in trajectory_groups]
+            if isinstance(values[0], torch.Tensor):
+                merged[key] = torch.cat(values, dim=0)
+            elif isinstance(values[0], list):
+                merged[key] = sum(values, [])  # Flatten lists
+            else:
+                merged[key] = values  # Keep as list
+        return merged
 
     def forward(
         self,
@@ -42,44 +59,95 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         """
 
         # Get diffusion trajectories.
-        (
-            trajectories,  # Shape (B, T+1, N, V)
-            trajectories_log_props,  # Shape (B, T)
-            cond_dict,
-        ) = self.generate_trajs_for_ddpo(
+        result = self.generate_trajs_for_ddpo(
             last_n_timesteps_only=self.cfg.ddpo.last_n_timesteps_only,
             n_timesteps_to_sample=self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment] if self.incremental_training else self.cfg.ddpo.n_timesteps_to_sample,
             batch=batch,
             incremental_training=self.incremental_training,
             joint_training=self.joint_training,
+            joint_training_timesteps=self.join_taining_timesteps,
         )
-        if self.incremental_training:
-            self.training_steps += 1
-            if self.training_steps % self.training_steps_per_increment == 0:
-                print(f"[Ashok] Incremented training to {self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment]} timesteps.")
-        # Remove initial noisy scene.
-        trajectories = trajectories[
-            :, 1:
-        ]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
+        
+        # Handle different return types based on training mode
+        if self.joint_training:
+            # Result is a list of trajectory groups
+            trajectory_groups = result[0]
+            
+            # Process each group separately
+            all_rewards = []
+            all_log_prob_sums = []
+            
+            for group in trajectory_groups:
+                # Remove initial noisy scene
+                trajectories = group['trajectories'][:, 1:]  # (B_group, T, N, V)
+                log_probs = group['log_probs']  # (B_group, T)
+                cond_dict = group['cond_dict']
+                
+                # Compute rewards (uses only last timestep)
+                rewards = self.compute_rewards_from_trajs(
+                    trajectories=trajectories, cond_dict=cond_dict
+                )  # (B_group,)
+                
+                # Sum log probs across timesteps
+                log_prob_sums = torch.sum(log_probs, dim=1)  # (B_group,)
+                
+                all_rewards.append(rewards)
+                all_log_prob_sums.append(log_prob_sums)
+                
+                # print(f"[Ashok] Group with {group['n_steps']} steps: {trajectories.shape[0]} samples, "
+                #       f"log_prob_sum range: [{log_prob_sums.min().item():.3f}, {log_prob_sums.max().item():.3f}]")
+            
+            # Concatenate all groups
+            rewards = torch.cat(all_rewards, dim=0)  # (B,)
+            log_prob_sums = torch.cat(all_log_prob_sums, dim=0)  # (B,)
+            
+            # Compute advantages across full batch
+            advantages = self.compute_advantages(rewards, phase=phase)  # (B,)
+            print(f" rewards {rewards}, advantages {advantages}, log_prob_sums {log_prob_sums}  ")
+            # REINFORCE loss
+            loss = -torch.mean(log_prob_sums * advantages)
+            print(f"[Ashok] Joint training - total samples: {rewards.shape[0]}, reinforce loss: {loss.item()}")
+            
+            # DDPM regularization (merge all cond_dicts)
+            if self.cfg.ddpo.ddpm_reg_weight > 0.0:
+                merged_cond_dict = self._merge_cond_dicts(trajectory_groups)
+                ddpm_loss = self.compute_ddpm_loss(merged_cond_dict)
+                loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
+                print(f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}")
+        
+        else:
+            # Standard/incremental training - single tensor return
+            trajectories, trajectories_log_props, cond_dict = result
+            
+            if self.incremental_training:
+                self.training_steps += 1
+                if self.training_steps % self.training_steps_per_increment == 0:
+                    print(f"[Ashok] Incremented training to {self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment]} timesteps.")
+            
+            # Remove initial noisy scene.
+            trajectories = trajectories[
+                :, 1:
+            ]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
 
-        # Compute rewards.
-        rewards = self.compute_rewards_from_trajs(
-            trajectories=trajectories, cond_dict=cond_dict
-        )  # Shape (B,)
+            # Compute rewards.
+            rewards = self.compute_rewards_from_trajs(
+                trajectories=trajectories, cond_dict=cond_dict
+            )  # Shape (B,)
 
-        # Compute advantages.
-        advantages = self.compute_advantages(rewards, phase=phase)  # Shape (B,)
+            # Compute advantages.
+            advantages = self.compute_advantages(rewards, phase=phase)  # Shape (B,)
 
-        # REINFORCE loss.
-        loss = -torch.mean(torch.sum(trajectories_log_props, dim=1) * advantages)
-        print(f"[Ashok] reinforce loss values: {loss.item()}")
-        # DDPM loss for regularization.
-        if self.cfg.ddpo.ddpm_reg_weight > 0.0:
-            # ddpm_loss = self.compute_ddpm_loss(batch)
-            ddpm_loss = self.compute_ddpm_loss(cond_dict)
-            loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
-            print(
-                f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}"
-            )
+            # REINFORCE loss.
+            print(f"[Ashok] trajectories_log_props: {trajectories_log_props.shape}, self.training_steps: {self.training_steps if self.incremental_training else 'N/A'}") # (B, T)
+            loss = -torch.mean(torch.sum(trajectories_log_props, dim=1) * advantages)
+            print(f"[Ashok] reinforce loss values: {loss.item()}")
+            # DDPM loss for regularization.
+            if self.cfg.ddpo.ddpm_reg_weight > 0.0:
+                # ddpm_loss = self.compute_ddpm_loss(batch)
+                ddpm_loss = self.compute_ddpm_loss(cond_dict)
+                loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
+                print(
+                    f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}"
+                )
 
         return loss

@@ -511,9 +511,9 @@ class CustomDataset(BaseDataset):
         if num_items <= total_items:
             # Sample without replacement.
             # sample_indices = torch.randperm(total_items)[:num_items]
-            print(
-                f"[Ashok] Sampling without replacement for {num_items} items, with total items {total_items}"
-            )
+            # print(
+            #     f"[Ashok] Sampling without replacement for {num_items} items, with total items {total_items}"
+            # )
             sample_indices = torch.arange(num_items)
         else:
             # Sample with replacement.

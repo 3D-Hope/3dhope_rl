@@ -140,6 +140,93 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             self.get_reward_functions = None
             self.test_reward_functions = None
 
+    def _generate_single_trajectory_group(
+        self,
+        batch_size: int,
+        n_steps: int,
+        cond_dict: dict | None,
+        room_type: str,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Generate trajectories for a single group with fixed timestep count.
+        Helper method for joint training.
+        
+        Args:
+            batch_size (int): Number of samples in this group.
+            n_steps (int): Number of denoising steps for this group.
+            cond_dict (dict | None): Conditioning dictionary for this group.
+            room_type (str): Type of room (bedroom/livingroom).
+            
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Trajectories (batch_size, n_steps+1, N, V)
+                and log probabilities (batch_size, n_steps).
+        """
+        trajectory = []
+        trajectory_log_props = []
+        
+        # Sample initial noise for this group
+        num_objects_per_scene = (
+            self.cfg.max_num_objects_per_scene
+            + self.cfg.num_additional_tokens_for_sampling
+        )
+        
+        if room_type == "livingroom":
+            xt = self.sample_continuous_noise_prior(
+                (
+                    batch_size,
+                    num_objects_per_scene,
+                    self.cfg.custom.num_classes
+                    + self.cfg.custom.translation_dim
+                    + self.cfg.custom.size_dim
+                    + self.cfg.custom.angle_dim
+                    + self.cfg.custom.objfeat_dim,
+                )
+            ).to(self.device)
+        elif room_type == "bedroom":
+            xt = self.sample_continuous_noise_prior(
+                (
+                    batch_size,
+                    num_objects_per_scene,
+                    self.scene_vec_desc.get_object_vec_len(),
+                )
+            ).to(self.device)
+        else:
+            raise ValueError(f"Unknown room type: {room_type}")
+        
+        trajectory.append(xt)
+        
+        # Denoising loop
+        for t_idx, t in enumerate(self.noise_scheduler.timesteps):
+            # Predict noise
+            residual = self.predict_noise(xt, t, cond_dict=cond_dict)
+            
+            # Compute next step and log probability
+            if isinstance(self.noise_scheduler, DDPMScheduler):
+                xt_next, log_prop = ddpm_step_with_logprob(
+                    scheduler=self.noise_scheduler,
+                    model_output=residual,
+                    timestep=t,
+                    sample=xt,
+                )
+            else:  # DDIMScheduler
+                xt_next, log_prop = ddim_step_with_logprob(
+                    scheduler=self.noise_scheduler,
+                    model_output=residual,
+                    timestep=t,
+                    sample=xt,
+                    eta=self.cfg.noise_schedule.ddim.eta,
+                )
+            
+            xt = xt_next
+            trajectory.append(xt)
+            trajectory_log_props.append(log_prop)
+        
+        # Stack trajectories
+        trajectories = torch.stack(trajectory, dim=1)  # (batch_size, n_steps+1, N, V)
+        trajectories_log_props = torch.stack(trajectory_log_props, dim=1)  # (batch_size, n_steps)
+        
+        return trajectories, trajectories_log_props
+
     def generate_trajs_for_ddpo(
         self,
         last_n_timesteps_only: int = 0,
@@ -147,7 +234,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         batch: Dict[str, torch.Tensor] | None = None,
         incremental_training: bool = False,
         joint_training: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor, dict | None]:
+        joint_training_timesteps: list[int] | None = None,
+    ) -> Tuple[torch.Tensor | list, torch.Tensor | None, dict | None]:
         """
         Generate denoising trajectories for DDPO.
 
@@ -203,9 +291,65 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 )
             else:
                 raise NotImplementedError("Incremental training only implemented for DDIMScheduler.")
-
-            # Determine which timestep indices to compute gradients for.
             timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
+
+        elif joint_training:
+            if isinstance(self.noise_scheduler, DDIMScheduler):
+                # Joint training: generate separate trajectory groups for each timestep count
+                # This avoids padding and makes loss computation cleaner
+                trajectory_groups = []
+                
+                # Distribute batch across timestep counts
+                samples_per_group = self.cfg.ddpo.batch_size // len(joint_training_timesteps)
+                remaining = self.cfg.ddpo.batch_size % len(joint_training_timesteps)
+                
+                start_idx = 0
+                for group_idx, n_steps in enumerate(joint_training_timesteps):
+                    # Handle uneven distribution (extra samples go to first groups)
+                    group_size = samples_per_group + (1 if group_idx < remaining else 0)
+                    
+                    if group_size == 0:
+                        continue
+                    
+                    end_idx = start_idx + group_size
+                    
+                    # Set scheduler for this group's timestep count
+                    self.noise_scheduler.set_timesteps(n_steps, device=self.device)
+                    
+                    # Sample subset of conditioning for this group
+                    if batch is not None:
+                        # Slice the batch to get the correct subset for this group
+                        group_batch = {k: v[start_idx:end_idx] for k, v in batch.items()}
+                        group_cond_dict = self.dataset.sample_data_dict(
+                            data=group_batch, num_items=group_size
+                        )
+                    else:
+                        group_cond_dict = None
+                    
+                    # Generate trajectories for this group
+                    group_trajectories, group_log_probs = self._generate_single_trajectory_group(
+                        batch_size=group_size,
+                        n_steps=n_steps,
+                        cond_dict=group_cond_dict,
+                        room_type=room_type,
+                    )
+                    
+                    # Store group with metadata
+                    trajectory_groups.append({
+                        'trajectories': group_trajectories,  # (group_size, n_steps+1, N, V)
+                        'log_probs': group_log_probs,       # (group_size, n_steps)
+                        'n_steps': n_steps,
+                        'cond_dict': group_cond_dict,
+                    })
+                    
+                    start_idx = end_idx
+                
+                # Return list of groups instead of single tensors
+                # The calling code will handle processing each group separately
+                return trajectory_groups, None, None
+            
+            else:
+                raise NotImplementedError("Joint training only implemented for DDIMScheduler.")
         trajectory = []
         trajectory_log_props = []
 
@@ -636,7 +780,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     f"reward_components/{name}_mean": values.mean()
                     for name, values in reward_components.items()
                 }
-                print("Logging reward components...", reward_metrics.keys())
+                # print("Logging reward components...", reward_metrics.keys())
                 self.log_dict(
                     reward_metrics,
                     on_step=True,
