@@ -319,12 +319,12 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     # Sample subset of conditioning for this group
                     if batch is not None:
                         # Slice the batch to get the correct subset for this group
-                        if len(batch["scenes"]) <= end_idx:
-                            group_batch = {k: v[start_idx:end_idx] for k, v in batch.items()}
-                        else:
-                            group_batch = {k: v[start_idx:] for k, v in batch.items()}
+                        # if len(batch["scenes"]) <= end_idx:
+                        #     group_batch = {k: v[start_idx:end_idx] for k, v in batch.items()}
+                        # else:
+                        #     group_batch = {k: v[start_idx:] for k, v in batch.items()}
                         group_cond_dict = self.dataset.sample_data_dict(
-                            data=group_batch, num_items=group_size
+                            data=batch, num_items=group_size
                         )
                     else:
                         group_cond_dict = None
