@@ -103,7 +103,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             
             # Compute advantages across full batch
             advantages = self.compute_advantages(rewards, phase=phase)  # (B,)
-            print(f" rewards {rewards}, advantages {advantages}, log_prob_sums {log_prob_sums}  ")
+            # print(f" rewards {rewards}, advantages {advantages}, log_prob_sums {log_prob_sums}  ")
             # REINFORCE loss
             loss = -torch.mean(log_prob_sums * advantages)
             print(f"[Ashok] Joint training - total samples: {rewards.shape[0]}, reinforce loss: {loss.item()}")
@@ -138,7 +138,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             advantages = self.compute_advantages(rewards, phase=phase)  # Shape (B,)
 
             # REINFORCE loss.
-            print(f"[Ashok] trajectories_log_props: {trajectories_log_props.shape}, self.training_steps: {self.training_steps if self.incremental_training else 'N/A'}") # (B, T)
+            # print(f"[Ashok] trajectories_log_props: {trajectories_log_props.shape}, self.training_steps: {self.training_steps if self.incremental_training else 'N/A'}") # (B, T)
             loss = -torch.mean(torch.sum(trajectories_log_props, dim=1) * advantages)
             print(f"[Ashok] reinforce loss values: {loss.item()}")
             # DDPM loss for regularization.
