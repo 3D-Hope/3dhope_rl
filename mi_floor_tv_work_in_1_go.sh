@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=mi_floor_tv_work_in_1_go_with_universal
+#SBATCH --job-name=incremental
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
@@ -285,8 +285,8 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=mi_floor_tv_work_in_1_go_with_universal \
-    load=nots1b42 \
+PYTHONPATH=. python -u  main.py +name=incremental \
+    load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -298,7 +298,7 @@ PYTHONPATH=. python -u  main.py +name=mi_floor_tv_work_in_1_go_with_universal \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2000000 \
+    experiment.training.max_steps=1015000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -333,11 +333,14 @@ PYTHONPATH=. python -u  main.py +name=mi_floor_tv_work_in_1_go_with_universal \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
-    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=1.0 \
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
     algorithm.ddpo.batch_size=192 \
     experiment.training.batch_size=192 \
     experiment.validation.batch_size=192 \
     experiment.test.batch_size=192 \
+    algorithm.ddpo.incremental_training=true \
+    algorithm.ddpo.training_steps_start=0 \
+    algorithm.ddpo.joint_training=False
 
 # -------------------------
 # Final status

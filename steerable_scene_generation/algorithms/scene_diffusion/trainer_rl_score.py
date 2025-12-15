@@ -19,6 +19,16 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         `configurations/algorithm/scene_diffuser_base_continous.yaml`.
         """
         super().__init__(cfg, dataset=dataset)
+        self.incremental_training = self.cfg.ddpo.incremental_training
+        self.joint_training = self.cfg.ddpo.joint_training
+        if self.incremental_training and self.joint_training:
+            raise ValueError(
+                "Cannot have both incremental_training and joint_training set to True."
+            )
+        if self.incremental_training:
+            self.training_steps = self.cfg.ddpo.training_steps_start # TODO: make this configurable
+            self.incremental_n_timesteps_to_sample = [10, 25, 40, 65, 80, 95, 110, 125, 150]
+            self.training_steps_per_increment = 1500
 
     def forward(
         self,
@@ -38,10 +48,15 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             cond_dict,
         ) = self.generate_trajs_for_ddpo(
             last_n_timesteps_only=self.cfg.ddpo.last_n_timesteps_only,
-            n_timesteps_to_sample=self.cfg.ddpo.n_timesteps_to_sample,
+            n_timesteps_to_sample=self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment] if self.incremental_training else self.cfg.ddpo.n_timesteps_to_sample,
             batch=batch,
+            incremental_training=self.incremental_training,
+            joint_training=self.joint_training,
         )
-
+        if self.incremental_training:
+            self.training_steps += 1
+            if self.training_steps % self.training_steps_per_increment == 0:
+                print(f"[Ashok] Incremented training to {self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment]} timesteps.")
         # Remove initial noisy scene.
         trajectories = trajectories[
             :, 1:

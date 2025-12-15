@@ -145,6 +145,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         last_n_timesteps_only: int = 0,
         n_timesteps_to_sample: int = 0,
         batch: Dict[str, torch.Tensor] | None = None,
+        incremental_training: bool = False,
+        joint_training: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, dict | None]:
         """
         Generate denoising trajectories for DDPO.
@@ -168,31 +170,42 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         self.put_model_in_eval_mode()
         room_type = getattr(self.cfg.dataset.data, "room_type", "bedroom")
-        if isinstance(self.noise_scheduler, DDIMScheduler):
-            self.noise_scheduler.set_timesteps(
-                self.cfg.noise_schedule.ddim.num_inference_timesteps, device=self.device
-            )
+        if not incremental_training and not joint_training:
+            if isinstance(self.noise_scheduler, DDIMScheduler):
+                self.noise_scheduler.set_timesteps(
+                    self.cfg.noise_schedule.ddim.num_inference_timesteps, device=self.device
+                )
 
-        # Determine which timestep indices to compute gradients for.
-        timesteps_with_grads = set()
-        if n_timesteps_to_sample > 0:
-            # Uniformly sample timestep indices.
-            timesteps_with_grads = set(
-                range(len(self.noise_scheduler.timesteps))
-                if n_timesteps_to_sample >= len(self.noise_scheduler.timesteps)
-                else torch.randperm(len(self.noise_scheduler.timesteps))[
-                    :n_timesteps_to_sample
-                ].tolist()
-            )
-        elif last_n_timesteps_only > 0:
-            # Use the last n timesteps.
-            num_timesteps = len(self.noise_scheduler.timesteps)
-            last_n = min(last_n_timesteps_only, num_timesteps)
-            timesteps_with_grads = set(range(num_timesteps - last_n, num_timesteps))
-        else:
-            # Use all timesteps.
+            # Determine which timestep indices to compute gradients for.
+            timesteps_with_grads = set()
+            if n_timesteps_to_sample > 0:
+                # Uniformly sample timestep indices.
+                timesteps_with_grads = set(
+                    range(len(self.noise_scheduler.timesteps))
+                    if n_timesteps_to_sample >= len(self.noise_scheduler.timesteps)
+                    else torch.randperm(len(self.noise_scheduler.timesteps))[
+                        :n_timesteps_to_sample
+                    ].tolist()
+                )
+            elif last_n_timesteps_only > 0:
+                # Use the last n timesteps.
+                num_timesteps = len(self.noise_scheduler.timesteps)
+                last_n = min(last_n_timesteps_only, num_timesteps)
+                timesteps_with_grads = set(range(num_timesteps - last_n, num_timesteps))
+            else:
+                # Use all timesteps.
+                timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
+        elif incremental_training:
+            # TODO: get the current training step from the trainer and figure out which phase of incremental training we are in, so that we can resume training from checkpoints
+            if isinstance(self.noise_scheduler, DDIMScheduler):
+                self.noise_scheduler.set_timesteps(
+                    n_timesteps_to_sample, device=self.device
+                )
+            else:
+                raise NotImplementedError("Incremental training only implemented for DDIMScheduler.")
+
+            # Determine which timestep indices to compute gradients for.
             timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
-
         trajectory = []
         trajectory_log_props = []
 
@@ -228,9 +241,9 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         else:
             raise ValueError(f"Unknown room type: {room_type}")
         trajectory.append(xt)
-        print(
-            f"[Ashok] num data {len(batch['idx'])}, batch size {self.cfg.ddpo.batch_size}"
-        )
+        # print(
+            # f"[Ashok] num data {len(batch['idx'])}, batch size {self.cfg.ddpo.batch_size}"
+        # )
         # Create conditioning dictionary from batch if available.
         cond_dict = None
         if batch is not None:
@@ -415,7 +428,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             raise ValueError("Only one reward function is supported at a time.")
 
         # Only compute rewards for the last timestep.
-        x0 = trajectories[:, -1]  # Shape (B, N, V)
+        x0 = trajectories[:, -1]  # Shape (B, T, N, V) -> Shape (B, N, V)
 
         if are_trajectories_normalized:
             # Apply inverse normalization.

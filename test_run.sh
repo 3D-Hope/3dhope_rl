@@ -28,7 +28,7 @@
 
 
 PYTHONPATH=. python -u  main.py +name=test \
-    load=nots1b42 \
+    load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
@@ -38,7 +38,7 @@ PYTHONPATH=. python -u  main.py +name=test \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=2000000 \
+    experiment.training.max_steps=1015000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -73,12 +73,15 @@ PYTHONPATH=. python -u  main.py +name=test \
     algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
-    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=1.0 \
-    algorithm.ddpo.batch_size=4 \
-    experiment.training.batch_size=4 \
-    experiment.validation.batch_size=4 \
-    experiment.test.batch_size=4 \
-    # wandb.mode=disabled
+    algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
+    algorithm.ddpo.batch_size=2 \
+    experiment.training.batch_size=2 \
+    experiment.validation.batch_size=2 \
+    experiment.test.batch_size=2 \
+    wandb.mode=disabled \
+    algorithm.ddpo.incremental_training=true \
+    algorithm.ddpo.training_steps_start=0 \
+    algorithm.ddpo.joint_training=False
 # PYTHONPATH=. python main.py +name=test_bed_tv_work \
 #     load=ca0l19rv \
 #     dataset=custom_scene \

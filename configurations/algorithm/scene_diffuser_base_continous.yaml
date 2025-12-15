@@ -3,6 +3,9 @@ defaults:
 
 # Note: DDIM scheduler is recommended for RL training to prevent OOM problems.
 ddpo:
+  incremental_training: False
+  joint_training: False
+  training_steps_start: 0
   use_non_penetration_reward: False
   use_object_number_reward: False
   use_prompt_following_reward: False
