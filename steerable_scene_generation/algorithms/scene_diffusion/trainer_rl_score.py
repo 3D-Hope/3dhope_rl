@@ -26,7 +26,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 "Cannot have both incremental_training and joint_training set to True."
             )
         if self.incremental_training:
-            self.training_steps = self.cfg.ddpo.training_steps_start # TODO: make this configurable
+            self.training_steps = self.cfg.ddpo.training_steps_start
             self.incremental_n_timesteps_to_sample = [10, 25, 40, 65, 80, 95, 110, 125, 150]
             self.training_steps_per_increment = 1500
         self.join_taining_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None

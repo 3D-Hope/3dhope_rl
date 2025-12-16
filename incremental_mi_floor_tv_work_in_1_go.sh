@@ -286,7 +286,7 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
 PYTHONPATH=. python -u  main.py +name=incremental \
-    load=lpm71nm1 \
+    resume=rjkq5r5n \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -302,7 +302,7 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=True \
+    experiment.reset_lr_scheduler=false \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=500 \
@@ -334,12 +334,12 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=192 \
-    experiment.training.batch_size=192 \
-    experiment.validation.batch_size=192 \
-    experiment.test.batch_size=192 \
+    algorithm.ddpo.batch_size=96 \
+    experiment.training.batch_size=96 \
+    experiment.validation.batch_size=96 \
+    experiment.test.batch_size=96 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=0 \
+    algorithm.ddpo.training_steps_start=8500 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------
