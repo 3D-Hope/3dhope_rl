@@ -298,7 +298,7 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1015000 \
+    experiment.training.max_steps=1030000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -339,7 +339,7 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     experiment.validation.batch_size=96 \
     experiment.test.batch_size=96 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=8500 \
+    algorithm.ddpo.training_steps_start=9500 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------
