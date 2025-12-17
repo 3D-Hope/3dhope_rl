@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=only_10_step_rl
-#SBATCH --nodelist=sof1-h200-2
+#SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
