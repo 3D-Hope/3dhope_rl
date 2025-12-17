@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=only_10_step_rl
-#SBATCH --nodelist=sof1-h200-0
+#SBATCH --nodelist=sof1-h200-2
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
@@ -299,7 +299,7 @@ PYTHONPATH=. python -u  main.py +name=only_10_step_rl \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=10 \
-    experiment.training.max_steps=1060000 \
+    experiment.training.max_steps=1120000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
