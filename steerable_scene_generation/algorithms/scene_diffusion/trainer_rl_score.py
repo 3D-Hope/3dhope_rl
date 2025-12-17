@@ -27,9 +27,18 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             )
         if self.incremental_training:
             self.training_steps = self.cfg.ddpo.training_steps_start
-            self.incremental_n_timesteps_to_sample = [10, 25, 40, 65, 80, 95, 110, 125, 150]
-            self.training_steps_per_increment = 1500
-        self.join_taining_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
+            self.training_steps_per_increment = 1
+            self.num_increments = 15
+        self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
+
+    def get_incremental_timesteps(self, k):
+        L = list(range(0, 895, 6))
+        n = len(L)
+        sample_sizes = list(range(10, 151, 10))
+        k = sample_sizes[k]    
+        indices = [round(i * (n - 1) / (k - 1)) for i in range(k)]
+        return [L[i] for i in indices]
+
 
     def _merge_cond_dicts(self, trajectory_groups):
         """Merge conditioning dicts from all groups into one batch."""
@@ -58,14 +67,22 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         Returns the loss.
         """
 
+        if self.incremental_training:
+            k = min(
+                (self.training_steps // self.training_steps_per_increment),
+                self.num_increments - 1,
+            )
+            n_timesteps_to_sample = self.get_incremental_timesteps(k) #send the actual timesteps
+        else:
+            n_timesteps_to_sample = self.cfg.ddpo.n_timesteps_to_sample
         # Get diffusion trajectories.
         result = self.generate_trajs_for_ddpo(
             last_n_timesteps_only=self.cfg.ddpo.last_n_timesteps_only,
-            n_timesteps_to_sample=self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment] if self.incremental_training else self.cfg.ddpo.n_timesteps_to_sample,
+            n_timesteps_to_sample=n_timesteps_to_sample,
             batch=batch,
             incremental_training=self.incremental_training,
             joint_training=self.joint_training,
-            joint_training_timesteps=self.join_taining_timesteps,
+            joint_training_timesteps=self.joint_training_timesteps,
         )
         
         # Handle different return types based on training mode
@@ -121,8 +138,11 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             
             if self.incremental_training:
                 self.training_steps += 1
+                print(f"[Ashok] Incremental training {self.training_steps} timesteps.")
                 if self.training_steps % self.training_steps_per_increment == 0:
-                    print(f"[Ashok] Incremented training to {self.incremental_n_timesteps_to_sample[self.training_steps // self.training_steps_per_increment]} timesteps.")
+                    print(
+                        f"[Ashok] Incremental training: Moving to next increment after {self.training_steps} steps. current steps: {n_timesteps_to_sample}"
+                    )
             
             # Remove initial noisy scene.
             trajectories = trajectories[

@@ -287,11 +287,11 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             # TODO: get the current training step from the trainer and figure out which phase of incremental training we are in, so that we can resume training from checkpoints
             if isinstance(self.noise_scheduler, DDIMScheduler):
                 self.noise_scheduler.set_timesteps(
-                    n_timesteps_to_sample, device=self.device
-                )
+                    self.cfg.noise_schedule.ddim.num_inference_timesteps, device=self.device
+                ) #these will be used for val, but for training we will use custom timesteps
             else:
                 raise NotImplementedError("Incremental training only implemented for DDIMScheduler.")
-            timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
+            timesteps_with_grads = set(range(len(n_timesteps_to_sample)))
 
         elif joint_training:
             if isinstance(self.noise_scheduler, DDIMScheduler):
@@ -478,10 +478,13 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # xt = torch.where(inpainting_masks, xt, original_scenes)
         # trajectory[0] = xt
         # print(f"Inpainting masks applied for {hardcoded_count} objects per scene.")
-
+        # print(f"[Ashok] Generating trajectories timesteps {self.noise_scheduler.timesteps}")
+        # print(f"[Ashok] timesteps_with_grads: {timesteps_with_grads}")
+        # import sys; sys.exit()
+        timesteps = n_timesteps_to_sample if incremental_training else self.noise_scheduler.timesteps
         for t_idx, t in enumerate(
             tqdm(
-                self.noise_scheduler.timesteps,
+                timesteps,
                 desc="  Sampling scenes (Traj generation)",
                 leave=False,
                 position=1,

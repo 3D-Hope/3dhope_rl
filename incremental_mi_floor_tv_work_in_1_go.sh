@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=incremental
-#SBATCH --nodelist=sof1-h200-0
+#SBATCH --job-name=incremental2
+#SBATCH --nodelist=sof1-h200-5
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
@@ -286,8 +286,8 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=incremental \
-    resume=rjkq5r5n \
+PYTHONPATH=. python -u  main.py +name=incremental2 \
+    load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -299,11 +299,11 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1030000 \
+    experiment.training.max_steps=1024000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=false \
+    experiment.reset_lr_scheduler=true \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=500 \
@@ -340,7 +340,7 @@ PYTHONPATH=. python -u  main.py +name=incremental \
     experiment.validation.batch_size=96 \
     experiment.test.batch_size=96 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=9500 \
+    algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------
