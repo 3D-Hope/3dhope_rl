@@ -27,17 +27,17 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             )
         if self.incremental_training:
             self.training_steps = self.cfg.ddpo.training_steps_start
-            self.training_steps_per_increment = 1
+            self.training_steps_per_increment = 2000
             self.num_increments = 15
         self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
 
-    def get_incremental_timesteps(self, k):
-        L = list(range(0, 895, 6))
-        n = len(L)
-        sample_sizes = list(range(10, 151, 10))
-        k = sample_sizes[k]    
-        indices = [round(i * (n - 1) / (k - 1)) for i in range(k)]
-        return [L[i] for i in indices]
+    # def get_incremental_timesteps(self, k):
+    #     L = list(range(0, 895, 6))
+    #     n = len(L)
+    #     sample_sizes = list(range(10, 151, 10))
+    #     k = sample_sizes[k]    
+    #     indices = [round(i * (n - 1) / (k - 1)) for i in range(k)]
+    #     return [L[i] for i in indices]
 
 
     def _merge_cond_dicts(self, trajectory_groups):
@@ -72,7 +72,8 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 (self.training_steps // self.training_steps_per_increment),
                 self.num_increments - 1,
             )
-            n_timesteps_to_sample = self.get_incremental_timesteps(k) #send the actual timesteps
+            n_timesteps_to_sample = list(range(10, 151, 150//self.num_increments))[k]
+            
         else:
             n_timesteps_to_sample = self.cfg.ddpo.n_timesteps_to_sample
         # Get diffusion trajectories.
