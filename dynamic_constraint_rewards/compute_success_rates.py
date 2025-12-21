@@ -116,7 +116,7 @@ def sample_scenes_from_baseline(
         f"algorithm.custom.loss=true",
         f"algorithm.ema.use=True",
         f"algorithm.noise_schedule.scheduler=ddim",
-        f"algorithm.noise_schedule.ddim.num_inference_timesteps=150",
+        f"algorithm.noise_schedule.ddim.num_inference_timesteps={config.algorithm.noise_schedule.ddim.num_inference_timesteps}",
         f"dataset.model_path_vec_len=30",
         f"dataset.data.path_to_processed_data={config.dataset.data.path_to_processed_data}",
         f"dataset.data.room_type={config.dataset.data.room_type}",

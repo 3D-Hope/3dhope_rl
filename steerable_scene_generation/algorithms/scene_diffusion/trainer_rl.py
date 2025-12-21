@@ -235,6 +235,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         incremental_training: bool = False,
         joint_training: bool = False,
         joint_training_timesteps: list[int] | None = None,
+        phase: str = "training",
     ) -> Tuple[torch.Tensor | list, torch.Tensor | None, dict | None]:
         """
         Generate denoising trajectories for DDPO.
@@ -482,6 +483,8 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # print(f"[Ashok] timesteps_with_grads: {timesteps_with_grads}")
         # import sys; sys.exit()
         timesteps = self.noise_scheduler.timesteps
+        # if phase != "training":
+        #     print(f"[Ashok] {phase} phase, timesteps: {timesteps}")
         for t_idx, t in enumerate(
             tqdm(
                 timesteps,
@@ -872,7 +875,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
         return advantages
 
-    def compute_ddpm_loss(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def compute_ddpm_loss(self, batch: Dict[str, torch.Tensor], num_train_timesteps: int| None=None) -> torch.Tensor:
         """
         DDPM forward pass.
         This is a replication of the DDPM forward pass in the `trainer_ddpm.py` file
@@ -887,7 +890,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         timesteps = (
             torch.randint(
                 0,
-                self.noise_scheduler.config.num_train_timesteps,
+                num_train_timesteps if num_train_timesteps is not None else self.noise_scheduler.config.num_train_timesteps,
                 (scenes.shape[0],),
             )
             .long()

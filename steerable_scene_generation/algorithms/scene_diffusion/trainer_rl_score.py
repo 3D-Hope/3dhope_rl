@@ -1,7 +1,7 @@
 from typing import Dict
 
 import torch
-
+import numpy as np
 from steerable_scene_generation.datasets.scene.scene import SceneDataset
 
 from .trainer_rl import SceneDiffuserTrainerRL
@@ -26,9 +26,12 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 "Cannot have both incremental_training and joint_training set to True."
             )
         if self.incremental_training:
+            self.min_denoising_steps = 10
+            self.max_denoising_steps = 100
             self.training_steps = self.cfg.ddpo.training_steps_start
-            self.training_steps_per_increment = 2000
-            self.num_increments = 15
+            self.training_steps_per_increment = [6000, 5500, 5100, 4800, 4600, 4300, 4100, 3900, 3700, 3600]
+            self.cum_sum_steps = np.cumsum(self.training_steps_per_increment).tolist()
+            self.num_increments = len(self.training_steps_per_increment)
         self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
 
     # def get_incremental_timesteps(self, k):
@@ -68,11 +71,15 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
         """
 
         if self.incremental_training:
-            k = min(
-                (self.training_steps // self.training_steps_per_increment),
-                self.num_increments - 1,
-            )
-            n_timesteps_to_sample = list(range(10, 151, 150//self.num_increments))[k]
+            # k = min(
+            #     (self.training_steps // self.training_steps_per_increment),
+            #     self.num_increments - 1,
+            # )
+            #  n_timesteps_to_sample = list(range(10, 151, 150//self.num_increments))[k]
+            
+            which_increment = np.searchsorted(self.cum_sum_steps, self.training_steps)
+            n_timesteps_to_sample = list(range(self.min_denoising_steps, self.max_denoising_steps + 1, self.max_denoising_steps//self.num_increments))[which_increment]
+            
             
         else:
             n_timesteps_to_sample = self.cfg.ddpo.n_timesteps_to_sample
@@ -84,6 +91,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             incremental_training=self.incremental_training,
             joint_training=self.joint_training,
             joint_training_timesteps=self.joint_training_timesteps,
+            phase=phase,
         )
         
         # Handle different return types based on training mode
@@ -137,13 +145,13 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             # Standard/incremental training - single tensor return
             trajectories, trajectories_log_props, cond_dict = result
             
-            if self.incremental_training:
+            if self.incremental_training and phase == "training":
                 self.training_steps += 1
                 print(f"[Ashok] Incremental training {self.training_steps} timesteps.")
-                if self.training_steps % self.training_steps_per_increment == 0:
-                    print(
-                        f"[Ashok] Incremental training: Moving to next increment after {self.training_steps} steps. current steps: {n_timesteps_to_sample}"
-                    )
+                # if self.training_steps % self.training_steps_per_increment == 0:
+                #     print(
+                #         f"[Ashok] Incremental training: Moving to next increment after {self.training_steps} steps. current steps: {n_timesteps_to_sample}"
+                #     )
             
             # Remove initial noisy scene.
             trajectories = trajectories[
@@ -166,6 +174,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             if self.cfg.ddpo.ddpm_reg_weight > 0.0:
                 # ddpm_loss = self.compute_ddpm_loss(batch)
                 ddpm_loss = self.compute_ddpm_loss(cond_dict)
+                # ddpm_loss = self.compute_ddpm_loss(cond_dict, num_train_timesteps=n_timesteps_to_sample) #TODO: try this for incremental
                 loss += ddpm_loss * self.cfg.ddpo.ddpm_reg_weight
                 print(
                     f"[Ashok] reg ddpm loss values: {ddpm_loss.item()*self.cfg.ddpo.ddpm_reg_weight}"

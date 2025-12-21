@@ -142,7 +142,7 @@ def get_object_present_reward_potential(one_hot, class_label, idx_to_labels,
         )
     )
     
-    return rewards
+    return rewards # range [-21, 1]  #-18
 
 def has_x_meter_clearance(parsed_scenes, x, direction):
     """
