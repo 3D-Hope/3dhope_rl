@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=joint
+#SBATCH --job-name=joint_1221
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -286,7 +286,7 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=joint \
+PYTHONPATH=. python -u  main.py +name=joint_1221 \
     resume=j05apmmf \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \

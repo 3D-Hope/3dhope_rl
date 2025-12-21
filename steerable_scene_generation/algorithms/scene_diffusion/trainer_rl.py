@@ -302,12 +302,13 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 
                 # Distribute batch across timestep counts
                 samples_per_group = self.cfg.ddpo.batch_size // len(joint_training_timesteps)
-                remaining = self.cfg.ddpo.batch_size % len(joint_training_timesteps)
+                # remaining = self.cfg.ddpo.batch_size % len(joint_training_timesteps)
                 
                 start_idx = 0
                 for group_idx, n_steps in enumerate(joint_training_timesteps):
                     # Handle uneven distribution (extra samples go to first groups)
-                    group_size = samples_per_group + (1 if group_idx < remaining else 0)
+                    # group_size = samples_per_group + (1 if group_idx < remaining else 0)
+                    group_size = samples_per_group
                     
                     if group_size == 0:
                         continue
