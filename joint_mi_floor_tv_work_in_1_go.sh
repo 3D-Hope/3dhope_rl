@@ -287,7 +287,7 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
 PYTHONPATH=. python -u  main.py +name=joint_1221 \
-    resume=j05apmmf \
+    load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
