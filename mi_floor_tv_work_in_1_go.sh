@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=only_10_step_rl
+#SBATCH --job-name=100_step_rl
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -286,8 +286,8 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=only_10_step_rl \
-    resume=vhjy482g \
+PYTHONPATH=. python -u  main.py +name=100_step_rl \
+    load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -298,17 +298,17 @@ PYTHONPATH=. python -u  main.py +name=only_10_step_rl \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
-    algorithm.noise_schedule.ddim.num_inference_timesteps=10 \
-    experiment.training.max_steps=1120000 \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=100 \
+    experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=false \
+    experiment.reset_lr_scheduler=true \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
-    experiment.training.checkpointing.every_n_train_steps=500 \
+    experiment.training.checkpointing.every_n_train_steps=2000 \
     algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=10 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
@@ -335,10 +335,10 @@ PYTHONPATH=. python -u  main.py +name=only_10_step_rl \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=384 \
-    experiment.training.batch_size=384 \
-    experiment.validation.batch_size=384 \
-    experiment.test.batch_size=384 \
+    algorithm.ddpo.batch_size=192 \
+    experiment.training.batch_size=192 \
+    experiment.validation.batch_size=192 \
+    experiment.test.batch_size=192 \
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False
