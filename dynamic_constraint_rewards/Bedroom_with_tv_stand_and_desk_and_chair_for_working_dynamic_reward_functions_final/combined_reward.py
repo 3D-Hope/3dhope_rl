@@ -77,11 +77,13 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     base_rewards[num_properly_placed == 0] = -2.0  # Penalty for none
 
     # Add individual penalties for over/underplacement
-    individual_penalties = (
-        tv_stand_reward + desk_reward + chair_reward - num_properly_placed
-    )
-    # Total reward: base + individual penalties
-    total_rewards = base_rewards + individual_penalties
+    # individual_penalties = (
+    #     tv_stand_reward + desk_reward + chair_reward - num_properly_placed
+    # )
+    # # Total reward: base + individual penalties
+    # total_rewards = base_rewards + individual_penalties
+    #simplified reward 
+    total_rewards = base_rewards
 
     return total_rewards
 
