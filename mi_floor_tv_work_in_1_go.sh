@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=100_step_rl
+#SBATCH --job-name=normal_rl
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -286,7 +286,7 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=100_step_rl \
+PYTHONPATH=. python -u  main.py +name=normal_rl \
     load=lpm71nm1 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -298,7 +298,7 @@ PYTHONPATH=. python -u  main.py +name=100_step_rl \
     algorithm.ema.use=True \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
-    algorithm.noise_schedule.ddim.num_inference_timesteps=100 \
+    algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=1020000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
