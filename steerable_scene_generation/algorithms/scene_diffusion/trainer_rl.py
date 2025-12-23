@@ -317,7 +317,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     
                     # Set scheduler for this group's timestep count
                     self.noise_scheduler.set_timesteps(n_steps, device=self.device)
-                    
+                    # print(f"[Ashok] n_steps: {n_steps}, timesteps: {self.noise_scheduler.timesteps}")
                     # Sample subset of conditioning for this group
                     if batch is not None:
                         # Slice the batch to get the correct subset for this group

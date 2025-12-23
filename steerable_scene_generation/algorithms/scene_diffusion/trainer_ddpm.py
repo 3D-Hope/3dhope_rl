@@ -193,12 +193,34 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
         # target_class = noise[..., class_indices]
 
         # Calculate your custom losses
-        loss = (noise - predicted_noise) ** 2
+        # loss = (noise - predicted_noise) ** 2
         
-        pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
-        size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
-        rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
-        class_loss = loss[:,:,class_indices].mean(dim=(0,1,2))
+        # pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
+        # size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
+        # rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
+        # class_loss = loss[:,:,class_indices].mean(dim=(0,1,2))
+        pos_loss = F.mse_loss(
+            predicted_noise[..., pos_indices],
+            noise[..., pos_indices],
+        )
+        size_loss = F.mse_loss(
+            predicted_noise[..., size_indices],
+            noise[..., size_indices],
+        )
+        rot_loss = F.mse_loss(
+            predicted_noise[..., rot_indices],
+            noise[..., rot_indices],
+        )
+        class_loss = F.mse_loss(
+            predicted_noise[..., class_indices],
+            noise[..., class_indices],
+        )
+        loss = (
+            pos_loss
+            + size_loss
+            + rot_loss
+            + class_loss
+        )
         # # Weight the losses as needed (you can make these configurable)
         # pos_weight = 1.0
         # size_weight = 1.0
@@ -217,8 +239,9 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             # else 0.0,
         }
 
+        total_loss = loss
         # Calculate base loss
-        total_loss = loss.mean(dim=(0,1,2))
+        # total_loss = loss.mean(dim=(0,1,2))
         # if objfeat_32_loss is not None:
         #     total_loss += objfeat_32_weight * objfeat_32_loss
 
