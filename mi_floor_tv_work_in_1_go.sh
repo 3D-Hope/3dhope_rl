@@ -286,8 +286,10 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
+    # checkpoint_version=20 \
 PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss \
-    load=gtjphzpb \
+    load=y1l2dhm3 \
+    checkpoint_version=7 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
