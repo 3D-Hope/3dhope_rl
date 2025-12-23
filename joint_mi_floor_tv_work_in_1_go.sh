@@ -304,7 +304,7 @@ PYTHONPATH=. python -u  main.py +name=joint_1223 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=false \
+    experiment.reset_lr_scheduler=true \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=500 \
