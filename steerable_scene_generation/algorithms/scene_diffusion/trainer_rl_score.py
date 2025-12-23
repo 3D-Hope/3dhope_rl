@@ -30,6 +30,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             self.max_denoising_steps = 100
             self.training_steps = self.cfg.ddpo.training_steps_start
             self.training_steps_per_increment = [6000, 5500, 5100, 4800, 4600, 4300, 4100, 3900, 3700, 3600]
+            # self.training_steps_per_increment = [1 for _ in range(10)]  # For testing
             self.cum_sum_steps = np.cumsum(self.training_steps_per_increment).tolist()
             self.num_increments = len(self.training_steps_per_increment)
         # self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
