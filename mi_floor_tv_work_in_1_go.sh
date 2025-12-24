@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=normal_rl_separated_loss
+#SBATCH --job-name=normal_rl_separated_loss_1225
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -287,7 +287,7 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
     # checkpoint_version=20 \
-PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss \
+PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1225 \
     load=y1l2dhm3 \
     checkpoint_version=7 \
     dataset=custom_scene \
@@ -301,7 +301,7 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1020000 \
+    experiment.training.max_steps=100000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
