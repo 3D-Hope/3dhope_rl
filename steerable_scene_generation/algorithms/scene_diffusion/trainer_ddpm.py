@@ -95,6 +95,55 @@ def compute_ddpm_loss(
     Returns:
         The computed loss value.
     """
+    if cfg.custom.loss:
+        num_classes = self.cfg.custom.num_classes
+        pos_indices = list(
+            range(
+                0, 3
+            )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
+        )  # Next 3 dimensions for position
+        size_indices = list(
+            range(
+                len(pos_indices),
+                len(pos_indices) + 3,
+            )
+        )  # Next 3 dimensions for size
+        rot_indices = list(
+            range(
+                len(pos_indices) + len(size_indices),
+                len(pos_indices) + len(size_indices) + 2,
+            )
+        )  # Next 2 dimensions for rotation
+        class_indices = list(
+            range(
+                len(pos_indices) + len(size_indices) + len(rot_indices),
+                len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+            )
+        )
+        pos_loss = F.mse_loss(
+            predicted_noise[..., pos_indices],
+            noise[..., pos_indices],
+        )
+        size_loss = F.mse_loss(
+            predicted_noise[..., size_indices],
+            noise[..., size_indices],
+        )
+        rot_loss = F.mse_loss(
+            predicted_noise[..., rot_indices],
+            noise[..., rot_indices],
+        )
+        class_loss = F.mse_loss(
+            predicted_noise[..., class_indices],
+            noise[..., class_indices],
+        )
+        loss = (
+            pos_loss
+            + size_loss
+            + rot_loss
+            + class_loss
+        )
+        return loss
+        
     if cfg.loss.use_separate_loss_per_object_attribute:
         return compute_attribute_weighted_ddpm_loss(
             predicted_noise=predicted_noise,
