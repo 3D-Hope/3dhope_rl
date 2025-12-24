@@ -96,7 +96,7 @@ def compute_ddpm_loss(
         The computed loss value.
     """
     if cfg.custom.loss:
-        num_classes = self.cfg.custom.num_classes
+        num_classes = cfg.custom.num_classes
         pos_indices = list(
             range(
                 0, 3
