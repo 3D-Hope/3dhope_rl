@@ -10,7 +10,8 @@ BASE_DIR="/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/ste
 # Array of pickle files to evaluate with floor conditioning info
 # Format: "pkl_file|use_floor"
 PKL_FILES_WITH_FLAGS=(
-    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-15/05-16-46/sampled_scenes_results.pkl|with_floor" # ver 10 universal + dynamic rl
+    "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-24/16-04-38/sampled_scenes_results.pkl|with_floor"
+    # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-15/05-16-46/sampled_scenes_results.pkl|with_floor" # ver 10 universal + dynamic rl
     # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-13/04-33-12/sampled_scenes_results.pkl|with_floor" # mi floor only dynamic rl, left side
     # "/media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-13/04-39-51/sampled_scenes_results.pkl|with_floor" # mi floor universal + dynamic rl, right side
 

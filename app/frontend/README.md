@@ -1,38 +1,77 @@
-# React Frontend
+# Auto-Decor Frontend
 
-Frontend application for the Scene Generation API.
+A modern React + TypeScript + Vite application for AI-powered 3D scene generation.
 
-## Setup
+## Features
 
-1. Install dependencies:
+- 🎨 Custom polygon floor plan drawing
+- 🤖 AI-powered scene generation
+- 📐 Interactive 3D visualization
+- 🚀 Fast development with Vite
+- 💪 TypeScript for type safety
+- 🧩 Component-based architecture
+
+## Getting Started
+
+### Install Dependencies
+
 ```bash
 npm install
 ```
 
-## Running
+### Development
 
-Start the development server:
 ```bash
-npm start
+npm run dev
 ```
 
-The app will open at `http://localhost:3000`
+The app will be available at `http://localhost:3000`
 
-## Building for Production
+### Build
 
 ```bash
 npm run build
 ```
 
-This creates an optimized production build in the `build` folder.
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── LandingPage.tsx
+│   ├── Generator.tsx
+│   ├── PolygonCanvas.tsx
+│   └── ThreeJSGLBViewer.tsx
+├── types/              # TypeScript type definitions
+│   └── index.ts
+├── utils/              # Utility functions
+│   └── api.ts
+├── assets/             # Static assets (images)
+├── App.tsx             # Main app component with routing
+├── App.css             # Styles
+├── main.tsx            # Entry point
+└── index.css           # Global styles
+```
 
 ## Environment Variables
 
-You can set the API URL by creating a `.env` file:
+Create a `.env` file in the root directory:
+
 ```
-REACT_APP_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 ```
 
+## Tech Stack
 
-
-
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **React Router** - Client-side routing
+- **Three.js** - 3D visualization
+- **Axios** - HTTP client

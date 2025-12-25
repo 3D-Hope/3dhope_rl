@@ -4,6 +4,7 @@ FastAPI backend server for running scene generation sampling.
 import asyncio
 import os
 import subprocess
+
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +12,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+import numpy as np
+import json
 
 app = FastAPI(title="Scene Generation API", version="1.0.0")
 
@@ -29,35 +32,98 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 class SamplingRequest(BaseModel):
     """Request model for sampling scenes."""
-    num_scenes: int = Field(default=10, ge=1, le=1000, description="Number of scenes to generate")
-    existing_output_dir: Optional[str] = Field(default=None, description="Path to existing output directory to skip sampling")
+
+    num_scenes: int = Field(
+        default=10, ge=1, le=1000, description="Number of scenes to generate"
+    )
+    existing_output_dir: Optional[str] = Field(
+        default=None, description="Path to existing output directory to skip sampling"
+    )
     load: str = Field(default="rrudae6n", description="Model checkpoint to load")
     dataset: str = Field(default="custom_scene", description="Dataset name")
     dataset_processed_scene_data_path: str = Field(
         default="data/metadatas/custom_scene_metadata.json",
-        description="Path to processed scene data"
+        description="Path to processed scene data",
     )
     dataset_max_num_objects_per_scene: int = Field(
-        default=12,
-        description="Maximum number of objects per scene"
+        default=12, description="Maximum number of objects per scene"
     )
-    algorithm: str = Field(default="scene_diffuser_midiffusion", description="Algorithm to use")
+    algorithm: str = Field(
+        default="scene_diffuser_midiffusion", description="Algorithm to use"
+    )
     algorithm_trainer: str = Field(default="ddpm", description="Trainer type")
-    experiment_find_unused_parameters: bool = Field(default=True, description="Find unused parameters")
-    algorithm_classifier_free_guidance_use: bool = Field(default=False, description="Use classifier-free guidance")
-    algorithm_classifier_free_guidance_use_floor: bool = Field(default=True, description="Use floor in guidance")
-    algorithm_classifier_free_guidance_weight: int = Field(default=1, description="Guidance weight")
+    experiment_find_unused_parameters: bool = Field(
+        default=True, description="Find unused parameters"
+    )
+    algorithm_classifier_free_guidance_use: bool = Field(
+        default=False, description="Use classifier-free guidance"
+    )
+    algorithm_classifier_free_guidance_use_floor: bool = Field(
+        default=True, description="Use floor in guidance"
+    )
+    algorithm_classifier_free_guidance_weight: int = Field(
+        default=1, description="Guidance weight"
+    )
     algorithm_custom_loss: bool = Field(default=True, description="Use custom loss")
     algorithm_ema_use: bool = Field(default=True, description="Use EMA")
-    algorithm_noise_schedule_scheduler: str = Field(default="ddim", description="Noise schedule scheduler")
+    algorithm_noise_schedule_scheduler: str = Field(
+        default="ddim", description="Noise schedule scheduler"
+    )
     algorithm_noise_schedule_ddim_num_inference_timesteps: int = Field(
-        default=150,
-        description="Number of inference timesteps"
+        default=150, description="Number of inference timesteps"
+    )
+
+
+class PolygonPoint(BaseModel):
+    """A point in the polygon (x, z coordinates)."""
+    x: float = Field(description="X coordinate")
+    z: float = Field(description="Z coordinate")
+
+
+class PolygonSamplingRequest(BaseModel):
+    """Request model for polygon-based scene generation."""
+    
+    polygon_points: list[PolygonPoint] = Field(
+        description="List of polygon corner points (x, z coordinates)"
+    )
+    num_scenes: int = Field(
+        default=5, ge=1, le=1000, description="Number of scenes to generate"
+    )
+    load: str = Field(default="gtjphzpb", description="Model checkpoint to load")
+    dataset: str = Field(default="custom_scene", description="Dataset name")
+    dataset_processed_scene_data_path: str = Field(
+        default="data/metadatas/custom_scene_metadata.json",
+        description="Path to processed scene data",
+    )
+    dataset_max_num_objects_per_scene: int = Field(
+        default=12, description="Maximum number of objects per scene"
+    )
+    algorithm: str = Field(
+        default="scene_diffuser_midiffusion", description="Algorithm to use"
+    )
+    algorithm_trainer: str = Field(default="rl_score", description="Trainer type")
+    experiment_find_unused_parameters: bool = Field(
+        default=True, description="Find unused parameters"
+    )
+    algorithm_classifier_free_guidance_use: bool = Field(
+        default=False, description="Use classifier-free guidance"
+    )
+    algorithm_classifier_free_guidance_use_floor: bool = Field(
+        default=True, description="Use floor in guidance"
+    )
+    algorithm_custom_loss: bool = Field(default=True, description="Use custom loss")
+    algorithm_ema_use: bool = Field(default=True, description="Use EMA")
+    algorithm_noise_schedule_scheduler: str = Field(
+        default="ddim", description="Noise schedule scheduler"
+    )
+    algorithm_noise_schedule_ddim_num_inference_timesteps: int = Field(
+        default=150, description="Number of inference timesteps"
     )
 
 
 class SamplingResponse(BaseModel):
     """Response model for sampling request."""
+
     status: str
     message: str
     task_id: Optional[str] = None
@@ -66,6 +132,7 @@ class SamplingResponse(BaseModel):
 
 class TaskStatus(BaseModel):
     """Task status model."""
+
     task_id: str
     status: str  # "running", "completed", "failed"
     message: str
@@ -81,11 +148,11 @@ def build_sampling_command(request: SamplingRequest) -> list[str]:
     # Use custom_sample_and_render.py from scripts directory
     # Run from project root with PYTHONPATH=. (as per user's exact command)
     sampling_script = PROJECT_ROOT / "scripts" / "custom_sample_and_render.py"
-    
+
     # Ensure the script exists
     if not sampling_script.exists():
         raise FileNotFoundError(f"Sampling script not found at {sampling_script}")
-    
+
     # Process path - convert absolute to relative if needed, or keep relative
     processed_path = request.dataset_processed_scene_data_path
     if os.path.isabs(processed_path):
@@ -95,7 +162,7 @@ def build_sampling_command(request: SamplingRequest) -> list[str]:
         except ValueError:
             # If paths are on different drives, keep absolute
             pass
-    
+
     # Build command exactly as user specified - run from project root
     # Order matches user's command exactly
     cmd = [
@@ -139,62 +206,66 @@ async def run_sampling_task(request: SamplingRequest, task_id: str):
         status="running",
         message="Starting sampling process...",
     )
-    
+
     try:
         # Check if using existing output directory
         if request.existing_output_dir:
             output_dir = Path(request.existing_output_dir)
-            
+
             # Handle relative paths
             if not output_dir.is_absolute():
                 output_dir = PROJECT_ROOT / output_dir
-            
+
             if not output_dir.exists():
                 tasks[task_id].status = "failed"
-                tasks[task_id].message = f"Error: Output directory does not exist: {output_dir}"
+                tasks[
+                    task_id
+                ].message = f"Error: Output directory does not exist: {output_dir}"
                 return
-            
+
             # Check if directory has PNG and GLB files
             png_files = list(output_dir.glob("*.png"))
             glb_files = list(output_dir.glob("*.glb"))
-            
+
             if not png_files:
                 tasks[task_id].status = "failed"
                 tasks[task_id].message = f"Error: No PNG files found in {output_dir}"
                 return
-            
+
             if not glb_files:
                 tasks[task_id].status = "failed"
                 tasks[task_id].message = f"Error: No GLB files found in {output_dir}"
                 return
-            
+
             # Successfully using existing output
             tasks[task_id].status = "completed"
             tasks[task_id].output_dir = str(output_dir)
-            tasks[task_id].message = f"Using existing output directory: {output_dir}\n\nFound {len(png_files)} PNG files and {len(glb_files)} GLB files.\n\nSkipped sampling and rendering."
+            tasks[
+                task_id
+            ].message = f"Using existing output directory: {output_dir}\n\nFound {len(png_files)} PNG files and {len(glb_files)} GLB files.\n\nSkipped sampling and rendering."
             return
-        
+
         try:
             cmd = build_sampling_command(request)
         except FileNotFoundError as e:
             tasks[task_id].status = "failed"
             tasks[task_id].message = f"Error: {str(e)}"
             return
-        
+
         # Set up environment - exactly as user specified
         env = os.environ.copy()
         env["PYTHONPATH"] = "."  # User specified PYTHONPATH=.
         env["HYDRA_FULL_ERROR"] = "1"  # Enable full Hydra error messages
-        
+
         # Check if .venv exists and use its python
         venv_python = PROJECT_ROOT / ".venv" / "bin" / "python"
         python_cmd = "python"
         if venv_python.exists():
             python_cmd = str(venv_python)
             cmd[0] = python_cmd
-        
+
         tasks[task_id].message = f"Running command: {' '.join(cmd)}"
-        
+
         # Run from project root (as user specified) - not from scripts/
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -203,29 +274,29 @@ async def run_sampling_task(request: SamplingRequest, task_id: str):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        
+
         # Read output in real-time
         stdout_lines = []
         stderr_lines = []
-        
+
         async def read_stream(stream, lines_list):
             while True:
                 line = await stream.readline()
                 if not line:
                     break
-                decoded_line = line.decode('utf-8', errors='ignore')
+                decoded_line = line.decode("utf-8", errors="ignore")
                 lines_list.append(decoded_line)
                 # Update status with last few lines
                 if len(lines_list) > 10:
                     tasks[task_id].message = "\n".join(lines_list[-5:])
-        
+
         await asyncio.gather(
             read_stream(process.stdout, stdout_lines),
             read_stream(process.stderr, stderr_lines),
         )
-        
+
         await process.wait()
-        
+
         if process.returncode == 0:
             # Find the output directory (Hydra creates output directories)
             # Look for the most recent output directory
@@ -235,28 +306,30 @@ async def run_sampling_task(request: SamplingRequest, task_id: str):
                 output_dirs = sorted(
                     outputs_dir.glob("*/*"),
                     key=lambda p: p.stat().st_mtime if p.exists() else 0,
-                    reverse=True
+                    reverse=True,
                 )
                 if output_dirs:
                     output_dir = Path(output_dirs[0])
                     tasks[task_id].output_dir = str(output_dir)
-                    
+
                     # Run render script after sampling completes
                     pkl_path = output_dir / "sampled_scenes_results.pkl"
                     if pkl_path.exists():
-                        tasks[task_id].message = f"Sampling completed! Starting rendering...\n\nOutput:\n{''.join(stdout_lines[-20:])}"
-                        
-                        # Run render script (3D version that generates PNG and GLB)
+                        tasks[
+                            task_id
+                        ].message = f"Sampling completed! Starting rendering...\n\nOutput:\n{''.join(stdout_lines[-20:])}"
+
+                        # Run render script (3D version that generates PNG and GLB with custom floor support)
                         render_cmd = [
                             "python",
-                            "../ThreedFront/scripts/render_results_3d.py",
+                            "../ThreedFront/scripts/render_results_3d_custom_floor.py",
                             str(pkl_path),
                             "--retrieve_by_size",
                         ]
-                        
+
                         # Use venv python if available
                         render_cmd[0] = python_cmd
-                        
+
                         render_process = await asyncio.create_subprocess_exec(
                             *render_cmd,
                             cwd=str(PROJECT_ROOT),
@@ -264,47 +337,301 @@ async def run_sampling_task(request: SamplingRequest, task_id: str):
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.STDOUT,
                         )
-                        
+
                         render_stdout_lines = []
+
                         async def read_render_stream(stream):
                             while True:
                                 line = await stream.readline()
                                 if not line:
                                     break
-                                decoded_line = line.decode('utf-8', errors='ignore')
+                                decoded_line = line.decode("utf-8", errors="ignore")
                                 render_stdout_lines.append(decoded_line)
                                 # Update status with render progress
                                 if len(render_stdout_lines) > 10:
-                                    tasks[task_id].message = f"Rendering...\n{''.join(render_stdout_lines[-5:])}"
-                        
+                                    tasks[
+                                        task_id
+                                    ].message = f"Rendering...\n{''.join(render_stdout_lines[-5:])}"
+
                         await read_render_stream(render_process.stdout)
                         await render_process.wait()
-                        
+
                         if render_process.returncode == 0:
                             tasks[task_id].status = "completed"
-                            tasks[task_id].message = f"Sampling and rendering completed successfully!\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
+                            tasks[
+                                task_id
+                            ].message = f"Sampling and rendering completed successfully!\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
                         else:
-                            tasks[task_id].status = "completed"  # Sampling succeeded, rendering may have failed
-                            tasks[task_id].message = f"Sampling completed but rendering had issues.\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
+                            tasks[
+                                task_id
+                            ].status = "completed"  # Sampling succeeded, rendering may have failed
+                            tasks[
+                                task_id
+                            ].message = f"Sampling completed but rendering had issues.\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
                     else:
                         tasks[task_id].status = "completed"
-                        tasks[task_id].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}\n\nNote: sampled_scenes_results.pkl not found, skipping rendering."
+                        tasks[
+                            task_id
+                        ].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}\n\nNote: sampled_scenes_results.pkl not found, skipping rendering."
                 else:
                     output_dir = None
                     tasks[task_id].status = "completed"
-                    tasks[task_id].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}"
+                    tasks[
+                        task_id
+                    ].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}"
             else:
                 output_dir = None
                 tasks[task_id].status = "completed"
-                tasks[task_id].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}"
+                tasks[
+                    task_id
+                ].message = f"Sampling completed successfully!\n\nOutput:\n{''.join(stdout_lines[-20:])}"
         else:
             tasks[task_id].status = "failed"
-            error_output = ''.join(stderr_lines[-20:]) if stderr_lines else ''.join(stdout_lines[-20:])
-            tasks[task_id].message = f"Sampling failed with return code {process.returncode}\n\nError:\n{error_output}"
-    
+            error_output = (
+                "".join(stderr_lines[-20:])
+                if stderr_lines
+                else "".join(stdout_lines[-20:])
+            )
+            tasks[
+                task_id
+            ].message = f"Sampling failed with return code {process.returncode}\n\nError:\n{error_output}"
+
     except Exception as e:
         tasks[task_id].status = "failed"
         tasks[task_id].message = f"Error running sampling: {str(e)}"
+
+
+async def run_polygon_sampling_task(request: PolygonSamplingRequest, task_id: str):
+    """Run the polygon-based sampling task asynchronously."""
+    tasks[task_id] = TaskStatus(
+        task_id=task_id,
+        status="running",
+        message="Starting polygon-based scene generation...",
+    )
+
+    try:
+        # Create tmp directory if it doesn't exist
+        tmp_dir = PROJECT_ROOT / "tmp"
+        tmp_dir.mkdir(exist_ok=True)
+        
+        # Step 1: Save polygon to numpy file
+        tasks[task_id].message = "Step 1/5: Saving polygon input..."
+        polygon_array = np.array([[p.x, p.z] for p in request.polygon_points], dtype=np.float32)
+        # print("polygon_array", polygon_array)
+        polygon_path = tmp_dir / "polygon_world.npy"
+        np.save(polygon_path, polygon_array)
+        
+        # Step 2: Generate floor plan NPZ
+        tasks[task_id].message = "Step 2/5: Generating floor plan mesh..."
+        floor_plan_path = tmp_dir / "floor_plan_world.npz"
+        generate_floor_plan_cmd = [
+            "python",
+            "scripts/generate_floor_plan_from_polygon.py",
+            str(polygon_path),
+            "--output",
+            str(floor_plan_path),
+        ]
+        
+        env = os.environ.copy()
+        env["PYTHONPATH"] = "."
+        venv_python = PROJECT_ROOT / ".venv" / "bin" / "python"
+        python_cmd = "python"
+        if venv_python.exists():
+            python_cmd = str(venv_python)
+            generate_floor_plan_cmd[0] = python_cmd
+        
+        process = await asyncio.create_subprocess_exec(
+            *generate_floor_plan_cmd,
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process.wait()
+        
+        if process.returncode != 0:
+            stderr = (await process.stderr.read()).decode()
+            tasks[task_id].status = "failed"
+            tasks[task_id].message = f"Failed to generate floor plan: {stderr}"
+            return
+        
+        # Step 3: Generate FPBPN
+        tasks[task_id].message = "Step 3/5: Generating FPBPN from floor plan..."
+        fpbpn_path = tmp_dir / "polygon_world_fpbpn.npy"
+        preprocess_cmd = [
+            python_cmd,
+            "../ThreedFront/scripts/preprocess_floorplan_custom.py",
+            str(polygon_path),
+            "--output_fpbpn",
+            str(fpbpn_path),
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *preprocess_cmd,
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process.wait()
+        
+        if process.returncode != 0:
+            stderr = (await process.stderr.read()).decode()
+            tasks[task_id].status = "failed"
+            tasks[task_id].message = f"Failed to generate FPBPN: {stderr}"
+            return
+        
+        # Step 4: Run sampling with custom FPBPN
+        tasks[task_id].message = "Step 4/5: Running scene generation..."
+        sampling_cmd = [
+            python_cmd,
+            "-u",
+            "scripts/sampling_for_app.py",
+            f"+num_scenes={request.num_scenes}",
+            f"load={request.load}",
+            f"dataset={request.dataset}",
+            f"dataset.processed_scene_data_path={request.dataset_processed_scene_data_path}",
+            f"dataset.max_num_objects_per_scene={request.dataset_max_num_objects_per_scene}",
+            f"algorithm={request.algorithm}",
+            f"algorithm.classifier_free_guidance.use={str(request.algorithm_classifier_free_guidance_use).lower()}",
+            f"algorithm.ema.use={str(request.algorithm_ema_use).lower()}",
+            f"algorithm.trainer={request.algorithm_trainer}",
+            "experiment.validation.limit_batch=1",
+            "experiment.validation.val_every_n_step=50",
+            f"experiment.find_unused_parameters={str(request.experiment_find_unused_parameters).lower()}",
+            f"algorithm.custom.loss={str(request.algorithm_custom_loss).lower()}",
+            "algorithm.validation.num_samples_to_render=0",
+            "algorithm.validation.num_samples_to_visualize=0",
+            "algorithm.validation.num_directives_to_generate=0",
+            "algorithm.test.num_samples_to_render=0",
+            "algorithm.test.num_samples_to_visualize=0",
+            "algorithm.test.num_directives_to_generate=0",
+            "algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0",
+            f"algorithm.classifier_free_guidance.use_floor={str(request.algorithm_classifier_free_guidance_use_floor).lower()}",
+            "algorithm.custom.old=False",
+            "dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm",
+            f"algorithm.noise_schedule.scheduler={request.algorithm_noise_schedule_scheduler}",
+            f"algorithm.noise_schedule.ddim.num_inference_timesteps={request.algorithm_noise_schedule_ddim_num_inference_timesteps}",
+            "wandb.mode=disabled",
+        ]
+        
+        stdout_lines = []
+        stderr_lines = []
+        
+        async def read_stream(stream, lines_list):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                decoded_line = line.decode("utf-8", errors="ignore")
+                lines_list.append(decoded_line)
+                if len(lines_list) > 10:
+                    tasks[task_id].message = f"Sampling...\n{''.join(lines_list[-5:])}"
+        
+        process = await asyncio.create_subprocess_exec(
+            *sampling_cmd,
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        
+        await asyncio.gather(
+            read_stream(process.stdout, stdout_lines),
+            read_stream(process.stderr, stderr_lines),
+        )
+        
+        await process.wait()
+        
+        if process.returncode != 0:
+            error_output = "".join(stderr_lines[-20:]) if stderr_lines else "".join(stdout_lines[-20:])
+            tasks[task_id].status = "failed"
+            tasks[task_id].message = f"Sampling failed:\n{error_output}"
+            return
+        
+        # Read output directory from tmp/output_path.txt
+        output_path_file = tmp_dir / "output_path.txt"
+        output_dir = None
+        if output_path_file.exists():
+            with open(output_path_file, "r") as f:
+                content = f.read()
+                for line in content.split("\n"):
+                    if line.startswith("OUTPUT_DIR="):
+                        output_dir = Path(line.split("=", 1)[1])
+                        break
+        
+        # Fallback: find most recent output directory
+        if output_dir is None or not output_dir.exists():
+            outputs_dir = PROJECT_ROOT / "outputs"
+            if outputs_dir.exists():
+                output_dirs = sorted(
+                    outputs_dir.glob("*/*"),
+                    key=lambda p: p.stat().st_mtime if p.exists() else 0,
+                    reverse=True,
+                )
+                if output_dirs:
+                    output_dir = output_dirs[0]
+        
+        if output_dir is None or not output_dir.exists():
+            tasks[task_id].status = "failed"
+            tasks[task_id].message = "Could not find output directory after sampling"
+            return
+        
+        tasks[task_id].output_dir = str(output_dir)
+        
+        # Step 5: Render with custom floor
+        tasks[task_id].message = "Step 5/5: Rendering scenes with custom floor..."
+        pkl_path = output_dir / "sampled_scenes_results.pkl"
+        
+        if not pkl_path.exists():
+            tasks[task_id].status = "completed"
+            tasks[task_id].message = f"Sampling completed but {pkl_path.name} not found"
+            return
+        
+        render_cmd = [
+            python_cmd,
+            "../ThreedFront/scripts/render_results_3d_custom_floor.py",
+            str(pkl_path),
+            "--floor_plan_npy",
+            str(floor_plan_path),
+            "--retrieve_by_size",
+        ]
+        
+        render_stdout_lines = []
+        
+        async def read_render_stream(stream):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                decoded_line = line.decode("utf-8", errors="ignore")
+                render_stdout_lines.append(decoded_line)
+                if len(render_stdout_lines) > 10:
+                    tasks[task_id].message = f"Rendering...\n{''.join(render_stdout_lines[-5:])}"
+        
+        render_process = await asyncio.create_subprocess_exec(
+            *render_cmd,
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        
+        await read_render_stream(render_process.stdout)
+        await render_process.wait()
+        
+        if render_process.returncode == 0:
+            tasks[task_id].status = "completed"
+            tasks[task_id].message = f"Polygon-based scene generation completed successfully!\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
+        else:
+            tasks[task_id].status = "completed"
+            tasks[task_id].message = f"Sampling completed but rendering had issues.\n\nSampling Output:\n{''.join(stdout_lines[-20:])}\n\nRendering Output:\n{''.join(render_stdout_lines[-10:])}"
+    
+    except Exception as e:
+        tasks[task_id].status = "failed"
+        tasks[task_id].message = f"Error in polygon-based generation: {str(e)}"
+        import traceback
+        tasks[task_id].message += f"\n\nTraceback:\n{traceback.format_exc()}"
 
 
 @app.get("/")
@@ -317,14 +644,39 @@ async def root():
 async def run_sampling(request: SamplingRequest):
     """Run the sampling process with the given parameters."""
     import uuid
+
     task_id = str(uuid.uuid4())
-    
+
     # Start the task asynchronously
     asyncio.create_task(run_sampling_task(request, task_id))
-    
+
     return SamplingResponse(
         status="started",
         message="Sampling task started",
+        task_id=task_id,
+    )
+
+
+@app.post("/api/sampling/run-with-polygon", response_model=SamplingResponse)
+async def run_sampling_with_polygon(request: PolygonSamplingRequest):
+    """Run the sampling process with a custom polygon floor plan."""
+    import uuid
+
+    # Validate polygon has at least 3 points
+    if len(request.polygon_points) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Polygon must have at least 3 points"
+        )
+
+    task_id = str(uuid.uuid4())
+
+    # Start the task asynchronously
+    asyncio.create_task(run_polygon_sampling_task(request, task_id))
+
+    return SamplingResponse(
+        status="started",
+        message="Polygon-based sampling task started",
         task_id=task_id,
     )
 
@@ -348,29 +700,33 @@ async def get_images(task_id: str, limit: int = 50):
     """Get list of rendered images for a task."""
     if task_id not in tasks:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task = tasks[task_id]
     if not task.output_dir:
         return {"images": [], "count": 0}
-    
+
     output_dir = Path(task.output_dir)
     if not output_dir.exists():
         return {"images": [], "count": 0}
-    
+
     # Find all PNG images in the output directory
     image_files = sorted(
         output_dir.glob("*.png"),
         key=lambda p: p.stat().st_mtime if p.exists() else 0,
-        reverse=True
+        reverse=True,
     )
-    
+
     # Limit the number of images
     image_files = image_files[:limit]
-    
+
     # Return relative paths that can be used to serve the images
     images = [f"/api/images/{task_id}/file/{img.name}" for img in image_files]
-    
-    return {"images": images, "count": len(image_files), "total": len(list(output_dir.glob("*.png")))}
+
+    return {
+        "images": images,
+        "count": len(image_files),
+        "total": len(list(output_dir.glob("*.png"))),
+    }
 
 
 @app.get("/api/images/{task_id}/file/{filename}")
@@ -378,17 +734,17 @@ async def get_image_file(task_id: str, filename: str):
     """Serve an image file."""
     if task_id not in tasks:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task = tasks[task_id]
     if not task.output_dir:
         raise HTTPException(status_code=404, detail="Output directory not found")
-    
+
     output_dir = Path(task.output_dir)
     image_path = output_dir / filename
-    
+
     if not image_path.exists() or not image_path.is_file():
         raise HTTPException(status_code=404, detail="Image not found")
-    
+
     return FileResponse(str(image_path), media_type="image/png")
 
 
@@ -397,22 +753,21 @@ async def get_model_file(task_id: str, filename: str):
     """Serve a GLB model file."""
     if task_id not in tasks:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task = tasks[task_id]
     if not task.output_dir:
         raise HTTPException(status_code=404, detail="Output directory not found")
-    
+
     output_dir = Path(task.output_dir)
     # Replace .png with .glb if filename ends with .png
-    if filename.endswith('.png'):
-        filename = filename[:-4] + '.glb'
-    elif not filename.endswith('.glb'):
-        filename = filename + '.glb'
-    
+    if filename.endswith(".png"):
+        filename = filename[:-4] + ".glb"
+    elif not filename.endswith(".glb"):
+        filename = filename + ".glb"
+
     model_path = output_dir / filename
-    
+
     if not model_path.exists() or not model_path.is_file():
         raise HTTPException(status_code=404, detail="Model file not found")
-    
-    return FileResponse(str(model_path), media_type="model/gltf-binary")
 
+    return FileResponse(str(model_path), media_type="model/gltf-binary")

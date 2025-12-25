@@ -60,7 +60,8 @@ def get_thresholds_from_user(reward_functions: Dict[str, Callable]) -> Dict[str,
             
         while True:
             try:
-                threshold_input = input(f"Threshold for '{reward_name}' (0.0-1.0): ")
+                # threshold_input = input(f"Threshold for '{reward_name}' (0.0-1.0): ")
+                threshold_input = 10.0  # For testing purposes, set a default threshold
                 threshold = float(threshold_input)
                 
                 threshold_dict[reward_name] = threshold
@@ -100,6 +101,7 @@ def sample_scenes_from_baseline(
         "python",
         "scripts/custom_sample_and_render.py",
         f"load={config.load}",
+        f"checkpoint_version={config.checkpoint_version}",
         f"dataset=custom_scene",
         f"dataset.processed_scene_data_path={config.dataset.processed_scene_data_path}",
         f"dataset.max_num_objects_per_scene={config.dataset.max_num_objects_per_scene}",
@@ -274,8 +276,12 @@ def compute_success_rates(
         print(f"Processing: {reward_name}")
         
         # Get threshold for this reward
-        reward_name = "_".join(reward_name.split("_")[1:])
-        threshold = threshold_dict.get(reward_name, 0.0)
+        # reward_name = "_".join(reward_name.split("_")[1:])
+        try:
+            threshold = threshold_dict[reward_name]
+        except:
+            raise Exception(f"Threshold not found for reward: {reward_name}")
+        
         
         # Compute rewards
         rewards = reward_func(
@@ -300,7 +306,7 @@ def compute_success_rates(
         
         # Convert to numpy array
         rewards_array = rewards.cpu().numpy() if isinstance(rewards, torch.Tensor) else np.array(rewards)
-        
+        print(f"  Rewards computed for {len(rewards_array)} scenes.")
         # Compute success metrics
         num_success = int(np.sum(rewards_array >= threshold))
         success_rate = num_success / len(rewards_array)
@@ -403,7 +409,7 @@ def main(cfg: DictConfig):
     
     # Get thresholds from user
     threshold_dict = get_thresholds_from_user(reward_functions)
-    
+    print(f"Thresholds: {threshold_dict}")
     # Sample scenes from baseline
     num_scenes = cfg.get("num_scenes", 1000)
     parsed_scenes, custom_dataset, indices, pkl_path, idx_to_labels_dict = sample_scenes_from_baseline(

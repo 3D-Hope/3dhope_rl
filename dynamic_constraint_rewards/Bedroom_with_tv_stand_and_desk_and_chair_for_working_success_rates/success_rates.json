@@ -3,24 +3,24 @@
     "combined_reward": 10.0
   },
   "results": {
-    "reward": {
-      "reward_name": "reward",
-      "threshold": 0.0,
+    "combined_reward": {
+      "reward_name": "combined_reward",
+      "threshold": 10.0,
       "num_scenes": 1000,
-      "num_success": 994,
-      "success_rate": 0.994,
-      "mean": 9.265999794006348,
-      "median": 10.0,
-      "min": -6.0,
+      "num_success": 4,
+      "success_rate": 0.004,
+      "mean": -0.47699999809265137,
+      "median": -2.0,
+      "min": -2.0,
       "max": 10.0,
-      "stddev": 2.2854418754577637,
+      "stddev": 2.4028048515319824,
       "percentiles": {
-        "p1": 0.0,
-        "p5": 4.0,
-        "p25": 10.0,
-        "p75": 10.0,
-        "p95": 10.0,
-        "p99": 10.0
+        "p1": -2.0,
+        "p5": -2.0,
+        "p25": -2.0,
+        "p75": 2.0,
+        "p95": 5.0,
+        "p99": 5.0
       }
     }
   }

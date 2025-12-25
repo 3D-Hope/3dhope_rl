@@ -10,8 +10,8 @@ if [ ! -d "node_modules" ]; then
 fi
 
 # Start the development server
-echo "Starting React frontend on http://localhost:3000"
-npm start
+echo "Starting Vite frontend on http://localhost:3000"
+npm run dev
 
 
 

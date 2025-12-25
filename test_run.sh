@@ -28,7 +28,8 @@
 
 
 PYTHONPATH=. python -u  main.py +name=test \
-    load=lpm71nm1 \
+    load=y1l2dhm3 \
+    checkpoint_version=7 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
@@ -38,16 +39,16 @@ PYTHONPATH=. python -u  main.py +name=test \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1015000 \
+    experiment.training.max_steps=1050000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=True \
+    experiment.reset_lr_scheduler=false \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=500 \
     algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=10 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
@@ -79,9 +80,9 @@ PYTHONPATH=. python -u  main.py +name=test \
     experiment.validation.batch_size=2 \
     experiment.test.batch_size=2 \
     wandb.mode=disabled \
-    algorithm.ddpo.incremental_training=true \
+    algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
-    algorithm.ddpo.joint_training=False
+    algorithm.ddpo.joint_training=false
 # PYTHONPATH=. python main.py +name=test_bed_tv_work \
 #     load=ca0l19rv \
 #     dataset=custom_scene \
