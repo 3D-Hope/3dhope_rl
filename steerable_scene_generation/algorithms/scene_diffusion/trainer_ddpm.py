@@ -136,13 +136,8 @@ def compute_ddpm_loss(
             predicted_noise[..., class_indices],
             noise[..., class_indices],
         )
-        loss = (
-            pos_loss
-            + size_loss
-            + rot_loss
-            + class_loss
-        )
-        
+        loss = pos_loss + size_loss + rot_loss + class_loss
+
         if log_fn is not None:
             batch_size = predicted_noise.shape[0]
             log_fn(
@@ -155,7 +150,7 @@ def compute_ddpm_loss(
                 batch_size=batch_size,
             )
         return loss
-        
+
     # if cfg.loss.use_separate_loss_per_object_attribute:
     #     return compute_attribute_weighted_ddpm_loss(
     #         predicted_noise=predicted_noise,
@@ -255,7 +250,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
 
         # Calculate your custom losses
         # loss = (noise - predicted_noise) ** 2
-        
+
         # pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
         # size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
         # rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
@@ -276,12 +271,7 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             predicted_noise[..., class_indices],
             noise[..., class_indices],
         )
-        loss = (
-            pos_loss
-            + size_loss
-            + rot_loss
-            + class_loss
-        )
+        loss = pos_loss + size_loss + rot_loss + class_loss
         # # Weight the losses as needed (you can make these configurable)
         # pos_weight = 1.0
         # size_weight = 1.0
