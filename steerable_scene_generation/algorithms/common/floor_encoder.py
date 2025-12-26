@@ -211,7 +211,7 @@ def get_feature_extractor(name, **kwargs):
 
 
 def load_floor_encoder_from_config(feature_encoder: str = "pointnet_simple"):
-    kwargs = {"feat_units": [4, 64, 64, 512, 64]}
+    kwargs = {"feat_units": [4, 64, 64, 512, 512]} # NOTE: last value changed to 512 from 64
     return (
         PointNet_Point(**kwargs),
         kwargs["feat_units"][-1],

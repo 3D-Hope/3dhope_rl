@@ -151,6 +151,9 @@ def compute_ddpm_loss(
                     batch_size=batch_size,
                 )
             return loss
+        else:
+            loss = F.mse_loss(predicted_noise, noise)
+            return loss
 
     # if cfg.loss.use_separate_loss_per_object_attribute:
     #     return compute_attribute_weighted_ddpm_loss(

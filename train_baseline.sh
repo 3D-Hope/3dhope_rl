@@ -1,4 +1,4 @@
-PYTHONPATH=. python main.py +name=continuous_mi_separated_loss \
+PYTHONPATH=. python main.py +name=continuous_mi_separated_loss_scaled \
 dataset=custom_scene \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 dataset.max_num_objects_per_scene=12 \
@@ -12,5 +12,5 @@ algorithm.classifier_free_guidance.use_floor=True \
 algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
 algorithm.ema.use=True \
-dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
+dataset.data.encoding_type=cached_diffusion_cosin_angle_objfeats_lat32_wocm \
 algorithm.custom.old=False \

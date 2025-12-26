@@ -344,7 +344,6 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227_from_ckpt20 
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False \
-    algorithm.loss.use_separate_loss_per_object_attribute=false
 
 # -------------------------
 # Final status
