@@ -288,8 +288,8 @@ export DISPLAY=:0
 # TODO: 
     # checkpoint_version=20 \
 PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227 \
-    load=y1l2dhm3 \
-    checkpoint_version=7 \
+    load=pcnfeqr0 \
+    checkpoint_version=20 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -301,7 +301,7 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227 \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=130000 \
+    experiment.training.max_steps=250000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -344,7 +344,7 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227 \
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False \
-    algorithm.loss.use_separate_loss_per_object_attribute=True
+    algorithm.loss.use_separate_loss_per_object_attribute=false
 
 # -------------------------
 # Final status
