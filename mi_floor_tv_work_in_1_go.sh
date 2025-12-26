@@ -287,7 +287,7 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
     # checkpoint_version=20 \
-PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1225 \
+PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227 \
     load=y1l2dhm3 \
     checkpoint_version=7 \
     dataset=custom_scene \
@@ -301,7 +301,7 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1225 \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=100000 \
+    experiment.training.max_steps=130000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -343,7 +343,8 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1225 \
     experiment.test.batch_size=192 \
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
-    algorithm.ddpo.joint_training=False
+    algorithm.ddpo.joint_training=False \
+    algorithm.loss.use_separate_loss_per_object_attribute=True
 
 # -------------------------
 # Final status

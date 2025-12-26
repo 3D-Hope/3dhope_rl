@@ -238,8 +238,7 @@ source .venv/bin/activate #mbysryxi
 
 # checkpoint_version=21 \
 PYTHONPATH=. python dynamic_constraint_rewards/compute_success_rates.py +num_scenes=1000 \
-load=q28q8ewk \
-checkpoint_version=0 \
+load=nots1b42 \
 dataset=custom_scene \
 algorithm=scene_diffuser_midiffusion \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \

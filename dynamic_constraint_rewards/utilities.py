@@ -127,26 +127,26 @@ def get_object_present_reward_potential(one_hot, class_label, idx_to_labels,
     matches_target = (object_indices == target_idx)
     num_detections = torch.sum(matches_target, dim=1).float()
     #simplified reward: +1 if at least one object is present, else 0
-    rewards = torch.where(
-        num_detections >= 1,
-        torch.ones_like(num_detections),  # At least one object: +1.0
-        torch.zeros_like(num_detections)  # No object: 0.0
-    )
+    # rewards = torch.where(
+    #     num_detections >= 1,
+    #     torch.ones_like(num_detections),  # At least one object: +1.0
+    #     torch.zeros_like(num_detections)  # No object: 0.0
+    # )
     
     # # Calculate deviation from target count
-    # deviation = num_detections - count
-    # # Shaped reward with asymmetric penalties
-    # rewards = torch.where(
-    #     deviation == 0,
-    #     torch.ones_like(num_detections),  # Perfect: +1.0
-    #     torch.where(
-    #         deviation < 0,
-    #         # Too few: -0.5 per missing object (less harsh)
-    #         deviation * underplacement_penalty,  # e.g., -1 TV: -0.5, -2 TVs: -1.0
-    #         # Too many: -2.0 per extra object (more harsh)
-    #         -deviation * overplacement_penalty  # e.g., +1 TV: -2.0, +2 TVs: -4.0
-    #     )
-    # )
+    deviation = num_detections - count
+    # Shaped reward with asymmetric penalties
+    rewards = torch.where(
+        deviation == 0,
+        torch.ones_like(num_detections),  # Perfect: +1.0
+        torch.where(
+            deviation < 0,
+            # Too few: -0.5 per missing object (less harsh)
+            deviation * underplacement_penalty,  # e.g., -1 TV: -0.5, -2 TVs: -1.0
+            # Too many: -2.0 per extra object (more harsh)
+            -deviation * overplacement_penalty  # e.g., +1 TV: -2.0, +2 TVs: -4.0
+        )
+    )
     
     return rewards # range [-21, 1]  #-18
 

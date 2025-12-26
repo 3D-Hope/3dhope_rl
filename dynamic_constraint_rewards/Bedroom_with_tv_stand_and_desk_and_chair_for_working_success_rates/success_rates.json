@@ -7,20 +7,20 @@
       "reward_name": "combined_reward",
       "threshold": 10.0,
       "num_scenes": 1000,
-      "num_success": 3,
-      "success_rate": 0.003,
-      "mean": -0.6359999775886536,
-      "median": -2.0,
+      "num_success": 263,
+      "success_rate": 0.263,
+      "mean": 4.738999843597412,
+      "median": 5.0,
       "min": -2.0,
       "max": 10.0,
-      "stddev": 2.2863736152648926,
+      "stddev": 3.845891237258911,
       "percentiles": {
         "p1": -2.0,
         "p5": -2.0,
-        "p25": -2.0,
-        "p75": 2.0,
-        "p95": 5.0,
-        "p99": 5.0
+        "p25": 2.0,
+        "p75": 10.0,
+        "p95": 10.0,
+        "p99": 10.0
       }
     }
   }

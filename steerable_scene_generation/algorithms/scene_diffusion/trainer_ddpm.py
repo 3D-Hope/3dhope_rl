@@ -96,60 +96,61 @@ def compute_ddpm_loss(
         The computed loss value.
     """
     if cfg.custom.loss:
-        num_classes = cfg.custom.num_classes
-        pos_indices = list(
-            range(
-                0, 3
-            )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
-        )  # Next 3 dimensions for position
-        size_indices = list(
-            range(
-                len(pos_indices),
-                len(pos_indices) + 3,
+        if cfg.loss.use_separate_loss_per_object_attribute:
+            num_classes = cfg.custom.num_classes
+            pos_indices = list(
+                range(
+                    0, 3
+                )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
+            )  # Next 3 dimensions for position
+            size_indices = list(
+                range(
+                    len(pos_indices),
+                    len(pos_indices) + 3,
+                )
+            )  # Next 3 dimensions for size
+            rot_indices = list(
+                range(
+                    len(pos_indices) + len(size_indices),
+                    len(pos_indices) + len(size_indices) + 2,
+                )
+            )  # Next 2 dimensions for rotation
+            class_indices = list(
+                range(
+                    len(pos_indices) + len(size_indices) + len(rot_indices),
+                    len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+                )
             )
-        )  # Next 3 dimensions for size
-        rot_indices = list(
-            range(
-                len(pos_indices) + len(size_indices),
-                len(pos_indices) + len(size_indices) + 2,
+            pos_loss = F.mse_loss(
+                predicted_noise[..., pos_indices],
+                noise[..., pos_indices],
             )
-        )  # Next 2 dimensions for rotation
-        class_indices = list(
-            range(
-                len(pos_indices) + len(size_indices) + len(rot_indices),
-                len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+            size_loss = F.mse_loss(
+                predicted_noise[..., size_indices],
+                noise[..., size_indices],
             )
-        )
-        pos_loss = F.mse_loss(
-            predicted_noise[..., pos_indices],
-            noise[..., pos_indices],
-        )
-        size_loss = F.mse_loss(
-            predicted_noise[..., size_indices],
-            noise[..., size_indices],
-        )
-        rot_loss = F.mse_loss(
-            predicted_noise[..., rot_indices],
-            noise[..., rot_indices],
-        )
-        class_loss = F.mse_loss(
-            predicted_noise[..., class_indices],
-            noise[..., class_indices],
-        )
-        loss = pos_loss + size_loss + rot_loss + class_loss
+            rot_loss = F.mse_loss(
+                predicted_noise[..., rot_indices],
+                noise[..., rot_indices],
+            )
+            class_loss = F.mse_loss(
+                predicted_noise[..., class_indices],
+                noise[..., class_indices],
+            )
+            loss = pos_loss + size_loss + rot_loss + class_loss
 
-        if log_fn is not None:
-            batch_size = predicted_noise.shape[0]
-            log_fn(
-                {
-                    "training/translation_loss": pos_loss.item(),
-                    "training/rotation_loss": rot_loss.item(),
-                    "training/class_loss": class_loss.item(),
-                    "training/size_loss": size_loss.item(),
-                },
-                batch_size=batch_size,
-            )
-        return loss
+            if log_fn is not None:
+                batch_size = predicted_noise.shape[0]
+                log_fn(
+                    {
+                        "training/translation_loss": pos_loss.item(),
+                        "training/rotation_loss": rot_loss.item(),
+                        "training/class_loss": class_loss.item(),
+                        "training/size_loss": size_loss.item(),
+                    },
+                    batch_size=batch_size,
+                )
+            return loss
 
     # if cfg.loss.use_separate_loss_per_object_attribute:
     #     return compute_attribute_weighted_ddpm_loss(
@@ -191,140 +192,144 @@ class SceneDiffuserTrainerDDPM(SceneDiffuserBaseContinous):
             total_loss: Combined loss
             loss_components: Dictionary of individual loss components
         """
-        # Define indices for your representation components
-        # print(f"[Ashok] custom loss shape of target noise {noise.shape}, pred noise {predicted_noise.shape}")
-        num_classes = self.cfg.custom.num_classes
-        pos_indices = list(
-            range(
-                0, 3
-            )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
-        )  # Next 3 dimensions for position
-        size_indices = list(
-            range(
-                len(pos_indices),
-                len(pos_indices) + 3,
+        if self.cfg.loss.use_separate_loss_per_object_attribute:
+            # Define indices for your representation components
+            # print(f"[Ashok] custom loss shape of target noise {noise.shape}, pred noise {predicted_noise.shape}")
+            num_classes = self.cfg.custom.num_classes
+            pos_indices = list(
+                range(
+                    0, 3
+                )  # oldtODO: USE cfg.algorithm.custom.num_classes and so on for these all
+            )  # Next 3 dimensions for position
+            size_indices = list(
+                range(
+                    len(pos_indices),
+                    len(pos_indices) + 3,
+                )
+            )  # Next 3 dimensions for size
+            rot_indices = list(
+                range(
+                    len(pos_indices) + len(size_indices),
+                    len(pos_indices) + len(size_indices) + 2,
+                )
+            )  # Next 2 dimensions for rotation
+            class_indices = list(
+                range(
+                    len(pos_indices) + len(size_indices) + len(rot_indices),
+                    len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+                )
             )
-        )  # Next 3 dimensions for size
-        rot_indices = list(
-            range(
-                len(pos_indices) + len(size_indices),
-                len(pos_indices) + len(size_indices) + 2,
+            # 22+3+3+2+32
+            # if int(self.cfg.custom.objfeat_dim) == 32:
+            #     objfeat_32_indices = list[int](
+            #         range(
+            #             len(class_indices)
+            #             + len(pos_indices)
+            #             + len(size_indices)
+            #             + len(rot_indices),
+            #             len(class_indices)
+            #             + len(pos_indices)
+            #             + len(size_indices)
+            #             + len(rot_indices)
+            #             + 32,
+            #         )
+            #     )
+            #     pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
+            #     target_objfeat_32 = noise[..., objfeat_32_indices]
+            #     objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
+            # else:
+            #     objfeat_32_loss = None
+            # # Extract components from your representation using your custom indices
+            # pred_pos = predicted_noise[..., pos_indices]
+            # pred_size = predicted_noise[..., size_indices]
+            # pred_rot = predicted_noise[..., rot_indices]
+            # pred_class = predicted_noise[..., class_indices]
+
+            # target_pos = noise[..., pos_indices]
+            # target_size = noise[..., size_indices]
+            # target_rot = noise[..., rot_indices]
+            # target_class = noise[..., class_indices]
+
+            # Calculate your custom losses
+            # loss = (noise - predicted_noise) ** 2
+
+            # pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
+            # size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
+            # rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
+            # class_loss = loss[:,:,class_indices].mean(dim=(0,1,2))
+            pos_loss = F.mse_loss(
+                predicted_noise[..., pos_indices],
+                noise[..., pos_indices],
             )
-        )  # Next 2 dimensions for rotation
-        class_indices = list(
-            range(
-                len(pos_indices) + len(size_indices) + len(rot_indices),
-                len(pos_indices) + len(size_indices) + len(rot_indices) + num_classes,
+            size_loss = F.mse_loss(
+                predicted_noise[..., size_indices],
+                noise[..., size_indices],
             )
-        )
-        # 22+3+3+2+32
-        # if int(self.cfg.custom.objfeat_dim) == 32:
-        #     objfeat_32_indices = list[int](
-        #         range(
-        #             len(class_indices)
-        #             + len(pos_indices)
-        #             + len(size_indices)
-        #             + len(rot_indices),
-        #             len(class_indices)
-        #             + len(pos_indices)
-        #             + len(size_indices)
-        #             + len(rot_indices)
-        #             + 32,
-        #         )
-        #     )
-        #     pred_objfeat_32 = predicted_noise[..., objfeat_32_indices]
-        #     target_objfeat_32 = noise[..., objfeat_32_indices]
-        #     objfeat_32_loss = F.mse_loss(pred_objfeat_32, target_objfeat_32)
-        # else:
-        #     objfeat_32_loss = None
-        # # Extract components from your representation using your custom indices
-        # pred_pos = predicted_noise[..., pos_indices]
-        # pred_size = predicted_noise[..., size_indices]
-        # pred_rot = predicted_noise[..., rot_indices]
-        # pred_class = predicted_noise[..., class_indices]
+            rot_loss = F.mse_loss(
+                predicted_noise[..., rot_indices],
+                noise[..., rot_indices],
+            )
+            class_loss = F.mse_loss(
+                predicted_noise[..., class_indices],
+                noise[..., class_indices],
+            )
+            loss = pos_loss + size_loss + rot_loss + class_loss
+            # # Weight the losses as needed (you can make these configurable)
+            # pos_weight = 1.0
+            # size_weight = 1.0
+            # rot_weight = 1.0
+            # class_weight = 1.0
+            # objfeat_32_weight = 1.0
 
-        # target_pos = noise[..., pos_indices]
-        # target_size = noise[..., size_indices]
-        # target_rot = noise[..., rot_indices]
-        # target_class = noise[..., class_indices]
+            # Initialize losses dictionary
+            losses_dict = {
+                "pos_loss": pos_loss.item(),
+                "size_loss": size_loss.item(),
+                "rot_loss": rot_loss.item(),
+                "class_loss": class_loss.item(),
+                # "objfeat_32_loss": objfeat_32_loss.item()
+                # if objfeat_32_loss is not None
+                # else 0.0,
+            }
 
-        # Calculate your custom losses
-        # loss = (noise - predicted_noise) ** 2
+            total_loss = loss
+            # Calculate base loss
+            # total_loss = loss.mean(dim=(0,1,2))
+            # if objfeat_32_loss is not None:
+            #     total_loss += objfeat_32_weight * objfeat_32_loss
 
-        # pos_loss = loss[:,:,pos_indices].mean(dim=(0,1,2))
-        # size_loss = loss[:,:,size_indices].mean(dim=(0,1,2))
-        # rot_loss = loss[:,:,rot_indices].mean(dim=(0,1,2))
-        # class_loss = loss[:,:,class_indices].mean(dim=(0,1,2))
-        pos_loss = F.mse_loss(
-            predicted_noise[..., pos_indices],
-            noise[..., pos_indices],
-        )
-        size_loss = F.mse_loss(
-            predicted_noise[..., size_indices],
-            noise[..., size_indices],
-        )
-        rot_loss = F.mse_loss(
-            predicted_noise[..., rot_indices],
-            noise[..., rot_indices],
-        )
-        class_loss = F.mse_loss(
-            predicted_noise[..., class_indices],
-            noise[..., class_indices],
-        )
-        loss = pos_loss + size_loss + rot_loss + class_loss
-        # # Weight the losses as needed (you can make these configurable)
-        # pos_weight = 1.0
-        # size_weight = 1.0
-        # rot_weight = 1.0
-        # class_weight = 1.0
-        # objfeat_32_weight = 1.0
+            # Apply IoU regularization if enabled
+            # if hasattr(self.cfg, "loss") and getattr(
+            #     self.cfg.loss, "use_iou_regularization", False
+            # ):
+            #     # If timesteps not provided, use a dummy value (middle of diffusion process)
+            #     if timesteps is None:
+            #         # device = predicted_noise.device
+            #         # timesteps = torch.ones(predicted_noise.shape[0], dtype=torch.long, device=device) * (self.noise_scheduler.config.num_train_timesteps // 2)
+            #         raise ValueError("Timesteps must be provided for IoU regularization.")
+            #     # Get the reconstructed data (denoise predicted_noise)
+            #     # In actual implementation, you'll need to denoise or use the appropriate
+            #     # representation for bbox calculation
+            #     recon_data = (
+            #         predicted_noise  # For simplicity, using predicted noise directly
+            #     )
 
-        # Initialize losses dictionary
-        losses_dict = {
-            "pos_loss": pos_loss.item(),
-            "size_loss": size_loss.item(),
-            "rot_loss": rot_loss.item(),
-            "class_loss": class_loss.item(),
-            # "objfeat_32_loss": objfeat_32_loss.item()
-            # if objfeat_32_loss is not None
-            # else 0.0,
-        }
+            #     # Calculate IoU regularization loss
+            #     iou_loss = self.bbox_iou_regularizer(
+            #         recon=recon_data,
+            #         t=timesteps,
+            #         num_classes=num_classes,
+            #         iou_weight=getattr(self.cfg.loss, "iou_weight", 0.1),
+            #     )
 
-        total_loss = loss
-        # Calculate base loss
-        # total_loss = loss.mean(dim=(0,1,2))
-        # if objfeat_32_loss is not None:
-        #     total_loss += objfeat_32_weight * objfeat_32_loss
+            #     # Add IoU loss to total loss
+            #     total_loss = total_loss + iou_loss
+            #     losses_dict["iou_loss"] = iou_loss.item()
 
-        # Apply IoU regularization if enabled
-        # if hasattr(self.cfg, "loss") and getattr(
-        #     self.cfg.loss, "use_iou_regularization", False
-        # ):
-        #     # If timesteps not provided, use a dummy value (middle of diffusion process)
-        #     if timesteps is None:
-        #         # device = predicted_noise.device
-        #         # timesteps = torch.ones(predicted_noise.shape[0], dtype=torch.long, device=device) * (self.noise_scheduler.config.num_train_timesteps // 2)
-        #         raise ValueError("Timesteps must be provided for IoU regularization.")
-        #     # Get the reconstructed data (denoise predicted_noise)
-        #     # In actual implementation, you'll need to denoise or use the appropriate
-        #     # representation for bbox calculation
-        #     recon_data = (
-        #         predicted_noise  # For simplicity, using predicted noise directly
-        #     )
-
-        #     # Calculate IoU regularization loss
-        #     iou_loss = self.bbox_iou_regularizer(
-        #         recon=recon_data,
-        #         t=timesteps,
-        #         num_classes=num_classes,
-        #         iou_weight=getattr(self.cfg.loss, "iou_weight", 0.1),
-        #     )
-
-        #     # Add IoU loss to total loss
-        #     total_loss = total_loss + iou_loss
-        #     losses_dict["iou_loss"] = iou_loss.item()
-
-        return total_loss, losses_dict
+            return total_loss, losses_dict
+        else:
+            loss = F.mse_loss(predicted_noise, noise)
+            return loss, {"mse_loss": loss.item()}
 
     def loss_function(
         self, predicted_noise: torch.Tensor, noise: torch.Tensor, timesteps=None
