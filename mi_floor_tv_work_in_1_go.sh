@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=normal_rl_separated_loss_1225
+#SBATCH --job-name=normal_rl_separated_loss_1227_from_ckpt20
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -287,7 +287,7 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
     # checkpoint_version=20 \
-PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227 \
+PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227_from_ckpt20 \
     load=pcnfeqr0 \
     checkpoint_version=20 \
     dataset=custom_scene \
