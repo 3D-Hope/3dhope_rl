@@ -108,7 +108,7 @@ source .venv/bin/activate #mbysryxi
     # checkpoint_version=15
 
 
-# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-24/01-53-17/sampled_scenes_results.pkl
+# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-24/02-19-49/sampled_scenes_results.pkl
 
 
 # checkpoint_version=7 \
@@ -235,6 +235,8 @@ source .venv/bin/activate #mbysryxi
 # algorithm.noise_schedule.ddim.num_inference_timesteps=150
 # # # 
 # checkpoint_version=5 \
+
+# checkpoint_version=21 \
 PYTHONPATH=. python dynamic_constraint_rewards/compute_success_rates.py +num_scenes=1000 \
 load=q28q8ewk \
 checkpoint_version=0 \
@@ -251,15 +253,15 @@ algorithm.classifier_free_guidance.use=False \
 algorithm.classifier_free_guidance.use_floor=True \
 algorithm.classifier_free_guidance.weight=0 \
 algorithm.custom.loss=true \
-algorithm.ema.use=false \
+algorithm.ema.use=true \
 dataset.data.encoding_type=cached_diffusion_cosin_angle_wocm_no_prm \
 algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
 algorithm.ddpo.dynamic_constraint_rewards.use=True \
-wandb.mode=disabled \
 algorithm.custom.old=False \
+wandb.mode=disabled \
 # experiment.seed=21 \
 
-# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size 
+# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-26/19-49-00/sampled_scenes_results.pkl
 
 
 # PYTHONPATH=. python scripts/generate_and_save_trajectory.py +num_scenes=1000 \

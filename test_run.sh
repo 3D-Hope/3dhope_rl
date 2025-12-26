@@ -4,7 +4,7 @@
 # dataset=custom_scene \
 # dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
 # dataset.max_num_objects_per_scene=12 \
-# experiment.test.batch_size=32 \
+# experiment.test.batch_size=32 \model-toid1beb
 # algorithm=scene_diffuser_flux_transformer \
 # algorithm.trainer=rl_score \
 # algorithm.noise_schedule.scheduler=ddim \
@@ -26,17 +26,16 @@
     # load=fhfnf4xi \
 # PYTHONPATH=. python dynamic_constraint_rewards/get_reward_stats.py \
 
+# export WANDB_ENTITY="078bct081-saugat"
 
 PYTHONPATH=. python -u  main.py +name=test \
-    load=y1l2dhm3 \
-    checkpoint_version=7 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
     algorithm.ema.use=True \
-    algorithm.trainer=rl_score \
+    algorithm.trainer=ddpm \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
     experiment.training.max_steps=1050000 \
@@ -79,10 +78,10 @@ PYTHONPATH=. python -u  main.py +name=test \
     experiment.training.batch_size=2 \
     experiment.validation.batch_size=2 \
     experiment.test.batch_size=2 \
-    wandb.mode=disabled \
-    algorithm.ddpo.incremental_training=false \
-    algorithm.ddpo.training_steps_start=0 \
-    algorithm.ddpo.joint_training=false
+    # wandb.mode=disabled \
+    # algorithm.ddpo.incremental_training=false \
+    # algorithm.ddpo.training_steps_start=0 \
+    # algorithm.ddpo.joint_training=false
 # PYTHONPATH=. python main.py +name=test_bed_tv_work \
 #     load=ca0l19rv \
 #     dataset=custom_scene \

@@ -142,16 +142,28 @@ def compute_ddpm_loss(
             + rot_loss
             + class_loss
         )
+        
+        if log_fn is not None:
+            batch_size = predicted_noise.shape[0]
+            log_fn(
+                {
+                    "training/translation_loss": pos_loss.item(),
+                    "training/rotation_loss": rot_loss.item(),
+                    "training/class_loss": class_loss.item(),
+                    "training/size_loss": size_loss.item(),
+                },
+                batch_size=batch_size,
+            )
         return loss
         
-    if cfg.loss.use_separate_loss_per_object_attribute:
-        return compute_attribute_weighted_ddpm_loss(
-            predicted_noise=predicted_noise,
-            noise=noise,
-            scene_vec_desc=scene_vec_desc,
-            cfg=cfg,
-            log_fn=log_fn,
-        )
+    # if cfg.loss.use_separate_loss_per_object_attribute:
+    #     return compute_attribute_weighted_ddpm_loss(
+    #         predicted_noise=predicted_noise,
+    #         noise=noise,
+    #         scene_vec_desc=scene_vec_desc,
+    #         cfg=cfg,
+    #         log_fn=log_fn,
+    #     )
     else:
         loss = F.mse_loss(predicted_noise, noise)
         return loss
