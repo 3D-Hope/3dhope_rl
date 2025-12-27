@@ -344,8 +344,8 @@ PYTHONPATH=. python -u  main.py +name=scaled_normal_rl_separated_loss_1227_from_
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False \
-    algorithm.model.n_layers=12 \
-    algorithm.model.n_heads=8 \
+    algorithm.model.n_layer=12 \
+    algorithm.model.n_head=8 \
 
 # -------------------------
 # Final status
