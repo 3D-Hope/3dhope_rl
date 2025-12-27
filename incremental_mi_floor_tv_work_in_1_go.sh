@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=incremental_1223
+#SBATCH --job-name=incremental_1227_ckpt20
 #SBATCH --nodelist=sof1-h200-5
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -286,9 +286,9 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=incremental_1223 \
-    load=y1l2dhm3 \
-    checkpoint_version=7 \
+PYTHONPATH=. python -u  main.py +name=incremental_1227_ckpt20 \
+    load=pcnfeqr0 \
+    checkpoint_version=20 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
