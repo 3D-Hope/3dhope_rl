@@ -236,9 +236,9 @@ source .venv/bin/activate #mbysryxi
 # # # 
 # checkpoint_version=5 \
 
-# checkpoint_version=21 \
 PYTHONPATH=. python dynamic_constraint_rewards/compute_success_rates.py +num_scenes=1000 \
-load=nots1b42 \
+load=6sq3fgpv \
+checkpoint_version=20 \
 dataset=custom_scene \
 algorithm=scene_diffuser_midiffusion \
 dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
@@ -260,7 +260,7 @@ algorithm.custom.old=False \
 wandb.mode=disabled \
 # experiment.seed=21 \
 
-# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-26/19-49-00/sampled_scenes_results.pkl
+# python ../ThreedFront/scripts/render_results.py --no_texture --retrieve_by_size /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/outputs/2025-12-27/06-17-28/sampled_scenes_results.pkl
 
 
 # PYTHONPATH=. python scripts/generate_and_save_trajectory.py +num_scenes=1000 \

@@ -63,7 +63,10 @@ def create_scene_diffuser_midiffusion(
                 self.floor_encoder = None
                 context_dim = text_cond_dim
             elif self.cfg.classifier_free_guidance.use_floor:
-                self.floor_encoder, floor_cond_dim = load_floor_encoder_from_config()
+                if self.cfg.model.n_layer == 8: last_dim = 64
+                elif self.cfg.model.n_layer == 12: last_dim = 512
+                else: raise NotImplementedError(f"Unsupported n_layer {self.cfg.model.n_layer} for floor encoder last dim")
+                self.floor_encoder, floor_cond_dim = load_floor_encoder_from_config(last_dim=last_dim)
                 self.txt_encoder = None
                 context_dim = floor_cond_dim  # 64D from PointNet
                 print(f"[Ashok] Using floor encoder with context dim: {context_dim}")
