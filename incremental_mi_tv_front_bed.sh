@@ -283,12 +283,12 @@ pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
 
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
-
+# load=pcnfeqr0 \
+# checkpoint_version=20 \
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
 PYTHONPATH=. python -u  main.py +name=tv_front_bed_incremental_mi_1229 \
-    load=pcnfeqr0 \
-    checkpoint_version=20 \
+    resume=idbb5w53 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -341,7 +341,7 @@ PYTHONPATH=. python -u  main.py +name=tv_front_bed_incremental_mi_1229 \
     experiment.validation.batch_size=192 \
     experiment.test.batch_size=192 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=0 \
+    algorithm.ddpo.training_steps_start=12000 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------

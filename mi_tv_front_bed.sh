@@ -284,11 +284,12 @@ pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
 
+# load=pcnfeqr0 \
+# checkpoint_version=20 \
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
 PYTHONPATH=. python -u  main.py +name=tv_front_bed_normal_rl_1229 \
-    load=pcnfeqr0 \
-    checkpoint_version=20 \
+    resume=i1rqytmq \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
