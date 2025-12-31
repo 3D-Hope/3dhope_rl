@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=incremental_1228_ckpt20
-#SBATCH --nodelist=sof1-h200-5
+#SBATCH --nodelist=hala
 #SBATCH --partition=batch
-#SBATCH --gpus=h200:1
+#SBATCH --gpus=a6000:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
-#SBATCH --time=2-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -338,12 +338,12 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=192 \
-    experiment.training.batch_size=192 \
-    experiment.validation.batch_size=192 \
-    experiment.test.batch_size=192 \
+    algorithm.ddpo.batch_size=128 \
+    experiment.training.batch_size=128 \
+    experiment.validation.batch_size=128 \
+    experiment.test.batch_size=128 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=26000 \
+    algorithm.ddpo.training_steps_start=28000 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------
