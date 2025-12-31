@@ -337,10 +337,10 @@ PYTHONPATH=. python -u  main.py +name=tv_front_bed_incremental_mi_1229 \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom_with_tv_stand_two_meters" \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=64 \
-    experiment.training.batch_size=64 \
-    experiment.validation.batch_size=64 \
-    experiment.test.batch_size=64 \
+    algorithm.ddpo.batch_size=48 \
+    experiment.training.batch_size=48 \
+    experiment.validation.batch_size=48 \
+    experiment.test.batch_size=48 \
     algorithm.ddpo.incremental_training=true \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False
