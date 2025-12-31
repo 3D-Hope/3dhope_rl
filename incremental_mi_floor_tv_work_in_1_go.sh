@@ -306,7 +306,7 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=true \
+    experiment.reset_lr_scheduler=false \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=2000 \
@@ -338,10 +338,10 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=128 \
-    experiment.training.batch_size=128 \
-    experiment.validation.batch_size=128 \
-    experiment.test.batch_size=128 \
+    algorithm.ddpo.batch_size=64 \
+    experiment.training.batch_size=64 \
+    experiment.validation.batch_size=64 \
+    experiment.test.batch_size=64 \
     algorithm.ddpo.incremental_training=true \
     algorithm.ddpo.training_steps_start=28000 \
     algorithm.ddpo.joint_training=False
