@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=normal_rl_separated_loss_1227_from_ckpt20
-#SBATCH --nodelist=sof1-h200-4
+#SBATCH --nodelist=hala
 #SBATCH --partition=batch
-#SBATCH --gpus=h200:1
+#SBATCH --gpus=a6000:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
 #SBATCH --time=2-00:00:00
@@ -336,10 +336,10 @@ PYTHONPATH=. python -u  main.py +name=normal_rl_separated_loss_1227_from_ckpt20 
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=192 \
-    experiment.training.batch_size=192 \
-    experiment.validation.batch_size=192 \
-    experiment.test.batch_size=192 \
+    algorithm.ddpo.batch_size=64 \
+    experiment.training.batch_size=64 \
+    experiment.validation.batch_size=64 \
+    experiment.test.batch_size=64 \
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False \
