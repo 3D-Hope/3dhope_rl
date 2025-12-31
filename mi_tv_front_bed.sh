@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=tv_front_bed_normal__1229rl
-#SBATCH --nodelist=sof1-h200-4
+#SBATCH --nodelist=hala
 #SBATCH --partition=batch
-#SBATCH --gpus=h200:1
+#SBATCH --gpus=a6000:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
 #SBATCH --time=2-00:00:00
@@ -289,7 +289,8 @@ export DISPLAY=:0
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
 PYTHONPATH=. python -u  main.py +name=tv_front_bed_normal_rl_1229 \
-    resume=i1rqytmq \
+    load=pcnfeqr0 \
+    checkpoint_version=20 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -337,10 +338,10 @@ PYTHONPATH=. python -u  main.py +name=tv_front_bed_normal_rl_1229 \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom_with_tv_stand_two_meters" \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=192 \
-    experiment.training.batch_size=192 \
-    experiment.validation.batch_size=192 \
-    experiment.test.batch_size=192 \
+    algorithm.ddpo.batch_size=64 \
+    experiment.training.batch_size=64 \
+    experiment.validation.batch_size=64 \
+    experiment.test.batch_size=64 \
     algorithm.ddpo.incremental_training=false \
     algorithm.ddpo.training_steps_start=0 \
     algorithm.ddpo.joint_training=False \
