@@ -53,11 +53,13 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         # Variable for storing the reward computation cache.
         self.reward_cache = None
         self.cfg = cfg
+        
         if (
             self.cfg.ddpo.dynamic_constraint_rewards.use
             or self.cfg.ddpo.use_universal_reward
             and not self.cfg.ddpo.universal_reward.use_physcene_reward
-        ):
+        ) and self.cfg.ddpo.dynamic_constraint_rewards.universal_weight > 0.0:
+            print(f"this should not exist")
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
             user_query = user_query.replace(" ", "_").replace(".", "")
 
@@ -117,6 +119,10 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
             )
         else:
             self.reward_normalizer = None
+            self.train_sdf_cache = None
+            self.val_sdf_cache = None
+            self.train_accessibility_cache = None
+            self.val_accessibility_cache = None
 
         if self.cfg.ddpo.dynamic_constraint_rewards.use:
             user_query = self.cfg.ddpo.dynamic_constraint_rewards.user_query
