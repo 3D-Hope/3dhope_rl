@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=incremental_1228_ckpt20
-#SBATCH --nodelist=hala
+#SBATCH --nodelist=sof1-h200-3
 #SBATCH --partition=batch
-#SBATCH --gpus=a6000:2
+#SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
 #SBATCH --time=3-00:00:00
@@ -64,16 +64,16 @@ _copy_and_unzip_if_missing() {
 
 # Use the helper for your caches/dataset
 rm -rf /scratch/pramish_paudel/bedroom_sdf_cache || true
-_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/bedroom_sdf_cache || { echo "Failed stage: bedroom_sdf_cache"; exit 1; }
+_copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/bedroom_sdf_cache || { echo "Failed stage: bedroom_sdf_cache"; exit 1; }
 ls -la /scratch/pramish_paudel/bedroom_sdf_cache || true
 
 rm -rf /scratch/pramish_paudel/bedroom_accessibility_cache || true
-_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/bedroom_accessibility_cache || { echo "Failed stage: bedroom_accessibility_cache"; exit 1; }
+_copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/bedroom_accessibility_cache || { echo "Failed stage: bedroom_accessibility_cache"; exit 1; }
 ls -la /scratch/pramish_paudel/bedroom_accessibility_cache || true
 
 echo "STAGE 2: Checking bedroom dataset..."
 if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
-    _copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/bedroom || { echo "❌ Failed to copy/extract bedroom dataset"; exit 1; }
+    _copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/bedroom || { echo "❌ Failed to copy/extract bedroom dataset"; exit 1; }
 else
     echo "✅ bedroom dataset already exists in scratch"
 fi
@@ -294,7 +294,7 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
-    dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
+    dataset.data.path_to_dataset_files=/scratch/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
@@ -334,14 +334,14 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=False \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/scratch/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=48 \
-    experiment.training.batch_size=48 \
-    experiment.validation.batch_size=48 \
-    experiment.test.batch_size=48 \
+    algorithm.ddpo.batch_size=192 \
+    experiment.training.batch_size=192 \
+    experiment.validation.batch_size=192 \
+    experiment.test.batch_size=192 \
     algorithm.ddpo.incremental_training=true \
     algorithm.ddpo.training_steps_start=28000 \
     algorithm.ddpo.joint_training=False
