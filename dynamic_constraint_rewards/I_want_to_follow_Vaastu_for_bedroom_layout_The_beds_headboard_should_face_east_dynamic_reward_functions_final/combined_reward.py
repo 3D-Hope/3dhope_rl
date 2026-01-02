@@ -38,7 +38,7 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
             bed_mask |= (object_indices[b] == bed_class) & (~is_empty[b])
         
         if not bed_mask.any():
-            rewards[b] = -1.0  # No bed penalty
+            rewards[b] = -3.0  # No bed penalty
             continue
         
         # Get first bed's orientation
