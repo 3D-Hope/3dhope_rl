@@ -225,7 +225,10 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     430, 420, 410, 400, 390, 380, 370, 360, 350, 340, 330, 320, 310, 300,
                     290, 280, 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170, 160,
                     150, 140, 130, 120, 110, 100,  90,  80,  70,  60,  50,  40,  30,  20,
-                    10,   0])
+                    10,   0]),
+                150: torch.tensor([894, 888, 882, 876, 864, 858, 852, 846, 834, 828, 822, 816, 804, 798, 792, 786, 774, 768, 762, 756, 744, 738, 732, 726, 714, 708, 702, 696, 684, 678, 672, 666, 654, 648, 642, 636, 624, 618, 612, 606, 594, 588, 582, 576, 564, 558, 552, 546, 534, 528, 522, 516, 504, 498, 492, 486, 474, 468, 462, 456, 444, 438, 432, 426, 414, 408, 402, 396, 384, 378, 372, 366, 354, 348, 342, 336, 324, 318, 312, 306, 294, 288, 282, 276, 264, 258, 252, 246, 234, 228, 222, 216, 204, 198, 192, 186, 174, 168, 162, 156, 144, 138, 132, 126, 114, 108, 102, 96, 84, 78, 72, 66, 54, 48, 42, 36, 24, 18, 12, 6]
+
+                )
             }
         timesteps = ddim_paths[n_steps].to(self.device)
         # print(f"[Ashok] Using ddim path for n_steps={n_steps}: {timesteps}")
@@ -543,13 +546,26 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     430, 420, 410, 400, 390, 380, 370, 360, 350, 340, 330, 320, 310, 300,
                     290, 280, 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170, 160,
                     150, 140, 130, 120, 110, 100,  90,  80,  70,  60,  50,  40,  30,  20,
-                    10,   0])
+                    10,   0]),
+                150: torch.tensor([990, 980, 970, 960, 950, 940, 930, 920, 910, 900, 890, 880, 870, 860, 850, 840, 830, 820, 810, 800, 790, 780, 770, 760, 750, 740, 730, 720, 710, 700, 690, 680, 670, 660, 650, 640, 630, 620, 610, 600, 590, 580, 570, 560, 550, 540, 530, 520, 510, 500, 490, 480, 470, 460, 450, 440, 430, 420, 410, 400, 390, 380, 372, 370, 366, 360, 354, 350, 348, 342, 340, 336, 330, 324, 320, 318, 312, 310, 306, 300, 294, 290, 288, 282, 280, 276, 270, 264, 260, 258, 252, 250, 246, 240, 234, 230, 228, 222, 220, 216, 210, 204, 200, 198, 192, 190, 186, 180, 174, 170, 168, 162, 160, 156, 150, 144, 140, 138, 132, 130, 126, 120, 114, 110, 108, 102, 100, 96, 90, 84, 80, 78, 72, 70, 66, 60, 54, 50, 48, 42, 40, 36, 30, 24, 20, 18, 12, 10, 6, 0]
+
+
+                )
             }
             timesteps = ddim_paths[n_timesteps_to_sample].to(self.device)
+            if len(timesteps) > 100:
+                timesteps_with_grads = set(
+                    torch.randperm(len(timesteps))[
+                        :100
+                    ].tolist()
+                )
+                # print(f"[Ashok] Incremental training: limiting to 100 timesteps with grads: {timesteps_with_grads}")
+
+                
             # print(f"[Ashok] Incremental training with {n_timesteps_to_sample} timesteps: {timesteps}")
 
         # if phase != "training":
-        #     print(f"[Ashok] {phase} phase, timesteps: {timesteps}")
+        # print(f"[Ashok] {phase} phase, timesteps: {timesteps}")
         for t_idx, t in enumerate(
             tqdm(
                 timesteps,
@@ -1029,5 +1045,6 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                     are_trajectories_normalized=False,
                 )
                 self.log("sampled_scenes/reward", rewards.mean().item())
+                print(f"[Ashok] Sampled scenes mean reward: {rewards.mean().item()}")
 
         return sampled_scenes

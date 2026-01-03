@@ -349,7 +349,7 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     experiment.validation.batch_size=192 \
     experiment.test.batch_size=192 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=28000 \
+    algorithm.ddpo.training_steps_start=66000 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------

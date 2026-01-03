@@ -80,8 +80,12 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             # )
             #  n_timesteps_to_sample = list(range(10, 151, 150//self.num_increments))[k]
             
-            which_increment = np.searchsorted(self.cum_sum_steps, self.training_steps)
-            n_timesteps_to_sample = list(range(self.min_denoising_steps, self.max_denoising_steps + 1, self.max_denoising_steps//self.num_increments))[which_increment]
+            if self.training_steps >= self.cum_sum_steps[-1]:
+                n_timesteps_to_sample = 150
+            else:
+                which_increment = np.searchsorted(self.cum_sum_steps, self.training_steps)
+                n_timesteps_to_sample = list(range(self.min_denoising_steps, self.max_denoising_steps + 1, self.max_denoising_steps//self.num_increments))[which_increment]
+            
             
             
         else:
