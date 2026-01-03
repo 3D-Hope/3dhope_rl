@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=incremental_1228_ckpt20
-#SBATCH --nodelist=sof1-h200-3
+#SBATCH --job-name=incremental_1228_ckpt20 
+#SBATCH --nodelist=sof1-h200-5
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
-#SBATCH --time=3-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 
@@ -14,10 +14,6 @@ set -euo pipefail
 # Better error reporting including line number
 trap 'ERR_CODE=$?; echo "❌ Error on line ${LINENO:-?}. Exit code: $ERR_CODE" >&2; exit $ERR_CODE' ERR
 trap 'echo "🛑 Job interrupted"; exit 130' INT
-
-
-git clone https://github.com/3D-Hope/3dhope_rl.git
-git clone https://github.com/3D-Hope/ThreedFront.git
 
 # -------------------------
 # Basic setup / logging
@@ -41,47 +37,47 @@ export WANDB_ENTITY="078bct021-ashok-d"
 # -------------------------
 # Stage 1 & 2: copy caches/dataset (keeps your original behavior)
 # -------------------------
-# echo "STAGE 1: Copy/extract caches and dataset..."
+echo "STAGE 1: Copy/extract caches and dataset..."
 
-# # Helper to copy and unzip if missing
-# _copy_and_unzip_if_missing() {
-#     local src_zip=$1
-#     local dst_dir=$2
-#     local dst_base=$(dirname "$dst_dir")
-#     local zip_name=$(basename "$src_zip")
-#     if [ -d "$dst_dir" ]; then
-#         echo "✅ $dst_dir already exists"
-#         return 0
-#     fi
-#     echo "Copying $zip_name to $dst_base..."
-#     rsync -aHzv --progress "$src_zip" "$dst_base/" || {
-#         echo "❌ Failed to copy $src_zip"; return 1
-#     }
-#     echo "Extracting $zip_name..."
-#     unzip -o "$dst_base/$zip_name" -d "$dst_base" || {
-#         echo "❌ Failed to extract $dst_base/$zip_name"; return 1
-#     }
-#     rm -f "$dst_base/$zip_name"
-#     echo "✅ $dst_dir copied & extracted"
-#     return 0
-# }
+# Helper to copy and unzip if missing
+_copy_and_unzip_if_missing() {
+    local src_zip=$1
+    local dst_dir=$2
+    local dst_base=$(dirname "$dst_dir")
+    local zip_name=$(basename "$src_zip")
+    if [ -d "$dst_dir" ]; then
+        echo "✅ $dst_dir already exists"
+        return 0
+    fi
+    echo "Copying $zip_name to $dst_base..."
+    rsync -aHzv --progress "$src_zip" "$dst_base/" || {
+        echo "❌ Failed to copy $src_zip"; return 1
+    }
+    echo "Extracting $zip_name..."
+    unzip -o "$dst_base/$zip_name" -d "$dst_base" || {
+        echo "❌ Failed to extract $dst_base/$zip_name"; return 1
+    }
+    rm -f "$dst_base/$zip_name"
+    echo "✅ $dst_dir copied & extracted"
+    return 0
+}
 
-# # Use the helper for your caches/dataset
-# rm -rf /scratch/pramish_paudel/bedroom_sdf_cache || true
-# _copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/bedroom_sdf_cache || { echo "Failed stage: bedroom_sdf_cache"; exit 1; }
-# ls -la /scratch/pramish_paudel/bedroom_sdf_cache || true
+# Use the helper for your caches/dataset
+rm -rf /scratch/pramish_paudel/bedroom_sdf_cache || true
+_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_sdf_cache.zip /scratch/pramish_paudel/bedroom_sdf_cache || { echo "Failed stage: bedroom_sdf_cache"; exit 1; }
+ls -la /scratch/pramish_paudel/bedroom_sdf_cache || true
 
-# rm -rf /scratch/pramish_paudel/bedroom_accessibility_cache || true
-# _copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/bedroom_accessibility_cache || { echo "Failed stage: bedroom_accessibility_cache"; exit 1; }
-# ls -la /scratch/pramish_paudel/bedroom_accessibility_cache || true
+rm -rf /scratch/pramish_paudel/bedroom_accessibility_cache || true
+_copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom_accessibility_cache.zip /scratch/pramish_paudel/bedroom_accessibility_cache || { echo "Failed stage: bedroom_accessibility_cache"; exit 1; }
+ls -la /scratch/pramish_paudel/bedroom_accessibility_cache || true
 
-# echo "STAGE 2: Checking bedroom dataset..."
-# if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
-#     _copy_and_unzip_if_missing /scratch/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/bedroom || { echo "❌ Failed to copy/extract bedroom dataset"; exit 1; }
-# else
-#     echo "✅ bedroom dataset already exists in scratch"
-# fi
-# echo ""
+echo "STAGE 2: Checking bedroom dataset..."
+if [ ! -d "/scratch/pramish_paudel/bedroom" ]; then
+    _copy_and_unzip_if_missing /home/pramish_paudel/3dhope_data/bedroom.zip /scratch/pramish_paudel/bedroom || { echo "❌ Failed to copy/extract bedroom dataset"; exit 1; }
+else
+    echo "✅ bedroom dataset already exists in scratch"
+fi
+echo ""
 
 # -------------------------
 # Stage 3: Miniforge/Conda setup
@@ -155,9 +151,9 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════════
 echo "STAGE 5: Poetry Setup"
 echo "───────────────────────────────────────────────────────────────────────────────"
-ROOT_DIR=$(pwd)
-cd $(pwd)/3dhope_rl/ || {
-    echo "❌ Failed to change to project directory $(pwd)/3dhope_rl/"; exit 1
+
+cd ~/codes/3dhope_rl/ || {
+    echo "❌ Failed to change to project directory ~/codes/3dhope_rl/"; exit 1
 }
 echo "Current directory: $(pwd)"
 echo ""
@@ -240,10 +236,6 @@ else
     echo "⚠️ No .venv found — continuing using conda env: ${CONDA_DEFAULT_ENV:-N/A}"
 fi
 
-pip install gdown
-gdown --fuzzy "https://drive.google.com/file/d/1XFcaS1oBn-32VWMk24BOYYAZIG4K9qZN/view?usp=drive_link" || echo "gdown failed for bedroom dataset"
-mkdir -p "$(pwd)/bedroom/"
-unzip -oq bedroom.zip -d "$(pwd)/bedroom/" || echo "unzip bedroom.zip failed/was missing"
 # quick verify that hydra (or other crucial libs) are importable
 echo "Verifying important packages (hydra, omegaconf)..."
 python - <<'PYTEST' || { echo "❌ Required python imports failed"; exit 1; }
@@ -291,18 +283,16 @@ pip install -e ../ThreedFront || echo "⚠️  ThreedFront install failed"
 
 export PYTHONUNBUFFERED=1
 export DISPLAY=:0
-
 # load=pcnfeqr0 \
 # checkpoint_version=20 \
-
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
+PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20  \
     resume=zgcw7rtg \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
-    dataset.data.path_to_processed_data=$(pwd) \
-    dataset.data.path_to_dataset_files=$ROOT_DIR/ThreedFront/dataset_files \
+    dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
+    dataset.data.path_to_dataset_files=/home/pramish_paudel/codes/ThreedFront/dataset_files \
     dataset.max_num_objects_per_scene=12 \
     algorithm=scene_diffuser_midiffusion \
     algorithm.classifier_free_guidance.use=False \
@@ -310,7 +300,7 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=1050000 \
+    experiment.training.max_steps=1200000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
@@ -331,6 +321,8 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     algorithm.validation.num_samples_to_compute_physical_feasibility_metrics_for=0 \
     algorithm.classifier_free_guidance.use_floor=true \
     algorithm.ddpo.dynamic_constraint_rewards.use=True \
+    dataset.sdf_cache_dir=/scratch/pramish_paudel/bedroom_sdf_cache/ \
+    dataset.accessibility_cache_dir=/scratch/pramish_paudel/bedroom_accessibility_cache/ \
     algorithm.custom.num_classes=22 \
     algorithm.custom.objfeat_dim=0 \
     algorithm.custom.obj_vec_len=30 \
@@ -340,16 +332,16 @@ PYTHONPATH=. python -u  main.py +name=incremental_1228_ckpt20 \
     dataset.data.annotation_file=bedroom_threed_front_splits_original.csv \
     dataset.data.room_type=bedroom \
     algorithm.custom.old=False \
-    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=$(pwd)/dynamic_constraint_rewards \
+    algorithm.ddpo.dynamic_constraint_rewards.reward_base_dir=/home/pramish_paudel/codes/3dhope_rl/dynamic_constraint_rewards \
     algorithm.ddpo.dynamic_constraint_rewards.user_query="Bedroom with tv stand and desk and chair for working." \
     algorithm.ddpo.dynamic_constraint_rewards.agentic=True \
     algorithm.ddpo.dynamic_constraint_rewards.universal_weight=0.0 \
-    algorithm.ddpo.batch_size=192 \
-    experiment.training.batch_size=192 \
-    experiment.validation.batch_size=192 \
-    experiment.test.batch_size=192 \
+    algorithm.ddpo.batch_size=48 \
+    experiment.training.batch_size=48 \
+    experiment.validation.batch_size=48 \
+    experiment.test.batch_size=48 \
     algorithm.ddpo.incremental_training=true \
-    algorithm.ddpo.training_steps_start=66000 \
+    algorithm.ddpo.training_steps_start=68000 \
     algorithm.ddpo.joint_training=False
 
 # -------------------------
