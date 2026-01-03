@@ -61,7 +61,7 @@ def get_thresholds_from_user(reward_functions: Dict[str, Callable]) -> Dict[str,
         while True:
             try:
                 # threshold_input = input(f"Threshold for '{reward_name}' (0.0-1.0): ")
-                threshold_input = 10.0  # For testing purposes, set a default threshold
+                threshold_input = 10.0  # NOTE: For testing purposes, set a default threshold
                 threshold = float(threshold_input)
                 
                 threshold_dict[reward_name] = threshold
@@ -116,7 +116,7 @@ def sample_scenes_from_baseline(
         f"algorithm.classifier_free_guidance.use_floor={config.algorithm.classifier_free_guidance.use_floor}",
         f"algorithm.classifier_free_guidance.weight=0",
         f"algorithm.custom.loss=true",
-        f"algorithm.ema.use=True",
+        f"algorithm.ema.use={config.algorithm.ema.use}",
         f"algorithm.noise_schedule.scheduler=ddim",
         f"algorithm.noise_schedule.ddim.num_inference_timesteps={config.algorithm.noise_schedule.ddim.num_inference_timesteps}",
         f"dataset.model_path_vec_len=30",

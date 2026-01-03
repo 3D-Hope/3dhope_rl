@@ -272,6 +272,7 @@ def main(cfg: DictConfig) -> None:
 
         # Remove samples that contain any NaN and keep indices in sync
         mask = ~torch.any(torch.isnan(sampled_scenes), dim=(1, 2))
+        print(f"[DEBUG] Number of scenes with NaN values: {torch.sum(~mask)}")
         # Filter scenes
         sampled_scenes = sampled_scenes[mask]
         # Filter corresponding dataset indices so they align with the kept scenes

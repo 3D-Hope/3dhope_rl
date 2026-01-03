@@ -478,19 +478,19 @@ class CustomDataset(BaseDataset):
         Returns:
             dict[str, Any]: The data with replaced conditioning data.
         """
-        if isinstance(txt_labels, str):
-            txt_labels = [txt_labels] * len(data["scenes"])
+        # if isinstance(txt_labels, str):
+        #     txt_labels = [txt_labels] * len(data["scenes"])
 
-        if len(txt_labels) != len(data["scenes"]):
-            raise ValueError(
-                "The number of text labels does not match the number of scenes."
-            )
+        # if len(txt_labels) != len(data["scenes"]):
+        #     raise ValueError(
+        #         "The number of text labels does not match the number of scenes."
+        #     )
 
-        if "text_cond" in data and self.tokenizer is not None:
-            data["text_cond"] = self.tokenizer(txt_labels)
+        # if "text_cond" in data and self.tokenizer is not None:
+        #     data["text_cond"] = self.tokenizer(txt_labels)
 
-        if "text_cond_coarse" in data and self.tokenizer_coarse is not None:
-            data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
+        # if "text_cond_coarse" in data and self.tokenizer_coarse is not None:
+            # data["text_cond_coarse"] = self.tokenizer_coarse(txt_labels)
 
         return data
 
@@ -510,11 +510,11 @@ class CustomDataset(BaseDataset):
         # print(f"[Ashok] items in data {[ (key, type(value)) for key, value in data.items() ]}")
         if num_items <= total_items:
             # Sample without replacement.
-            sample_indices = torch.randperm(total_items)[:num_items]
+            # sample_indices = torch.randperm(total_items)[:num_items] # TODO: use this for training rl but for inference it shuffles the idx so the floor cond renders are wrong
             # print(
             #     f"[Ashok] Sampling without replacement for {num_items} items, with total items {total_items}"
             # )
-            # sample_indices = torch.arange(num_items)
+            sample_indices = torch.arange(num_items)
         else:
             # Sample with replacement.
             sample_indices = torch.randint(0, total_items, (num_items,))

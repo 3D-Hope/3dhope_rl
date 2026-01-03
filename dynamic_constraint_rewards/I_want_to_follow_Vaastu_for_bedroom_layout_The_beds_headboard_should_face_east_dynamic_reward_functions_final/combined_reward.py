@@ -7,7 +7,7 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
     Reward for bed headboard facing East (theta = 270°).
     
     Reward structure with smooth shaping:
-    - Within ±5° of East (270°): +1.0 (perfect)
+    - Within ±5° of East (270°): +2.0 (perfect)
     - Gradual decay based on angular distance
     - Worst at West (90°): approximately -1.0
     

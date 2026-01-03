@@ -257,9 +257,21 @@ zip -r bedroom_sdf_cache.zip bedroom_sdf_cache/
 
 
 
-srun --partition=debug --gres=gpu:h100:1 --time=04:00:00 --pty bash
+srun --partition=debug --gres=gpu:a6000:1  --time=01:00:00 --pty bash
+srun --partition=debug --qos=debug --gres=gpu:a6000:1 --time=01:00:00 --pty bash
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,StdOut,StdErr
+
+sacct -j   478151 --format=JobID,JobName,State,ExitCode,StdOut,StdErr
+
+sacct -j 478143 --format=StdErr%200
+
 
 rsync -avzP insait:/home/pramish_paudel/codes/3dhope_rl/logs/vaastu-467478.out /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/
+
+rsync -avzP hala:/home/pramish_paudel/codes/3dhope_rl codes/3dhope_rl
+
+
 
 rsync -avzP /media/ajad/YourBook/AshokSaugatResearchBackup/AshokSaugatResearch/steerable-scene-generation/checkpoints/078bct021-ashok-d/3dhope_rl/bgdrozky/model.ckpt insait:/home/pramish_paudel/3dhope_data/model.ckpt
 

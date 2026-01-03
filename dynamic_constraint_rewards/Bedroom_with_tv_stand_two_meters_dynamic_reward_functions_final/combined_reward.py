@@ -15,6 +15,7 @@ def get_reward(parsed_scenes, idx_to_labels, room_type, floor_polygons, **kwargs
 
     All checks are per batch entry.
     """
+    print(f"Calculating Bedroom with TV stand 2 meters reward")
     utility_functions = get_all_utility_functions()
     
     overplacement_penalty = 2.0  # Penalty per extra object
