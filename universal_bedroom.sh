@@ -310,7 +310,7 @@ PYTHONPATH=. python -u  main.py +name=universal_0105 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=2000 \
     algorithm.num_additional_tokens_for_sampling=0 \
-    algorithm.ddpo.n_timesteps_to_sample=150 \
+    algorithm.ddpo.n_timesteps_to_sample=100 \
     experiment.find_unused_parameters=True \
     algorithm.custom.loss=True \
     algorithm.validation.num_samples_to_render=0 \
