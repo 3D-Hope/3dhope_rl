@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=mi_floor_tv_work_150inference_150_back
-#SBATCH --nodelist=hala
+#SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
-#SBATCH --gpus=a6000:2
+#SBATCH --gpus=h200:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=12G
 #SBATCH --time=2-00:00:00
