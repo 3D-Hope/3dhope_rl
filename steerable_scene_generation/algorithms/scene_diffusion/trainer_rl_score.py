@@ -35,7 +35,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             self.cum_sum_steps = np.cumsum(self.training_steps_per_increment).tolist()
             self.num_increments = len(self.training_steps_per_increment)
         # self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
-        self.joint_training_timesteps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] if self.joint_training else None
+        self.joint_training_timesteps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150] if self.joint_training else None
 
     # def get_incremental_timesteps(self, k):
     #     L = list(range(0, 895, 6))

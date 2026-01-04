@@ -215,26 +215,47 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
         timesteps = self.get_timesteps_for_inc_joint(n_steps).to(self.device)
         # print(f"[Ashok] Using ddim path for n_steps={n_steps}: {timesteps}")
         # Denoising loop
+        if len(timesteps) > 100:
+            timesteps_with_grads = set(
+                torch.randperm(len(timesteps))[
+                    :100
+                ].tolist()
+            )
+        else:
+            timesteps_with_grads = set(range(len(timesteps)))
+        print(f" [Ashok] Sampling {len(timesteps)} timesteps with grads: {len(timesteps_with_grads)}")
+
         for t_idx, t in enumerate(timesteps):
             # Predict noise
             residual = self.predict_noise(xt, t, cond_dict=cond_dict)
             
             # Compute next step and log probability
             if isinstance(self.noise_scheduler, DDPMScheduler):
-                xt_next, log_prop = ddpm_step_with_logprob(
-                    scheduler=self.noise_scheduler,
-                    model_output=residual,
-                    timestep=t,
-                    sample=xt,
-                )
+                # xt_next, log_prop = ddpm_step_with_logprob(
+                #     scheduler=self.noise_scheduler,
+                #     model_output=residual,
+                #     timestep=t,
+                #     sample=xt,
+                # )
+                raise Exception("DDPMScheduler not supported for joint training.")
             else:  # DDIMScheduler
-                xt_next, log_prop = ddim_step_with_logprob(
-                    scheduler=self.noise_scheduler,
-                    model_output=residual,
-                    timestep=t,
-                    sample=xt,
-                    eta=self.cfg.noise_schedule.ddim.eta,
-                )
+                if t_idx not in timesteps_with_grads:
+                    with torch.no_grad():
+                        xt_next, log_prop = ddim_step_with_logprob(
+                            scheduler=self.noise_scheduler,
+                            model_output=residual,
+                            timestep=t,
+                            sample=xt,
+                            eta=self.cfg.noise_schedule.ddim.eta,
+                        )
+                else:
+                    xt_next, log_prop = ddim_step_with_logprob(
+                        scheduler=self.noise_scheduler,
+                        model_output=residual,
+                        timestep=t,
+                        sample=xt,
+                        eta=self.cfg.noise_schedule.ddim.eta,
+                    )
             
             xt = xt_next
             trajectory.append(xt)
