@@ -26,14 +26,19 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 "Cannot have both incremental_training and joint_training set to True."
             )
         if self.incremental_training:
-            self.min_denoising_steps = 10
-            self.max_denoising_steps = 150
             self.training_steps = self.cfg.ddpo.training_steps_start
+            self.increments = list(self.cfg.ddpo.increments)
             # self.training_steps_per_increment = [6000, 5500, 5100, 4800, 4600, 4300, 4100, 3900, 3700, 3600]
-            self.training_steps_per_increment = [6000 for _ in range(self.max_denoising_steps//self.min_denoising_steps)]
+            if self.cfg.ddpo.increment_type == 'constant':
+                self.training_steps_per_increment = [self.cfg.ddpo.training_iter_per_increment for _ in range(len(self.increments))]
+            elif self.cfg.ddpo.increment_type == 'linear':
+                self.training_steps_per_increment = [self.cfg.ddpo.increment_linear_slope * i for i in self.increments]
+                print(f"[Ashok] Linear increment type with slope {self.cfg.ddpo.increment_linear_slope},increments {self.increments} training steps per increment: {self.training_steps_per_increment}")
             # self.training_steps_per_increment = [1 for _ in range(10)]  # For testing
             self.cum_sum_steps = np.cumsum(self.training_steps_per_increment).tolist()
-            self.num_increments = len(self.training_steps_per_increment)
+            self.min_denoising_steps = min(self.increments)
+            self.max_denoising_steps = max(self.increments)
+            self.num_increments = len(self.increments)
         # self.joint_training_timesteps = [10, 25, 40, 65, 80, 95, 110, 125, 150] if self.joint_training else None
         self.joint_training_timesteps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150] if self.joint_training else None
 
@@ -84,8 +89,8 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 n_timesteps_to_sample = 150
             else:
                 which_increment = np.searchsorted(self.cum_sum_steps, self.training_steps)
-                n_timesteps_to_sample = list(range(self.min_denoising_steps, self.max_denoising_steps + 1, self.max_denoising_steps//self.num_increments))[which_increment]
-            
+                # n_timesteps_to_sample = list(range(self.min_denoising_steps, self.max_denoising_steps + 1, self.max_denoising_steps//self.num_increments))[which_increment]
+                n_timesteps_to_sample = self.increments[int(which_increment)]
             
             
         else:

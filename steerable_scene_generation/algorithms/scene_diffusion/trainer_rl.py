@@ -325,15 +325,14 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
                 # Use all timesteps.
                 timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
         elif incremental_training:
-            # TODO: get the current training step from the trainer and figure out which phase of incremental training we are in, so that we can resume training from checkpoints
             if isinstance(self.noise_scheduler, DDIMScheduler):
                 self.noise_scheduler.set_timesteps(
                     n_timesteps_to_sample, device=self.device
-                ) #these will be used for val, but for training we will use custom timesteps
+                ) # both train and val will use custom timesteps
             else:
                 raise NotImplementedError("Incremental training only implemented for DDIMScheduler.")
             timesteps_with_grads = set(range(len(self.noise_scheduler.timesteps)))
-
+            
         elif joint_training:
             if isinstance(self.noise_scheduler, DDIMScheduler):
                 # Joint training: generate separate trajectory groups for each timestep count
@@ -536,7 +535,7 @@ class SceneDiffuserTrainerRL(SceneDiffuserBaseContinous):
 
                 
             # print(f"[Ashok] Incremental training with {n_timesteps_to_sample} timesteps: {timesteps}")
-
+            print(f"[Ashok] Incremental training with {n_timesteps_to_sample}  require grad {len(timesteps_with_grads)} timesteps.")
         # if phase != "training":
         # print(f"[Ashok] {phase} phase, timesteps: {timesteps}")
         for t_idx, t in enumerate(
