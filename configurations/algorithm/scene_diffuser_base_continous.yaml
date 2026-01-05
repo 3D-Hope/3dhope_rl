@@ -4,6 +4,10 @@ defaults:
 # Note: DDIM scheduler is recommended for RL training to prevent OOM problems.
 ddpo:
   incremental_training: False
+  increments: [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
+  increment_type: 'constant' # constant / linear 
+  training_iter_per_increment: 6000
+  increment_linear_slope: 40
   joint_training: False
   training_steps_start: 0
   use_non_penetration_reward: False
