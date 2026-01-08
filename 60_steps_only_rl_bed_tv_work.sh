@@ -288,8 +288,7 @@ export DISPLAY=:0
 # TODO: 
     # checkpoint_version=20 \
 PYTHONPATH=. python -u  main.py +name=60_steps_only_rl_bed_tv_work \
-    load=pcnfeqr0 \
-    checkpoint_version=20 \
+    resume=n8pqj8w9 \
     dataset=custom_scene \
     dataset.processed_scene_data_path=data/metadatas/custom_scene_metadata.json \
     dataset.data.path_to_processed_data=/scratch/pramish_paudel/ \
@@ -301,11 +300,11 @@ PYTHONPATH=. python -u  main.py +name=60_steps_only_rl_bed_tv_work \
     algorithm.trainer=rl_score \
     algorithm.noise_schedule.scheduler=ddim \
     algorithm.noise_schedule.ddim.num_inference_timesteps=150 \
-    experiment.training.max_steps=300000 \
+    experiment.training.max_steps=500000 \
     experiment.validation.limit_batch=1 \
     experiment.validation.val_every_n_step=50 \
     algorithm.ddpo.ddpm_reg_weight=100.0 \
-    experiment.reset_lr_scheduler=true \
+    experiment.reset_lr_scheduler=false \
     experiment.training.lr=1e-6 \
     experiment.lr_scheduler.num_warmup_steps=250 \
     experiment.training.checkpointing.every_n_train_steps=2000 \
