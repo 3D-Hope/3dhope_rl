@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=joint_0104_ckpt20
+#SBATCH --job-name=joint_01_12
 #SBATCH --nodelist=sof1-h200-4
 #SBATCH --partition=batch
 #SBATCH --gpus=h200:1
@@ -286,7 +286,7 @@ export DISPLAY=:0
 
 # Use the active conda python to launch to avoid any confusion
 # TODO: 
-PYTHONPATH=. python -u  main.py +name=joint_0104_ckpt20 \
+PYTHONPATH=. python -u  main.py +name=joint_01_12 \
     load=pcnfeqr0 \
     checkpoint_version=20 \
     dataset=custom_scene \

@@ -114,6 +114,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             # Process each group separately
             all_rewards = []
             all_log_prob_sums = []
+            group_sizes = []
             
             for group in trajectory_groups:
                 # Remove initial noisy scene
@@ -131,6 +132,7 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
                 
                 all_rewards.append(rewards)
                 all_log_prob_sums.append(log_prob_sums)
+                group_sizes.append(rewards.shape[0])
                 
                 # print(f"[Ashok] Group with {group['n_steps']} steps: {trajectories.shape[0]} samples, "
                 #       f"log_prob_sum range: [{log_prob_sums.min().item():.3f}, {log_prob_sums.max().item():.3f}]")
@@ -139,12 +141,21 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             rewards = torch.cat(all_rewards, dim=0)  # (B,)
             log_prob_sums = torch.cat(all_log_prob_sums, dim=0)  # (B,)
             
-            # Compute advantages across full batch
+            # Compute advantages across full batch (same mean/var for all groups)
             advantages = self.compute_advantages(rewards, phase=phase)  # (B,)
-            # print(f" rewards {rewards}, advantages {advantages}, log_prob_sums {log_prob_sums}  ")
-            # REINFORCE loss
-            loss = -torch.mean(log_prob_sums * advantages)
-            print(f"[Ashok] Joint training - total samples: {rewards.shape[0]}, reinforce loss: {loss.item()}")
+            
+            # Split advantages back into groups and compute loss per group
+            advantages_groups = torch.split(advantages, group_sizes)
+            log_prob_sums_groups = torch.split(log_prob_sums, group_sizes)
+            
+            # Compute REINFORCE loss for each group and sum
+            loss = 0.0
+            for i, (adv_group, log_prob_group) in enumerate(zip(advantages_groups, log_prob_sums_groups)):
+                group_loss = -torch.mean(log_prob_group * adv_group)
+                loss += group_loss
+                # print(f"[Ashok] Group {i}: loss = {group_loss.item()}")
+            
+            print(f"[Ashok] Joint training - total samples: {rewards.shape[0]}, total reinforce loss: {loss.item()}")
             
             # DDPM regularization (merge all cond_dicts)
             if self.cfg.ddpo.ddpm_reg_weight > 0.0:
@@ -169,7 +180,6 @@ class SceneDiffuserTrainerScore(SceneDiffuserTrainerRL):
             trajectories = trajectories[
                 :, 1:
             ]  # Shape (B, T, N, V) T=timesteps per sample eg, 150
-
             # Compute rewards.
             rewards = self.compute_rewards_from_trajs(
                 trajectories=trajectories, cond_dict=cond_dict
